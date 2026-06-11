@@ -733,9 +733,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // 🔥 LANGUAGE SELECTOR - SIRF PDFS AUR NOTES KE LIYE (VIDEOS/PAPERS KE LIYE NAHI)
+  // LANGUAGE SELECTOR - SIRF PDFS AUR NOTES KE LIYE
   const LanguageSelect = ({ form, setForm, type = "note" }) => {
-    // Sirf D.Pharm aur sirf note/paid type ke liye show karo
     if (form.course !== "D.Pharm") return null;
     if (type !== "note" && type !== "paid") return null;
     
@@ -756,7 +755,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     );
   };
 
-  // 🔥 DYNAMIC SEMESTER/YEAR SELECTOR
+  // DYNAMIC SEMESTER/YEAR SELECTOR
   const DynamicSemesterYearSelect = ({ form, setForm, type = "note" }) => {
     if (form.course === "D.Pharm") {
       return (
@@ -819,7 +818,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </select>
       );
     } else {
-      // B.Pharm or Pharm.D - Semester 1-8
       return (
         <select 
           className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500" 
@@ -924,7 +922,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <AdminNavbar notes={notes} videos={videos} paidPDFs={paidPDFs} papers={papers} />
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={onLogout} />
-      <div className="ml-[250px] p-8 mt-16">
+      
+      {/* 🔥 FIXED: mt-16 REMOVED - NO GAP NOW */}
+      <div className="ml-[250px] p-8">
         
         {/* DASHBOARD TAB */}
         {activeTab === "dashboard" && (
@@ -1182,7 +1182,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       {/* ==================== MODALS ==================== */}
 
-      {/* FREE PDF MODAL - WITH LANGUAGE */}
+      {/* FREE PDF MODAL */}
       {showModal.type === "freePdf" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1200,11 +1200,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* Language Select - Sirf PDF ke liye */}
               <LanguageSelect form={noteForm} setForm={setNoteForm} type="note" />
               <DynamicSemesterYearSelect form={noteForm} setForm={setNoteForm} type="note" />
-              
               <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-blue-500 transition-colors">
                 <label className="cursor-pointer text-blue-600">
                   <input type="file" accept="image/*" onChange={handleNoteThumbnail} className="hidden" />
@@ -1223,7 +1220,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* FREE VIDEO MODAL - NO LANGUAGE */}
+      {/* FREE VIDEO MODAL */}
       {showModal.type === "freeVideo" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1238,10 +1235,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* No Language Select for Videos */}
               <DynamicSemesterYearSelect form={freeVideoForm} setForm={setFreeVideoForm} type="video" />
-              
               <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" value={freeVideoForm.videoUrl} onChange={(e) => setFreeVideoForm({...freeVideoForm, videoUrl: e.target.value})} required />
               <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-red-500 transition-colors">
                 <label className="cursor-pointer text-red-600">
@@ -1255,7 +1249,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* FREE PAPER MODAL - NO LANGUAGE */}
+      {/* FREE PAPER MODAL */}
       {showModal.type === "freePaper" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1270,10 +1264,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* No Language Select for Papers */}
               <DynamicSemesterYearSelect form={freePaperForm} setForm={setFreePaperForm} type="paper" />
-              
               <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-green-500" value={freePaperForm.difficulty} onChange={(e) => setFreePaperForm({...freePaperForm, difficulty: e.target.value})}>
                 <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option><option value="Expert">Expert</option>
               </select>
@@ -1295,7 +1286,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* PAID PDF MODAL - WITH LANGUAGE */}
+      {/* PAID PDF MODAL */}
       {showModal.type === "paidPdf" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1313,11 +1304,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* Language Select - Sirf PDF ke liye */}
               <LanguageSelect form={pdfForm} setForm={setPdfForm} type="paid" />
               <DynamicSemesterYearSelect form={pdfForm} setForm={setPdfForm} type="paid" />
-              
               <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-purple-500 transition-colors">
                 <label className="cursor-pointer text-purple-600">
                   <input type="file" accept="image/*" onChange={handlePdfThumbnail} className="hidden" />
@@ -1336,7 +1324,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* PREMIUM VIDEO MODAL - NO LANGUAGE */}
+      {/* PREMIUM VIDEO MODAL */}
       {showModal.type === "premiumVideo" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1351,10 +1339,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* No Language Select for Videos */}
               <DynamicSemesterYearSelect form={freeVideoForm} setForm={setFreeVideoForm} type="video" />
-              
               <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-red-500" value={freeVideoForm.videoUrl} onChange={(e) => setFreeVideoForm({...freeVideoForm, videoUrl: e.target.value})} required />
               <div className="border-2 border-dashed rounded-xl p-4 text-center hover:border-red-500 transition-colors">
                 <label className="cursor-pointer text-red-600">
@@ -1368,7 +1353,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* PREMIUM PAPER MODAL - NO LANGUAGE */}
+      {/* PREMIUM PAPER MODAL */}
       {showModal.type === "premiumPaper" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1383,10 +1368,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Pharm.D">Pharm.D</option>
                 <option value="PhD">PhD</option>
               </select>
-              
-              {/* No Language Select for Papers */}
               <DynamicSemesterYearSelect form={freePaperForm} setForm={setFreePaperForm} type="paper" />
-              
               <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:border-green-500" value={freePaperForm.difficulty} onChange={(e) => setFreePaperForm({...freePaperForm, difficulty: e.target.value})}>
                 <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option><option value="Expert">Expert</option>
               </select>
