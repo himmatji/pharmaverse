@@ -1,7 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "https://api.pharmaverse.co.in/api/admin";
 
 function Adminlogin({ onLogin }) {
   const [email, setEmail] = useState("");
@@ -48,7 +48,7 @@ function Adminlogin({ onLogin }) {
         
         // ================= VERIFY TOKEN WORKS =================
         try {
-          const verifyRes = await axios.get("http://localhost:5000/api/auth/verify", {
+          const verifyRes = await axios.get("https://api.pharmaverse.co.in/api/auth/verify",, {
             headers: { Authorization: `Bearer ${token}` }
           });
           console.log("✅ Token verification:", verifyRes.data);
