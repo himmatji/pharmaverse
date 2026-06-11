@@ -28,7 +28,7 @@ import {
   TrendingUp as TrendingUpIcon
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "http://13.233.8.100:5000/api/admin";
 
 const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
