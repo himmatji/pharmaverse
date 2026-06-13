@@ -10,7 +10,7 @@ import {
 import axios from "axios";
 
 // ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
-const EC2_BASE_URL = "http://13.233.8.100:5000";
+const EC2_BASE_URL = "http://3.109.121.96:5000";
 const LOCAL_BASE_URL = "http://localhost:5000";
 
 // Auto-detect environment

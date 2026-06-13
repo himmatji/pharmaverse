@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 
 // ========== ✅ SAHI - EC2 API URL FOR FRONTEND ==========
-const EC2_BASE_URL = "http://13.233.8.100:5000";
+const EC2_BASE_URL = "http://3.109.121.96:5000";
 const LOCAL_BASE_URL = "http://localhost:5000";
 
 // Auto-detect environment
