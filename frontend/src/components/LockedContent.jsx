@@ -3,6 +3,16 @@ import axios from 'axios';
 import PaymentModal from './PaymentModal';
 import { Lock, Crown, Sparkles, Unlock, Eye } from 'lucide-react';
 
+// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
+const EC2_BASE_URL = "http://13.233.8.100:5000";
+const LOCAL_BASE_URL = "http://localhost:5000";
+
+// Auto-detect environment
+const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
+
+console.log(`🌐 LockedContent running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
+
 const LockedContent = ({ product, children, previewContent }) => {
   const [showPayment, setShowPayment] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
@@ -14,7 +24,7 @@ const LockedContent = ({ product, children, previewContent }) => {
 
   const checkAccess = async () => {
     try {
-      const token = localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+      const token = localStorage.getItem('userToken') || localStorage.getItem('token') || sessionStorage.getItem('userToken');
       
       if (!token) {
         setHasAccess(false);
@@ -22,7 +32,7 @@ const LockedContent = ({ product, children, previewContent }) => {
         return;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/payment/check-access/${product.type}/${product.id}`, {
+      const response = await axios.get(`${BASE_URL}/api/payment/check-access/${product.type}/${product.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHasAccess(response.data.hasAccess);

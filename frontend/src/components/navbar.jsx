@@ -7,7 +7,17 @@ import {
 import logo from "../assets/logo.png";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
+const EC2_BASE_URL = "http://13.233.8.100:5000";
+const LOCAL_BASE_URL = "http://localhost:5000";
+
+// Auto-detect environment
+const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
+
+console.log(`🌐 Navbar running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
+
+const API_URL = `${BASE_URL}/api/auth`;
 
 const Navbar = () => {
   const [activeBanner, setActiveBanner] = useState(1);
@@ -38,7 +48,7 @@ const Navbar = () => {
   // Check user login status
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("userToken");
       const userData = localStorage.getItem("user");
       
       if (token && userData) {
@@ -70,6 +80,7 @@ const Navbar = () => {
   // Handle Logout
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("userToken");
     localStorage.removeItem("user");
     localStorage.removeItem("isLoggedIn");
     setIsLoggedIn(false);
@@ -90,7 +101,7 @@ const Navbar = () => {
     setDeleteError("");
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("userToken");
       const response = await axios.delete(`${API_URL}/delete-account`, {
         headers: { Authorization: `Bearer ${token}` },
         data: { password: deletePassword }
@@ -98,6 +109,7 @@ const Navbar = () => {
 
       if (response.data.success) {
         localStorage.removeItem("token");
+        localStorage.removeItem("userToken");
         localStorage.removeItem("user");
         localStorage.removeItem("isLoggedIn");
         setShowDeleteModal(false);
@@ -495,16 +507,31 @@ const Navbar = () => {
 
   return (
     <>
-      <style>{`
-        @keyframes gradientMove {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          
+          /* Mobile menu scrollbar styling */
+          .mobile-menu-scroll::-webkit-scrollbar {
+            width: 4px;
+          }
+          .mobile-menu-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+          .mobile-menu-scroll::-webkit-scrollbar-thumb {
+            background: #18c1b7;
+            border-radius: 4px;
+          }
+        `}
+      </style>
 
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 w-full px-4 sm:px-6 py-1 transition-all duration-300 shadow-md
+        className={`fixed top-0 left-0 right-0 z-50 w-full px-3 sm:px-4 md:px-6 py-1 transition-all duration-300 shadow-md
         ${
           activeBanner === 1
             ? "bg-[#e9f9f7]"
@@ -513,13 +540,13 @@ const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* Logo */}
+          {/* Logo - Responsive */}
           <Link to="/" onClick={handleHomeClick} className="flex items-center shrink-0">
-            <img src={logo} alt="PharmaVerse Logo" className="w-24 sm:w-28 h-auto object-contain" />
+            <img src={logo} alt="PharmaVerse Logo" className="w-20 sm:w-24 md:w-28 h-auto object-contain" />
           </Link>
 
-          {/* Desktop Navigation */}
-          <ul className="hidden lg:flex items-center justify-center gap-5 xl:gap-7 text-[14px] xl:text-[15px] font-semibold">
+          {/* Desktop Navigation - Hidden on mobile */}
+          <ul className="hidden lg:flex items-center justify-center gap-4 xl:gap-7 text-[13px] xl:text-[15px] font-semibold">
             {navItems.map((item, index) => (
               <li
                 key={index}
@@ -531,7 +558,7 @@ const Navbar = () => {
                   item.isHome ? (
                     <button 
                       onClick={handleHomeClick} 
-                      className={`cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] ${
+                      className={`cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] whitespace-nowrap ${
                         location.pathname === item.path ? "text-[#18c1b7]" : ""
                       } ${activeBanner === 1 ? "text-black" : "text-white"}`}
                     >
@@ -541,7 +568,7 @@ const Navbar = () => {
                     <Link 
                       to={item.path} 
                       state={{ scrollTo: null }} 
-                      className={`cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] ${
+                      className={`cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] whitespace-nowrap ${
                         location.pathname === item.path ? "text-[#18c1b7]" : ""
                       } ${activeBanner === 1 ? "text-black" : "text-white"}`}
                     >
@@ -549,7 +576,7 @@ const Navbar = () => {
                     </Link>
                   )
                 ) : (
-                  <div className={`flex items-center gap-1 cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] ${
+                  <div className={`flex items-center gap-1 cursor-pointer transition-colors duration-200 hover:text-[#18c1b7] whitespace-nowrap ${
                     activeBanner === 1 ? "text-black" : "text-white"
                   }`}>
                     {item.name} <ChevronDown size={14} className={`transition-transform duration-200 ${openDropdown === index ? "rotate-180" : ""}`} />
@@ -559,7 +586,7 @@ const Navbar = () => {
                 {/* Dropdown Menu */}
                 {item.isDropdown && openDropdown === index && (
                   <div 
-                    className="absolute top-6 left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50"
+                    className="absolute top-6 left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50"
                     onMouseEnter={handleDropdownContainerMouseEnter}
                     onMouseLeave={handleMouseLeave}
                   >
@@ -622,37 +649,37 @@ const Navbar = () => {
             ))}
           </ul>
 
-          {/* Right Section - Search & User */}
-          <div className="hidden md:flex items-center justify-end gap-4">
+          {/* Right Section - Search & User - Responsive */}
+          <div className="hidden md:flex items-center justify-end gap-3 lg:gap-4">
             {/* Search Bar */}
             <div ref={searchRef} className="relative">
               <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(90deg, #2563eb, #ef4444, #2563eb)", backgroundSize: "200% 200%", animation: "gradientMove 3s linear infinite" }}>
-                <div className="flex items-center bg-white rounded-full px-4 py-[7px] w-[200px] xl:w-[220px]">
+                <div className="flex items-center bg-white rounded-full px-3 lg:px-4 py-[6px] lg:py-[7px] w-[160px] lg:w-[200px] xl:w-[220px]">
                   <input 
                     type="text" 
-                    placeholder="Search notes, videos, papers..." 
-                    className="bg-transparent outline-none text-[13px] w-full text-gray-700" 
+                    placeholder="Search..." 
+                    className="bg-transparent outline-none text-[12px] lg:text-[13px] w-full text-gray-700" 
                     value={searchQuery} 
                     onChange={(e) => handleSearch(e.target.value)} 
                     onFocus={() => searchQuery.trim() !== "" && setShowSearchDropdown(true)} 
                   />
-                  <Search size={18} className="text-gray-500 cursor-pointer hover:text-[#18c1b7]" />
+                  <Search size={16} className="lg:w-[18px] lg:h-[18px] text-gray-500 cursor-pointer hover:text-[#18c1b7]" />
                 </div>
               </div>
 
               {showSearchDropdown && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 mt-2 w-[300px] xl:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[400px] overflow-y-auto">
+                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[400px] overflow-y-auto">
                   {searchResults.map((result, idx) => (
                     <button 
                       key={idx} 
                       onClick={() => handleResultClick(result)} 
-                      className="w-full text-left px-4 py-3 hover:bg-[#e9f9f7] transition-colors border-b border-gray-50 last:border-0"
+                      className="w-full text-left px-3 lg:px-4 py-2 lg:py-3 hover:bg-[#e9f9f7] transition-colors border-b border-gray-50 last:border-0"
                     >
-                      <div className="font-semibold text-gray-800 text-sm">{result.title}</div>
+                      <div className="font-semibold text-gray-800 text-xs lg:text-sm">{result.title}</div>
                       <div className="flex gap-2 mt-1">
-                        <span className="text-xs text-[#18c1b7] font-medium">{result.category}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">{result.type}</span>
+                        <span className="text-[10px] lg:text-xs text-[#18c1b7] font-medium">{result.category}</span>
+                        <span className="text-[10px] lg:text-xs text-gray-400">•</span>
+                        <span className="text-[10px] lg:text-xs text-gray-500">{result.type}</span>
                       </div>
                     </button>
                   ))}
@@ -660,8 +687,8 @@ const Navbar = () => {
               )}
 
               {showSearchDropdown && searchQuery.trim() !== "" && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 mt-2 w-[300px] xl:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-4 z-50 text-center">
-                  <p className="text-gray-500 text-sm">No results found for "{searchQuery}"</p>
+                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-4 z-50 text-center">
+                  <p className="text-gray-500 text-xs lg:text-sm">No results found for "{searchQuery}"</p>
                 </div>
               )}
             </div>
@@ -675,26 +702,26 @@ const Navbar = () => {
                   onMouseLeave={handleUserMouseLeave}
                 >
                   <button
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
+                    className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-full transition-all duration-200 text-sm lg:text-base ${
                       activeBanner === 1
                         ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                         : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
                     }`}
                   >
-                    <UserCircle size={18} />
-                    <span className="text-sm font-medium">{getDisplayName()}</span>
-                    <ChevronDown size={14} className={`transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`} />
+                    <UserCircle size={16} className="lg:w-[18px] lg:h-[18px]" />
+                    <span className="text-xs lg:text-sm font-medium">{getDisplayName()}</span>
+                    <ChevronDown size={12} className={`lg:w-[14px] lg:h-[14px] transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`} />
                   </button>
 
                   {showUserMenu && (
                     <div 
-                      className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50"
+                      className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50"
                       onMouseEnter={handleDropdownMouseEnter}
                       onMouseLeave={handleDropdownMouseLeave}
                     >
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="font-semibold text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-500 truncate">{user.email}</p>
+                        <p className="font-semibold text-gray-900 text-sm truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
 
                       <div className="py-1">
@@ -703,10 +730,10 @@ const Navbar = () => {
                             setShowUserMenu(false);
                             navigate("/profile");
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors text-sm"
                         >
-                          <UserCircle size={18} />
-                          <span className="text-sm">Profile</span>
+                          <UserCircle size={16} />
+                          <span>Profile</span>
                         </button>
 
                         <button
@@ -714,18 +741,18 @@ const Navbar = () => {
                             setShowUserMenu(false);
                             setShowDeleteModal(true);
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors text-sm"
                         >
-                          <Trash2 size={18} />
-                          <span className="text-sm">Delete Account</span>
+                          <Trash2 size={16} />
+                          <span>Delete Account</span>
                         </button>
 
                         <button
                           onClick={handleLogout}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors border-t border-gray-100 mt-1"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors border-t border-gray-100 mt-1 text-sm"
                         >
-                          <LogOut size={18} />
-                          <span className="text-sm">Logout</span>
+                          <LogOut size={16} />
+                          <span>Logout</span>
                         </button>
                       </div>
                     </div>
@@ -734,14 +761,14 @@ const Navbar = () => {
               ) : (
                 <button
                   onClick={() => navigate("/")}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 ${
+                  className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-full transition-all duration-200 text-sm lg:text-base ${
                     activeBanner === 1
                       ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                       : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
                   }`}
                 >
-                  <User size={18} />
-                  <span className="text-sm font-medium">Login</span>
+                  <User size={14} className="lg:w-[18px] lg:h-[18px]" />
+                  <span className="text-xs lg:text-sm font-medium">Login</span>
                 </button>
               )}
             </div>
@@ -750,26 +777,26 @@ const Navbar = () => {
           {/* Mobile Menu Button */}
           <button 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-            className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full transition-all duration-200"
+            className="lg:hidden flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200"
           >
             {mobileMenuOpen ? (
-              <X size={24} className={activeBanner === 1 ? "text-black" : "text-white"} />
+              <X size={20} className="sm:w-6 sm:h-6 text-black" />
             ) : (
-              <Menu size={24} className={activeBanner === 1 ? "text-black" : "text-white"} />
+              <Menu size={20} className="sm:w-6 sm:h-6 text-black" />
             )}
           </button>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Responsive */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-4 pb-4 border-t border-gray-200/20 max-h-[80vh] overflow-y-auto">
-            <div className="flex flex-col space-y-2 pt-4">
+          <div className="lg:hidden mt-2 sm:mt-4 pb-4 border-t border-gray-200/20 max-h-[80vh] overflow-y-auto mobile-menu-scroll">
+            <div className="flex flex-col space-y-2 pt-3 sm:pt-4">
               <button 
                 onClick={handleHomeClick} 
-                className={`block w-full text-left py-2 px-3 rounded-lg transition ${
+                className={`block w-full text-left py-2 px-3 rounded-lg transition text-sm sm:text-base ${
                   location.pathname === "/" 
                     ? "bg-[#18c1b7]/10 text-[#18c1b7] font-semibold" 
-                    : activeBanner === 1 ? "text-black hover:bg-gray-100" : "text-white hover:bg-white/10"
+                    : "text-black hover:bg-gray-100"
                 }`}
               >
                 Home
@@ -779,32 +806,32 @@ const Navbar = () => {
                 <div key={idx}>
                   <button 
                     onClick={() => setOpenDropdown(openDropdown === idx ? null : idx)} 
-                    className={`flex items-center justify-between w-full py-2 px-3 rounded-lg transition ${
-                      activeBanner === 1 ? "text-black hover:bg-gray-100" : "text-white hover:bg-white/10"
+                    className={`flex items-center justify-between w-full py-2 px-3 rounded-lg transition text-sm sm:text-base ${
+                      "text-black hover:bg-gray-100"
                     }`}
                   >
                     {course.name}
-                    <ChevronDown size={16} className={`transform transition-transform duration-200 ${openDropdown === idx ? "rotate-180" : ""}`} />
+                    <ChevronDown size={14} className={`transform transition-transform duration-200 ${openDropdown === idx ? "rotate-180" : ""}`} />
                   </button>
                   
                   {openDropdown === idx && (
-                    <div className="ml-4 mt-2 space-y-2 border-l-2 border-[#18c1b7] pl-3">
+                    <div className="ml-3 sm:ml-4 mt-2 space-y-2 border-l-2 border-[#18c1b7] pl-2 sm:pl-3">
                       {course.items.map((subItem, subIdx) => (
                         <div key={subIdx}>
                           {subItem.hasSubmenu ? (
                             <>
                               <button
                                 onClick={() => setOpenSubmenu(openSubmenu === subIdx ? null : subIdx)}
-                                className={`flex items-center justify-between w-full py-2 px-2 rounded transition text-sm ${
-                                  activeBanner === 1 ? "text-gray-600 hover:text-[#18c1b7]" : "text-gray-200 hover:text-white"
+                                className={`flex items-center justify-between w-full py-2 px-2 rounded transition text-xs sm:text-sm ${
+                                  "text-gray-600 hover:text-[#18c1b7]"
                                 }`}
                               >
                                 {subItem.name}
-                                <ChevronRight size={14} className={`transform transition-transform duration-200 ${openSubmenu === subIdx ? "rotate-90" : ""}`} />
+                                <ChevronRight size={12} className={`transform transition-transform duration-200 ${openSubmenu === subIdx ? "rotate-90" : ""}`} />
                               </button>
                               
                               {openSubmenu === subIdx && (
-                                <div className="ml-4 mt-1 space-y-1 border-l border-gray-300 pl-3">
+                                <div className="ml-3 sm:ml-4 mt-1 space-y-1 border-l border-gray-300 pl-2 sm:pl-3">
                                   {subItem.submenuItems.map((subSubItem, subSubIdx) => (
                                     <Link
                                       key={subSubIdx}
@@ -816,7 +843,7 @@ const Navbar = () => {
                                         language: subSubItem.language
                                       }}
                                       onClick={() => { setMobileMenuOpen(false); setOpenDropdown(null); setOpenSubmenu(null); }}
-                                      className="block py-1.5 px-2 rounded text-xs text-gray-500 hover:text-[#18c1b7] transition"
+                                      className="block py-1.5 px-2 rounded text-[11px] sm:text-xs text-gray-500 hover:text-[#18c1b7] transition"
                                     >
                                       {subSubItem.name}
                                     </Link>
@@ -829,8 +856,8 @@ const Navbar = () => {
                               to={subItem.path}
                               state={{ scrollTo: subItem.sectionId }}
                               onClick={() => { setMobileMenuOpen(false); setOpenDropdown(null); }}
-                              className={`block py-2 px-2 rounded transition text-sm ${
-                                activeBanner === 1 ? "text-gray-600 hover:text-[#18c1b7]" : "text-gray-200 hover:text-white"
+                              className={`block py-2 px-2 rounded transition text-xs sm:text-sm ${
+                                "text-gray-600 hover:text-[#18c1b7]"
                               }`}
                             >
                               {subItem.name}
@@ -845,25 +872,25 @@ const Navbar = () => {
               
               {isLoggedIn && user ? (
                 <div className="pt-3 px-3 border-t border-gray-200/20 mt-2">
-                  <div className="bg-white/10 rounded-xl p-3 mb-2">
-                    <p className="font-semibold text-sm">{user.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                  <div className="bg-gray-100 rounded-xl p-2 sm:p-3 mb-2">
+                    <p className="font-semibold text-sm sm:text-base">{user.name}</p>
+                    <p className="text-[11px] sm:text-xs text-gray-500 truncate">{user.email}</p>
                   </div>
                   <button 
                     onClick={() => { navigate("/profile"); setMobileMenuOpen(false); }} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-white/10 transition"
+                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-gray-100 transition"
                   >
                     Profile
                   </button>
                   <button 
                     onClick={() => { setShowDeleteModal(true); setMobileMenuOpen(false); }} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm text-red-400 hover:bg-red-500/10 transition"
+                    className="block w-full text-left py-2 px-3 rounded-lg text-sm text-red-600 hover:bg-red-50 transition"
                   >
                     Delete Account
                   </button>
                   <button 
                     onClick={handleLogout} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-white/10 transition"
+                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-gray-100 transition"
                   >
                     Logout
                   </button>
@@ -871,13 +898,13 @@ const Navbar = () => {
               ) : (
                 <button 
                   onClick={() => navigate("/")} 
-                  className={`flex items-center justify-center gap-2 mx-3 mt-2 py-2 rounded-full transition ${
+                  className={`flex items-center justify-center gap-2 mx-3 mt-2 py-2 rounded-full transition text-sm ${
                     activeBanner === 1
                       ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
-                      : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
+                      : "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                   }`}
                 >
-                  <User size={18} /> Login
+                  <User size={14} /> Login
                 </button>
               )}
             </div>
@@ -887,36 +914,36 @@ const Navbar = () => {
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           <div 
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
             onClick={() => { setShowDeleteModal(false); setDeletePassword(""); setDeleteError(""); }}
           ></div>
-          <div className="relative bg-white rounded-2xl w-full max-w-md p-6 mx-4">
-            <h3 className="text-xl font-bold text-red-600 mb-2">Delete Account</h3>
-            <p className="text-gray-600 mb-4">Are you sure? This action cannot be undone.</p>
+          <div className="relative bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 mx-4">
+            <h3 className="text-lg sm:text-xl font-bold text-red-600 mb-2">Delete Account</h3>
+            <p className="text-gray-600 text-sm sm:text-base mb-4">Are you sure? This action cannot be undone.</p>
             
             <input 
               type="password" 
               placeholder="Enter your password to confirm" 
               value={deletePassword} 
               onChange={(e) => setDeletePassword(e.target.value)} 
-              className="w-full border border-gray-300 rounded-xl px-4 py-2 mb-3 focus:outline-none focus:border-red-500" 
+              className="w-full border border-gray-300 rounded-xl px-4 py-2 mb-3 focus:outline-none focus:border-red-500 text-sm" 
             />
             
-            {deleteError && <p className="text-red-500 text-sm mb-3">{deleteError}</p>}
+            {deleteError && <p className="text-red-500 text-xs sm:text-sm mb-3">{deleteError}</p>}
             
             <div className="flex gap-3">
               <button 
                 onClick={() => { setShowDeleteModal(false); setDeletePassword(""); setDeleteError(""); }} 
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition text-sm"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleDeleteAccount} 
                 disabled={deleteLoading} 
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition disabled:opacity-50"
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition disabled:opacity-50 text-sm"
               >
                 {deleteLoading ? "Deleting..." : "Delete Account"}
               </button>
@@ -925,8 +952,8 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Spacer */}
-      <div className="h-[68px] sm:h-[72px]"></div>
+      {/* Spacer - Responsive */}
+      <div className="h-[56px] sm:h-[64px] md:h-[68px] lg:h-[72px]"></div>
     </>
   );
 };

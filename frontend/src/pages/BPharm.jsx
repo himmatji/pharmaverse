@@ -21,6 +21,18 @@ import {
   Rocket
 } from "lucide-react";
 
+// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
+// EC2 Public IP
+const EC2_BASE_URL = "http://13.233.8.100:5000";
+const LOCAL_BASE_URL = "http://localhost:5000";
+
+// Auto-detect environment
+const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
+
+console.log(`🌐 Running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
+console.log(`📡 API Base URL: ${BASE_URL}`);
+
 const BPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -32,6 +44,8 @@ const BPharm = () => {
   
   // For semester cards - which semester is open
   const [openSemester, setOpenSemester] = useState({});
+  // For mobile menu
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [notes, setNotes] = useState([]);
   const [premiumVideos, setPremiumVideos] = useState([]);
@@ -103,16 +117,17 @@ const BPharm = () => {
     }));
   };
 
+  // ========== API CALLS WITH DYNAMIC BASE_URL ==========
   const fetchNotes = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/notes?course=B.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/notes?course=B.Pharm`);
       setNotes(res.data);
     } catch (error) { console.log(error); }
   };
 
   const fetchPremiumVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/videos?course=B.Pharm`);
       const premiumOnly = res.data.filter(video => video.isPremium === true);
       setPremiumVideos(premiumOnly);
       
@@ -128,13 +143,13 @@ const BPharm = () => {
 
   const fetchFreeVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/free-videos?course=B.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/free-videos?course=B.Pharm`);
       const freeOnly = res.data.filter(video => video.isPremium === false);
       setFreeVideos(freeOnly);
     } catch (error) { 
       console.log(error);
       try {
-        const allRes = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
+        const allRes = await axios.get(`${BASE_URL}/api/admin/public/videos?course=B.Pharm`);
         const freeOnly = allRes.data.filter(video => video.isPremium === false);
         setFreeVideos(freeOnly);
       } catch (err) {
@@ -145,7 +160,7 @@ const BPharm = () => {
 
   const fetchPaidPDFs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/paid-pdfs?course=B.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/paid-pdfs?course=B.Pharm`);
       setPaidPDFs(res.data);
       
       const grouped = {};
@@ -160,7 +175,7 @@ const BPharm = () => {
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/papers?course=B.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/papers?course=B.Pharm`);
       setFreePapers(res.data.filter((paper) => paper.isPremium === false));
       const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
       setPremiumPapers(premiumPapersData);
@@ -182,7 +197,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -199,7 +214,7 @@ const BPharm = () => {
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public-price");
+      const res = await axios.get(`${BASE_URL}/api/admin/public-price`);
       setPremiumPrice(res.data.price);
     } catch (error) {
       console.log("Price fetch error:", error);
@@ -233,11 +248,11 @@ const BPharm = () => {
       
       let viewUrl;
       if (type === "note") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -298,7 +313,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return false;
       
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -333,13 +348,13 @@ const BPharm = () => {
       
       let downloadUrl;
       if (type === "note") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else if (type === "premium-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -425,7 +440,7 @@ const BPharm = () => {
       const amount = premiumPrice;
 
       const orderResponse = await axios.post(
-        "http://localhost:5000/api/payment/create-order",
+        `${BASE_URL}/api/payment/create-order`,
         {
           amount: amount,
           productType: "premium_course",
@@ -452,7 +467,7 @@ const BPharm = () => {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              "http://localhost:5000/api/payment/verify-payment",
+              `${BASE_URL}/api/payment/verify-payment`,
               {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
@@ -903,8 +918,8 @@ const BPharm = () => {
           {title}
         </h3>
         
-        {/* Semester Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        {/* Semester Cards Grid - Responsive for mobile */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
           {activeSemesters.map(sem => {
             const items = data[sem] || [];
             const isOpen = openSemester[`${type}-${sem}`] === true;
@@ -917,7 +932,7 @@ const BPharm = () => {
                   isOpen ? 'scale-105' : ''
                 }`}
               >
-                <div className={`relative overflow-hidden rounded-2xl p-5 text-center transition-all duration-300 ${
+                <div className={`relative overflow-hidden rounded-2xl p-4 sm:p-5 text-center transition-all duration-300 ${
                   isOpen 
                     ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-2xl' 
                     : 'bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl text-gray-700'
@@ -926,21 +941,21 @@ const BPharm = () => {
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   
                   {/* Semester Number */}
-                  <div className={`text-4xl font-bold mb-2 ${
+                  <div className={`text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 ${
                     isOpen ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'
                   }`}>
                     {sem}
                   </div>
                   
                   {/* Semester Label */}
-                  <div className={`text-xs font-medium ${
+                  <div className={`text-[10px] sm:text-xs font-medium ${
                     isOpen ? 'text-purple-200' : 'text-gray-500'
                   }`}>
                     Semester
                   </div>
                   
                   {/* Item Count Badge */}
-                  <div className={`mt-3 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                  <div className={`mt-2 sm:mt-3 inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
                     isOpen 
                       ? 'bg-white/20 text-white' 
                       : 'bg-purple-100 text-purple-600'
@@ -969,13 +984,13 @@ const BPharm = () => {
           return (
             <div key={`content-${sem}`} className="mt-6 animate-fadeIn">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">
                   {sem}
                 </div>
-                <h4 className="text-xl font-bold text-gray-800">Semester {sem} PDFs</h4>
-                <span className="text-sm text-gray-500">({items.length} items)</span>
+                <h4 className="text-lg sm:text-xl font-bold text-gray-800">Semester {sem} PDFs</h4>
+                <span className="text-xs sm:text-sm text-gray-500">({items.length} items)</span>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {items.map((item, idx) => renderCard(item, type, idx))}
               </div>
             </div>
@@ -1011,6 +1026,44 @@ const BPharm = () => {
     .animate-fadeIn {
       animation: fadeIn 0.5s ease-out forwards;
     }
+    
+    /* ========== RESPONSIVE STYLES FOR MOBILE ========== */
+    @media (max-width: 768px) {
+      .hero-title {
+        font-size: 2rem;
+      }
+      .hero-subtitle {
+        font-size: 0.875rem;
+      }
+      .tab-button {
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+      }
+      .tab-icon {
+        width: 2rem;
+        height: 2rem;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .section-title {
+        font-size: 1.75rem;
+      }
+      .card-title {
+        font-size: 1rem;
+      }
+      .premium-button {
+        font-size: 0.75rem;
+        padding: 0.5rem 1rem;
+      }
+    }
+    
+    /* Mobile responsive grid adjustments */
+    @media (max-width: 640px) {
+      .grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
   `;
   document.head.appendChild(styleSheet);
 
@@ -1018,39 +1071,40 @@ const BPharm = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white">
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-xl">
-            <div className="w-6 h-6 border-3 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium">Processing...</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 flex items-center gap-3 shadow-xl">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-gray-700 font-medium text-sm sm:text-base">Processing...</span>
           </div>
         </div>
       )}
 
+      {/* Premium Banner - Responsive */}
       {!isPremium && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce">
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
           <button
             onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-2 sm:gap-3 text-sm sm:text-base w-full justify-center"
           >
-            <Crown size={24} className="text-yellow-300" />
-            <span>Get Premium Access - ₹{premiumPrice} only!</span>
-            <Crown size={24} className="text-yellow-300" />
+            <Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" />
+            <span>Get Premium - ₹{premiumPrice}</span>
+            <Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" />
           </button>
         </div>
       )}
 
       {isPremium && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2">
-            <Crown size={20} className="text-yellow-300" />
-            Premium Member - All Content Unlocked
-            <Crown size={20} className="text-yellow-300" />
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-bold shadow-xl flex items-center gap-2 text-sm sm:text-base">
+            <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" />
+            Premium Member
+            <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" />
           </div>
         </div>
       )}
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - Responsive */}
       <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-        <div className="relative h-[360px] md:h-[520px] w-full">
+        <div className="relative h-[300px] sm:h-[360px] md:h-[520px] w-full">
           <div 
             className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center"
             style={{ 
@@ -1062,19 +1116,25 @@ const BPharm = () => {
           </div>
           <div className="absolute left-0 top-0 h-full w-[62%] bg-[#04172c]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
           <div className="absolute left-[18%] top-0 h-full w-[22%] bg-[#0a2747]/80 backdrop-blur-md" style={{ clipPath: "polygon(35% 0, 100% 0, 65% 100%, 0% 100%)" }}></div>
-          <div className="relative z-20 flex items-center h-full px-6 md:px-20">
+          <div className="relative z-20 flex items-center h-full px-4 sm:px-6 md:px-20">
             <div className="max-w-[520px]">
-              <h1 className="text-white text-4xl md:text-7xl font-extrabold leading-tight mb-5">Bachelor<br /><span className="text-sky-400">of Pharmacy</span></h1>
-              <p className="text-gray-300 text-sm md:text-lg leading-relaxed mb-8 max-w-[500px]">Complete Notes, Semester-wise PDFs, Practical Videos & Predictive Papers for B.Pharm Students.</p>
+              <h1 className="text-white text-3xl sm:text-4xl md:text-7xl font-extrabold leading-tight mb-3 sm:mb-5">
+                Bachelor<br /><span className="text-sky-400">of Pharmacy</span>
+              </h1>
+              <p className="text-gray-300 text-xs sm:text-sm md:text-lg leading-relaxed mb-5 sm:mb-8 max-w-[500px]">
+                Complete Notes, Semester-wise PDFs, Practical Videos & Predictive Papers for B.Pharm Students.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* TABS SECTION - Responsive Scrollable for Mobile */}
       <div className="w-full bg-white">
-        <div className="w-full min-h-[150px] bg-gradient-to-b from-[#f3fbff] via-white to-[#f8fcff] border-b border-sky-100 flex items-center justify-center">
-          <div className="w-full max-w-[1700px] mx-auto px-6">
-            <div className="flex flex-wrap justify-center gap-5 py-8">
+        <div className="w-full min-h-[120px] sm:min-h-[150px] bg-gradient-to-b from-[#f3fbff] via-white to-[#f8fcff] border-b border-sky-100 flex items-center justify-center">
+          <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6">
+            {/* Mobile: Horizontal Scroll, Desktop: Wrap */}
+            <div className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-5 overflow-x-auto pb-3 sm:pb-0 hide-scrollbar">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -1082,18 +1142,18 @@ const BPharm = () => {
                   <button 
                     key={tab.id} 
                     onClick={() => { setActiveTab(tab.id); document.getElementById(tab.id)?.scrollIntoView({ behavior: "smooth" }); }} 
-                    className={`group flex items-center gap-3 px-8 py-4 rounded-2xl font-semibold transition-all duration-300 border ${
+                    className={`group flex items-center gap-2 sm:gap-3 px-3 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 border whitespace-nowrap ${
                       isActive 
                         ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-transparent shadow-lg scale-105" 
                         : "bg-white text-gray-700 border-sky-100 hover:shadow-md hover:scale-105"
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                    <div className={`w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300 ${
                       isActive ? "bg-white/20" : "bg-sky-100 text-sky-600 group-hover:bg-sky-200"
                     }`}>
-                      <Icon size={20} />
+                      <Icon size={14} className="sm:w-5 sm:h-5" />
                     </div>
-                    <span className="text-[15px] md:text-base font-semibold">{tab.label}</span>
+                    <span className="text-xs sm:text-[15px] md:text-base font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
@@ -1102,20 +1162,23 @@ const BPharm = () => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      {/* MAIN CONTENT - Responsive Padding */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
         
         {/* NOTES SECTION - Free Materials */}
-        <div id="notes" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-sky-600 font-semibold tracking-[3px] uppercase mb-3">Study Material</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Free Materials</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-4"></div>
+        <div id="notes" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-sky-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Study Material</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Free Materials</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-3 sm:mt-4"></div>
           </div>
           
           {notes.length > 0 && (
             <>
-              <h3 className="text-2xl font-bold mb-6 text-gray-800">📚 Free Notes & PDFs</h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
+                <span>📚</span> Free Notes & PDFs
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
                 {notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}
               </div>
             </>
@@ -1123,8 +1186,10 @@ const BPharm = () => {
 
           {freeVideos.length > 0 && (
             <>
-              <h3 className="text-2xl font-bold mb-6 text-gray-800">🎬 Free Video Lectures</h3>
-              <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
+                <span>🎬</span> Free Video Lectures
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                 {freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}
               </div>
             </>
@@ -1132,25 +1197,27 @@ const BPharm = () => {
 
           {freePapers.length > 0 && (
             <>
-              <h3 className="text-2xl font-bold mb-6 text-gray-800">📝 Free Practice Papers</h3>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
+                <span>📝</span> Free Practice Papers
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}
               </div>
             </>
           )}
 
           {notes.length === 0 && freeVideos.length === 0 && freePapers.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No free content available yet.</div>
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No free content available yet.</div>
           )}
         </div>
 
-        {/* SEMESTER SECTION - Premium PDFs (Semester CARDS - Single Click) */}
-        <div id="semester" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-sky-600 font-semibold tracking-[3px] uppercase mb-3">Premium Content</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Premium Semester PDFs</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Click on any semester card to view its PDFs</p>
+        {/* SEMESTER SECTION - Premium PDFs */}
+        <div id="semester" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-sky-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Premium Content</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Semester PDFs</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any semester card to view its PDFs</p>
           </div>
           
           {Object.keys(pdfsBySemester).length > 0 ? (
@@ -1159,20 +1226,20 @@ const BPharm = () => {
               pdfsBySemester, 
               "paid-pdf", 
               (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx),
-              <GraduationCap size={24} className="text-purple-600" />
+              <GraduationCap size={20} className="sm:w-6 sm:h-6 text-purple-600" />
             )
           ) : (
-            <div className="text-center py-12 text-gray-500">No premium PDFs available yet.</div>
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No premium PDFs available yet.</div>
           )}
         </div>
 
         {/* VIDEOS SECTION - Premium Videos */}
-        <div id="videos" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-sky-600 font-semibold tracking-[4px] uppercase mb-3">Learning Resources</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Premium Videos</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Click on any semester to view its videos</p>
+        <div id="videos" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-sky-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Learning Resources</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Videos</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any semester to view its videos</p>
           </div>
           
           {Object.keys(videosBySemester).length > 0 ? (
@@ -1181,20 +1248,20 @@ const BPharm = () => {
               videosBySemester, 
               "premium-video", 
               (item, type, idx) => renderPremiumVideoCard(item, idx),
-              <Video size={24} className="text-rose-600" />
+              <Video size={20} className="sm:w-6 sm:h-6 text-rose-600" />
             )
           ) : (
-            <div className="text-center py-12 text-gray-500">No premium videos available yet.</div>
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No premium videos available yet.</div>
           )}
         </div>
 
         {/* PAPERS SECTION - Premium Papers */}
-        <div id="papers" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-sky-600 font-semibold tracking-[4px] uppercase mb-3">Exam Preparation</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Premium Papers</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Click on any semester to view its papers</p>
+        <div id="papers" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-sky-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Exam Preparation</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Papers</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-sky-400 to-blue-500 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any semester to view its papers</p>
           </div>
           
           {Object.keys(papersBySemester).length > 0 ? (
@@ -1203,13 +1270,24 @@ const BPharm = () => {
               papersBySemester, 
               "premium-paper", 
               (item, type, idx) => renderPremiumCard(item, "premium-paper", Brain, idx),
-              <Brain size={24} className="text-amber-600" />
+              <Brain size={20} className="sm:w-6 sm:h-6 text-amber-600" />
             )
           ) : (
-            <div className="text-center py-12 text-gray-500">No premium papers available yet.</div>
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No premium papers available yet.</div>
           )}
         </div>
       </div>
+
+      {/* Hide scrollbar for mobile tabs */}
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };

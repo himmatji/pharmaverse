@@ -19,6 +19,17 @@ import {
   Rocket
 } from "lucide-react";
 
+// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
+const EC2_BASE_URL = "http://13.233.8.100:5000";
+const LOCAL_BASE_URL = "http://localhost:5000";
+
+// Auto-detect environment
+const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
+
+console.log(`🌐 Running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
+console.log(`📡 API Base URL: ${BASE_URL}`);
+
 const DPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -93,34 +104,32 @@ const DPharm = () => {
     }));
   };
 
+  // ========== API CALLS WITH DYNAMIC BASE_URL ==========
   const fetchNotes = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/notes?course=D.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/notes?course=D.Pharm`);
       setNotes(res.data);
     } catch (error) { console.log(error); }
   };
 
-  // 🔥 FIXED: Premium Videos fetch with better year handling
   const fetchPremiumVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/videos?course=D.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/videos?course=D.Pharm`);
       console.log("🎬 All Videos:", res.data);
       
       const premiumOnly = res.data.filter(video => video.isPremium === true);
       console.log("🎬 Premium Videos:", premiumOnly);
       setPremiumVideos(premiumOnly);
       
-      // Group by year with proper conversion
       const grouped = {};
       premiumOnly.forEach(video => {
         let yr = video.year;
-        // Convert year to number for grouping
         if (yr === "1st Year" || yr === 1 || yr === "1") {
           yr = 1;
         } else if (yr === "2nd Year" || yr === 2 || yr === "2") {
           yr = 2;
         } else {
-          yr = 1; // default to 1st year
+          yr = 1;
         }
         
         if (!grouped[yr]) grouped[yr] = [];
@@ -137,13 +146,13 @@ const DPharm = () => {
 
   const fetchFreeVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/free-videos?course=D.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/free-videos?course=D.Pharm`);
       const freeOnly = res.data.filter(video => video.isPremium === false);
       setFreeVideos(freeOnly);
     } catch (error) { 
       console.log(error);
       try {
-        const allRes = await axios.get("http://localhost:5000/api/admin/public/videos?course=D.Pharm");
+        const allRes = await axios.get(`${BASE_URL}/api/admin/public/videos?course=D.Pharm`);
         const freeOnly = allRes.data.filter(video => video.isPremium === false);
         setFreeVideos(freeOnly);
       } catch (err) {
@@ -154,7 +163,7 @@ const DPharm = () => {
 
   const fetchPaidPDFs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/paid-pdfs?course=D.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/paid-pdfs?course=D.Pharm`);
       console.log("🔍 All Paid PDFs:", res.data);
       
       if (!res.data || res.data.length === 0) {
@@ -206,7 +215,7 @@ const DPharm = () => {
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/papers?course=D.Pharm");
+      const res = await axios.get(`${BASE_URL}/api/admin/public/papers?course=D.Pharm`);
       setFreePapers(res.data.filter((paper) => paper.isPremium === false));
       const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
       setPremiumPapers(premiumPapersData);
@@ -232,7 +241,7 @@ const DPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -249,7 +258,7 @@ const DPharm = () => {
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public-price");
+      const res = await axios.get(`${BASE_URL}/api/admin/public-price`);
       setPremiumPrice(res.data.price);
     } catch (error) {
       console.log("Price fetch error:", error);
@@ -283,11 +292,11 @@ const DPharm = () => {
       
       let viewUrl;
       if (type === "note") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        viewUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -346,7 +355,7 @@ const DPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return false;
       
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -381,20 +390,20 @@ const DPharm = () => {
       
       let downloadUrl;
       if (type === "note") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else if (type === "premium-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
       } else if (type === "premium-video") {
         if (item.videoUrl) {
           window.open(item.videoUrl, "_blank");
           setLoading(false);
           return;
         }
-        downloadUrl = `http://localhost:5000/api/admin/public/download/video/${item._id}`;
+        downloadUrl = `${BASE_URL}/api/admin/public/download/video/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -478,7 +487,7 @@ const DPharm = () => {
       const amount = premiumPrice;
 
       const orderResponse = await axios.post(
-        "http://localhost:5000/api/payment/create-order",
+        `${BASE_URL}/api/payment/create-order`,
         {
           amount: amount,
           productType: "premium_course",
@@ -503,7 +512,7 @@ const DPharm = () => {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              "http://localhost:5000/api/payment/verify-payment",
+              `${BASE_URL}/api/payment/verify-payment`,
               {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
@@ -711,7 +720,6 @@ const DPharm = () => {
     );
   };
 
-  // 🔥 FIXED: Premium Video Card with proper display
   const renderPremiumVideoCard = (video, index) => {
     const isLocked = !isPremium;
     const cardId = `premium-video-${video._id}`;
@@ -753,7 +761,6 @@ const DPharm = () => {
                 </div>
               </div>
             )}
-            {/* Year Badge */}
             {video.year && !isLocked && (
               <div className="absolute bottom-3 left-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-full">
                 {video.year}
@@ -796,7 +803,7 @@ const DPharm = () => {
     if (!hasData) {
       return (
         <div className="mb-12">
-          <h3 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
+          <h3 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
           <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
             <div className="text-6xl mb-4">📚</div>
             <p className="text-gray-500">{noDataMessage}</p>
@@ -809,19 +816,21 @@ const DPharm = () => {
     
     return (
       <div className="mb-12">
-        <h3 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 max-w-md mx-auto">
+        <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
+        
+        {/* Year Cards - Responsive Grid */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 mb-6 sm:mb-8 max-w-md mx-auto">
           {activeYears.map(yr => {
             const items = data[yr] || [];
             const isOpen = openYear[`${type}-${yr}`] === true;
             const yearName = yr === 1 ? "1st Year" : "2nd Year";
             return (
               <div key={yr} onClick={() => handleYearClick(yr, type)} className={`group cursor-pointer transition-all duration-300 transform hover:scale-105 ${isOpen ? 'scale-105' : ''}`}>
-                <div className={`relative overflow-hidden rounded-2xl p-6 text-center transition-all duration-300 ${isOpen ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-2xl' : 'bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl text-gray-700'}`}>
+                <div className={`relative overflow-hidden rounded-2xl p-4 sm:p-6 text-center transition-all duration-300 ${isOpen ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-2xl' : 'bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl text-gray-700'}`}>
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                  <div className={`text-5xl font-bold mb-2 ${isOpen ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'}`}>{yr}</div>
-                  <div className={`text-sm font-medium ${isOpen ? 'text-purple-200' : 'text-gray-500'}`}>{yearName}</div>
-                  <div className={`mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${isOpen ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-600'}`}>
+                  <div className={`text-3xl sm:text-5xl font-bold mb-1 sm:mb-2 ${isOpen ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'}`}>{yr}</div>
+                  <div className={`text-[10px] sm:text-sm font-medium ${isOpen ? 'text-purple-200' : 'text-gray-500'}`}>{yearName}</div>
+                  <div className={`mt-2 sm:mt-3 inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${isOpen ? 'bg-white/20 text-white' : 'bg-purple-100 text-purple-600'}`}>
                     <FileText size={10} /><span>{items.length} items</span>
                   </div>
                   <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transform transition-transform duration-300 ${isOpen ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'}`}></div>
@@ -830,6 +839,8 @@ const DPharm = () => {
             );
           })}
         </div>
+        
+        {/* Content Section */}
         {activeYears.map(yr => {
           const items = data[yr] || [];
           const isOpen = openYear[`${type}-${yr}`] === true;
@@ -838,11 +849,11 @@ const DPharm = () => {
           return (
             <div key={`content-${yr}`} className="mt-6 animate-fadeIn">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold">{yr}</div>
-                <h4 className="text-xl font-bold text-gray-800">{yearName} {type === "premium-video" ? "Videos" : type === "premium-paper" ? "Papers" : "PDFs"}</h4>
-                <span className="text-sm text-gray-500">({items.length} items)</span>
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">{yr}</div>
+                <h4 className="text-lg sm:text-xl font-bold text-gray-800">{yearName} {type === "premium-video" ? "Videos" : type === "premium-paper" ? "Papers" : "PDFs"}</h4>
+                <span className="text-xs sm:text-sm text-gray-500">({items.length} items)</span>
               </div>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{items.map((item, idx) => renderCard(item, type, idx))}</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">{items.map((item, idx) => renderCard(item, type, idx))}</div>
             </div>
           );
         })}
@@ -855,6 +866,15 @@ const DPharm = () => {
     @keyframes cinematicReveal { 0% { opacity: 0; transform: translateY(40px) scale(0.96); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+    
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .hero-title { font-size: 2rem; }
+      .hero-subtitle { font-size: 0.875rem; }
+    }
+    @media (max-width: 640px) {
+      .section-title { font-size: 1.75rem; }
+    }
   `;
   document.head.appendChild(styleSheet);
 
@@ -862,61 +882,62 @@ const DPharm = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-purple-50 to-white">
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-xl">
-            <div className="w-6 h-6 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium">Processing...</span>
+          <div className="bg-white rounded-2xl p-4 sm:p-6 flex items-center gap-3 shadow-xl">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-gray-700 font-medium text-sm sm:text-base">Processing...</span>
           </div>
         </div>
       )}
 
+      {/* Premium Banner - Responsive */}
       {!isPremium && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce">
-          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-8 py-4 rounded-2xl font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3">
-            <Crown size={24} className="text-yellow-300" /><span>Get Premium Access - ₹{premiumPrice} only!</span><Crown size={24} className="text-yellow-300" />
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
+          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-2 sm:gap-3 text-sm sm:text-base w-full justify-center">
+            <Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" /><span>Get Premium - ₹{premiumPrice}</span><Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" />
           </button>
         </div>
       )}
 
       {isPremium && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-2xl font-bold shadow-xl flex items-center gap-2">
-            <Crown size={20} className="text-yellow-300" /> Premium Member - All Content Unlocked <Crown size={20} className="text-yellow-300" />
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-bold shadow-xl flex items-center gap-2 text-sm sm:text-base">
+            <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" /> Premium Member <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" />
           </div>
         </div>
       )}
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - Responsive */}
       <div className="w-screen bg-[#1a0a2e] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-        <div className="relative h-[360px] md:h-[520px] w-full">
+        <div className="relative h-[300px] sm:h-[360px] md:h-[520px] w-full">
           <div className="absolute right-0 top-0 w-[70%] h-full overflow-hidden">
             <img src={bannerImg} alt="Pharmacy" className="w-full h-full object-cover object-center translate-y-[35px] scale-[1.02]" />
             <div className="absolute inset-0 bg-black/35"></div>
           </div>
           <div className="absolute left-0 top-0 h-full w-[62%] bg-[#140826]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
           <div className="absolute left-[18%] top-0 h-full w-[22%] bg-[#2a1a4e]/80 backdrop-blur-md" style={{ clipPath: "polygon(35% 0, 100% 0, 65% 100%, 0% 100%)" }}></div>
-          <div className="relative z-20 flex items-center h-full px-6 md:px-20">
+          <div className="relative z-20 flex items-center h-full px-4 sm:px-6 md:px-20">
             <div className="max-w-[520px]">
-              <h1 className="text-white text-4xl md:text-7xl font-extrabold leading-tight mb-5">Diploma<br /><span className="text-purple-400">of Pharmacy</span></h1>
-              <p className="text-gray-300 text-sm md:text-lg leading-relaxed mb-8 max-w-[500px]">Complete Notes, Year-wise PDFs, Practical Videos & Predictive Papers for D.Pharm Students.</p>
+              <h1 className="text-white text-3xl sm:text-4xl md:text-7xl font-extrabold leading-tight mb-3 sm:mb-5">Diploma<br /><span className="text-purple-400">of Pharmacy</span></h1>
+              <p className="text-gray-300 text-xs sm:text-sm md:text-lg leading-relaxed mb-5 sm:mb-8 max-w-[500px]">Complete Notes, Year-wise PDFs, Practical Videos & Predictive Papers for D.Pharm Students.</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* TABS SECTION */}
+      {/* TABS SECTION - Responsive Scrollable */}
       <div className="w-full bg-white">
-        <div className="w-full min-h-[150px] bg-gradient-to-b from-[#faf5ff] via-white to-[#fdf4ff] border-b border-purple-100 flex items-center justify-center">
-          <div className="w-full max-w-[1700px] mx-auto px-6">
-            <div className="flex flex-wrap justify-center gap-5 py-8">
+        <div className="w-full min-h-[120px] sm:min-h-[150px] bg-gradient-to-b from-[#faf5ff] via-white to-[#fdf4ff] border-b border-purple-100 flex items-center justify-center">
+          <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6">
+            <div className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-5 overflow-x-auto pb-3 sm:pb-0 hide-scrollbar">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
-                  <button key={tab.id} onClick={() => { setActiveTab(tab.id); document.getElementById(tab.id)?.scrollIntoView({ behavior: "smooth" }); }} className={`group flex items-center gap-3 px-8 py-4 rounded-2xl font-semibold transition-all duration-300 border ${isActive ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-transparent shadow-lg scale-105" : "bg-white text-gray-700 border-purple-100 hover:shadow-md hover:scale-105"}`}>
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? "bg-white/20" : "bg-purple-100 text-purple-600 group-hover:bg-purple-200"}`}>
-                      <Icon size={20} />
+                  <button key={tab.id} onClick={() => { setActiveTab(tab.id); document.getElementById(tab.id)?.scrollIntoView({ behavior: "smooth" }); }} className={`group flex items-center gap-2 sm:gap-3 px-3 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 border whitespace-nowrap ${isActive ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-transparent shadow-lg scale-105" : "bg-white text-gray-700 border-purple-100 hover:shadow-md hover:scale-105"}`}>
+                    <div className={`w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? "bg-white/20" : "bg-purple-100 text-purple-600 group-hover:bg-purple-200"}`}>
+                      <Icon size={14} className="sm:w-5 sm:h-5" />
                     </div>
-                    <span className="text-[15px] md:text-base font-semibold">{tab.label}</span>
+                    <span className="text-xs sm:text-[15px] md:text-base font-semibold">{tab.label}</span>
                   </button>
                 );
               })}
@@ -925,82 +946,93 @@ const DPharm = () => {
         </div>
       </div>
 
-      {/* CONTENT */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+      {/* CONTENT - Responsive */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
         
         {/* FREE MATERIALS */}
-        <div id="notes" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-purple-600 font-semibold tracking-[3px] uppercase mb-3">Study Material</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Free Materials</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-4"></div>
-            <p className="text-green-600 mt-2 text-sm">✓ Always free - No premium required</p>
+        <div id="notes" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Study Material</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Free Materials</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-green-600 mt-2 text-xs sm:text-sm">✓ Always free - No premium required</p>
           </div>
           
           {notes.length > 0 && (
-            <><h3 className="text-2xl font-bold mb-6 text-gray-800">📚 Free Notes & PDFs</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">{notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}</div></>
+            <><h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">📚 Free Notes & PDFs</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">{notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}</div></>
           )}
 
           {freeVideos.length > 0 && (
-            <><h3 className="text-2xl font-bold mb-6 text-gray-800">🎬 Free Video Lectures</h3>
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">{freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}</div></>
+            <><h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">🎬 Free Video Lectures</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">{freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}</div></>
           )}
 
           {freePapers.length > 0 && (
-            <><h3 className="text-2xl font-bold mb-6 text-gray-800">📝 Free Practice Papers</h3>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">{freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}</div></>
+            <><h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">📝 Free Practice Papers</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">{freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}</div></>
           )}
 
           {notes.length === 0 && freeVideos.length === 0 && freePapers.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No free content available yet.</div>
+            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No free content available yet.</div>
           )}
         </div>
 
         {/* HINDI PDFS */}
-        <div id="hindi-pdfs" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-purple-600 font-semibold tracking-[3px] uppercase mb-3">Premium Content</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Hindi Medium PDFs</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">हिंदी में पूरा अध्ययन सामग्री - Click on any year card to view its PDFs</p>
+        <div id="hindi-pdfs" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Premium Content</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Hindi Medium PDFs</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">हिंदी में पूरा अध्ययन सामग्री - Click on any year card to view its PDFs</p>
           </div>
-          {renderYearSection("Year-wise PDFs", pdfsByYearHindi, "paid-pdf", (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), <GraduationCap size={24} className="text-purple-600" />, dpharmYears, "No Hindi premium PDFs available yet.")}
+          {renderYearSection("Year-wise PDFs", pdfsByYearHindi, "paid-pdf", (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), <GraduationCap size={20} className="sm:w-6 sm:h-6 text-purple-600" />, dpharmYears, "No Hindi premium PDFs available yet.")}
         </div>
 
         {/* ENGLISH PDFS */}
-        <div id="english-pdfs" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-purple-600 font-semibold tracking-[3px] uppercase mb-3">Premium Content</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">English Medium PDFs</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Complete study material in English - Click on any year card to view its PDFs</p>
+        <div id="english-pdfs" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Premium Content</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">English Medium PDFs</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Complete study material in English - Click on any year card to view its PDFs</p>
           </div>
-          {renderYearSection("Year-wise PDFs", pdfsByYearEnglish, "paid-pdf", (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), <GraduationCap size={24} className="text-purple-600" />, dpharmYears, "No English premium PDFs available yet.")}
+          {renderYearSection("Year-wise PDFs", pdfsByYearEnglish, "paid-pdf", (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), <GraduationCap size={20} className="sm:w-6 sm:h-6 text-purple-600" />, dpharmYears, "No English premium PDFs available yet.")}
         </div>
 
         {/* PREMIUM VIDEOS */}
-        <div id="videos" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-purple-600 font-semibold tracking-[4px] uppercase mb-3">Learning Resources</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Premium Videos</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Click on any year card to view its videos</p>
+        <div id="videos" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Learning Resources</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Videos</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any year card to view its videos</p>
           </div>
-          {renderYearSection("Year-wise Videos", videosByYear, "premium-video", (item, type, idx) => renderPremiumVideoCard(item, idx), <Video size={24} className="text-purple-600" />, dpharmYears, "No premium videos available yet.")}
+          {renderYearSection("Year-wise Videos", videosByYear, "premium-video", (item, type, idx) => renderPremiumVideoCard(item, idx), <Video size={20} className="sm:w-6 sm:h-6 text-purple-600" />, dpharmYears, "No premium videos available yet.")}
         </div>
 
         {/* PREMIUM PAPERS */}
-        <div id="papers" className="mb-24 scroll-mt-20">
-          <div className="text-center mb-14">
-            <p className="text-purple-600 font-semibold tracking-[4px] uppercase mb-3">Exam Preparation</p>
-            <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900">Premium Papers</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-4"></div>
-            <p className="text-gray-500 mt-2">Click on any year to view its papers</p>
+        <div id="papers" className="mb-16 sm:mb-24 scroll-mt-20">
+          <div className="text-center mb-8 sm:mb-14">
+            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Exam Preparation</p>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Papers</h2>
+            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
+            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any year to view its papers</p>
           </div>
-          {renderYearSection("Year-wise Papers", papersByYear, "premium-paper", (item, type, idx) => renderPremiumCard(item, "premium-paper", Brain, idx), <Brain size={24} className="text-purple-600" />, dpharmYears, "No premium papers available yet.")}
+          {renderYearSection("Year-wise Papers", papersByYear, "premium-paper", (item, type, idx) => renderPremiumCard(item, "premium-paper", Brain, idx), <Brain size={20} className="sm:w-6 sm:h-6 text-purple-600" />, dpharmYears, "No premium papers available yet.")}
         </div>
       </div>
+
+      {/* Hide scrollbar for mobile */}
+      <style jsx>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
