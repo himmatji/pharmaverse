@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import axios from "axios";
+import AuthModal from "./AuthModal";
 
 // ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
 const EC2_BASE_URL = "http://13.233.8.100:5000";
@@ -28,6 +29,7 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false); // ✅ NEW STATE
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -297,29 +299,14 @@ const Navbar = () => {
     return user.name?.split(" ")[0] || user.email?.split("@")[0];
   };
 
-  // ========== COURSE DROPDOWN ITEMS - 100% FINAL ==========
+  // ========== COURSE DROPDOWN ITEMS ==========
   const courseDropdownItems = [
     {
       name: "B.Pharm",
       items: [
-        { 
-          name: "Notes", 
-          path: "/bpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Videos", 
-          path: "/bpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Papers", 
-          path: "/bpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
+        { name: "Notes", path: "/bpharm", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Videos", path: "/bpharm", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Papers", path: "/bpharm", sectionId: "notes", hasSubmenu: false },
         { 
           name: "Semester PDFs", 
           hasSubmenu: true,
@@ -347,18 +334,8 @@ const Navbar = () => {
             { name: "English Notes", path: "/dpharm", sectionId: "english-notes" },
           ]
         },
-        { 
-          name: "Free Videos", 
-          path: "/dpharm",
-          sectionId: "free-videos",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Papers", 
-          path: "/dpharm",
-          sectionId: "free-papers",
-          hasSubmenu: false,
-        },
+        { name: "Free Videos", path: "/dpharm", sectionId: "free-videos", hasSubmenu: false },
+        { name: "Free Papers", path: "/dpharm", sectionId: "free-papers", hasSubmenu: false },
         { 
           name: "Premium PDFs", 
           hasSubmenu: true,
@@ -375,41 +352,16 @@ const Navbar = () => {
             { name: "2nd Year", path: "/dpharm", sectionId: "yearwise-pdfs", year: 2 },
           ]
         },
-        { 
-          name: "Premium Videos", 
-          path: "/dpharm",
-          sectionId: "premium-videos",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Premium Papers", 
-          path: "/dpharm",
-          sectionId: "premium-papers",
-          hasSubmenu: false,
-        },
+        { name: "Premium Videos", path: "/dpharm", sectionId: "premium-videos", hasSubmenu: false },
+        { name: "Premium Papers", path: "/dpharm", sectionId: "premium-papers", hasSubmenu: false },
       ]
     },
     {
       name: "M.Pharm",
       items: [
-        { 
-          name: "Notes", 
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Videos", 
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Papers", 
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
+        { name: "Notes", path: "/mpharm", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Videos", path: "/mpharm", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Papers", path: "/mpharm", sectionId: "notes", hasSubmenu: false },
         { 
           name: "Semester PDFs", 
           hasSubmenu: true,
@@ -425,24 +377,9 @@ const Navbar = () => {
     {
       name: "Pharm.D",
       items: [
-        { 
-          name: "Notes", 
-          path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Videos", 
-          path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Papers", 
-          path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
+        { name: "Notes", path: "/pharmd", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Videos", path: "/pharmd", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Papers", path: "/pharmd", sectionId: "notes", hasSubmenu: false },
         { 
           name: "Semester PDFs", 
           hasSubmenu: true,
@@ -462,24 +399,9 @@ const Navbar = () => {
     {
       name: "PhD",
       items: [
-        { 
-          name: "Notes", 
-          path: "/phd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Videos", 
-          path: "/phd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-        { 
-          name: "Free Papers", 
-          path: "/phd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
+        { name: "Notes", path: "/phd", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Videos", path: "/phd", sectionId: "notes", hasSubmenu: false },
+        { name: "Free Papers", path: "/phd", sectionId: "notes", hasSubmenu: false },
         { 
           name: "Semester PDFs", 
           hasSubmenu: true,
@@ -515,7 +437,6 @@ const Navbar = () => {
             100% { background-position: 0% 50%; }
           }
           
-          /* Mobile menu scrollbar styling */
           .mobile-menu-scroll::-webkit-scrollbar {
             width: 4px;
           }
@@ -540,12 +461,12 @@ const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           
-          {/* Logo - Responsive */}
+          {/* Logo */}
           <Link to="/" onClick={handleHomeClick} className="flex items-center shrink-0">
             <img src={logo} alt="PharmaVerse Logo" className="w-20 sm:w-24 md:w-28 h-auto object-contain" />
           </Link>
 
-          {/* Desktop Navigation - Hidden on mobile */}
+          {/* Desktop Navigation */}
           <ul className="hidden lg:flex items-center justify-center gap-4 xl:gap-7 text-[13px] xl:text-[15px] font-semibold">
             {navItems.map((item, index) => (
               <li
@@ -649,7 +570,7 @@ const Navbar = () => {
             ))}
           </ul>
 
-          {/* Right Section - Search & User - Responsive */}
+          {/* Right Section - Search & User */}
           <div className="hidden md:flex items-center justify-end gap-3 lg:gap-4">
             {/* Search Bar */}
             <div ref={searchRef} className="relative">
@@ -759,8 +680,9 @@ const Navbar = () => {
                   )}
                 </div>
               ) : (
+                // ✅ LOGIN BUTTON - Opens AuthModal
                 <button
-                  onClick={() => navigate("/")}
+                  onClick={() => setShowLoginModal(true)}
                   className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-full transition-all duration-200 text-sm lg:text-base ${
                     activeBanner === 1
                       ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
@@ -787,7 +709,7 @@ const Navbar = () => {
           </button>
         </div>
 
-        {/* Mobile Menu - Responsive */}
+        {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden mt-2 sm:mt-4 pb-4 border-t border-gray-200/20 max-h-[80vh] overflow-y-auto mobile-menu-scroll">
             <div className="flex flex-col space-y-2 pt-3 sm:pt-4">
@@ -896,13 +818,13 @@ const Navbar = () => {
                   </button>
                 </div>
               ) : (
+                // ✅ Mobile Login Button
                 <button 
-                  onClick={() => navigate("/")} 
-                  className={`flex items-center justify-center gap-2 mx-3 mt-2 py-2 rounded-full transition text-sm ${
-                    activeBanner === 1
-                      ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
-                      : "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
-                  }`}
+                  onClick={() => {
+                    setShowLoginModal(true);
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center justify-center gap-2 mx-3 mt-2 py-2 rounded-full transition text-sm bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                 >
                   <User size={14} /> Login
                 </button>
@@ -911,6 +833,16 @@ const Navbar = () => {
           </div>
         )}
       </nav>
+
+      {/* ✅ AuthModal for Login */}
+      <AuthModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          window.location.reload();
+        }}
+      />
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
@@ -952,7 +884,7 @@ const Navbar = () => {
         </div>
       )}
 
-      {/* Spacer - Responsive */}
+      {/* Spacer */}
       <div className="h-[56px] sm:h-[64px] md:h-[68px] lg:h-[72px]"></div>
     </>
   );
