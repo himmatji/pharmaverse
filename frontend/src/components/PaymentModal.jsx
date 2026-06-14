@@ -3,7 +3,7 @@ import axios from 'axios';
 import { X, CreditCard, Shield, Lock, Sparkles, Wallet, CheckCircle } from 'lucide-react';
 
 // ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
-const EC2_BASE_URL = "http://3.109.121.96:5000";
+const EC2_BASE_URL = "https://api.pharmaverse.co.in";
 const LOCAL_BASE_URL = "http://localhost:5000";
 
 // Auto-detect environment
