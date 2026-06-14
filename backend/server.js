@@ -124,11 +124,7 @@ const server = app.listen(PORT, () => {
 });
 
 // ================= GRACEFUL SHUTDOWN =================
-process.on("SIGINT", () => {
-  console.log("\n🛑 Shutting down server...");
-  server.close(() => {
-    console.log("✅ Server closed");
-   process.on("SIGINT", async () => {
+process.on("SIGINT", async () => {
   console.log("\n🛑 Shutting down server...");
 
   server.close(async () => {
@@ -137,8 +133,7 @@ process.on("SIGINT", () => {
     await mongoose.connection.close();
 
     console.log("✅ MongoDB connection closed");
+
     process.exit(0);
-  });
-});
   });
 });
