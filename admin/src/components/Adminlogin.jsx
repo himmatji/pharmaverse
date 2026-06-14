@@ -68,18 +68,17 @@ function Adminlogin({ onLogin }) {
       } else {
         setError(res.data.message || "Login failed");
       }
-    } catch (err) {
-      console.error("❌ LOGIN ERROR:", err);
-      
-      let errorMessage = "Invalid credentials";
-      if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
-      } else if (err.request) {
-        errorMessage = "Server not responding. Please check if backend is running.";
-      }
-      
-      setError(errorMessage);
-    } finally {
+    }catch (err) {
+  console.log("FULL ERROR:", err);
+  console.log("ERROR RESPONSE:", err.response);
+  console.log("ERROR REQUEST:", err.request);
+
+  setError(
+    err.response?.data?.message ||
+    err.message ||
+    "Unknown error"
+  );
+} finally {
       setLoading(false);
     }
   };

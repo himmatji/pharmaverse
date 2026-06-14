@@ -189,10 +189,20 @@ router.post("/login", async (req, res) => {
         type: 'admin'
       }
     });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
+  }  catch (error) {
+
+  console.log("🔥 ADMIN LOGIN ERROR START 🔥");
+  console.log(error);
+  console.log(error.message);
+  console.log(error.stack);
+  console.log("🔥 ADMIN LOGIN ERROR END 🔥");
+
+  res.status(500).json({
+    success: false,
+    message: error.message,
+    stack: error.stack
+  });
+}
 });
 
 // ================= DASHBOARD STATS =================
