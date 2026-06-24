@@ -1,9 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Admin = require('../models/Admin');
-const { authMiddleware, isSuperAdmin, isAdmin } = require('../middleware/auth');
+const { authMiddleware, isSuperAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -35,7 +34,7 @@ router.post('/signup', async (req, res) => {
         role: 'user',
         type: 'user'
       },
-      process.env.JWT_SECRET || 'your_super_secret_key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -47,10 +46,10 @@ router.post('/signup', async (req, res) => {
         name: user.name,
         email: user.email,
         role: 'user',
-        isPremium: user.isPremium || false,
-        enrolledCourses: user.enrolledCourses || [],
-        purchasedItems: user.purchasedItems || [],
-        downloadHistory: user.downloadHistory || [],
+        isPremium: user.isPremium || false,  // 🔥 ADD THIS
+        enrolledCourses: user.enrolledCourses,
+        purchasedItems: user.purchasedItems,
+        downloadHistory: user.downloadHistory,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin
       }
@@ -95,7 +94,7 @@ router.post('/signin', async (req, res) => {
         role: 'user',
         type: 'user'
       },
-      process.env.JWT_SECRET || 'your_super_secret_key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -107,10 +106,10 @@ router.post('/signin', async (req, res) => {
         name: user.name,
         email: user.email,
         role: 'user',
-        isPremium: user.isPremium || false,
-        enrolledCourses: user.enrolledCourses || [],
-        purchasedItems: user.purchasedItems || [],
-        downloadHistory: user.downloadHistory || [],
+        isPremium: user.isPremium || false,  // 🔥 ADD THIS
+        enrolledCourses: user.enrolledCourses,
+        purchasedItems: user.purchasedItems,
+        downloadHistory: user.downloadHistory,
         createdAt: user.createdAt,
         lastLogin: user.lastLogin
       }
@@ -124,7 +123,7 @@ router.post('/signin', async (req, res) => {
   }
 });
 
-// ================= USER PROFILE =================
+// ================= USER PROFILE (FIXED - WITH isPremium) =================
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     if (req.user.type === 'user') {
@@ -144,8 +143,8 @@ router.get('/profile', authMiddleware, async (req, res) => {
           name: user.name,
           email: user.email,
           role: 'user',
-          isPremium: user.isPremium || false,
-          enrolledCourses: user.enrolledCourses || [],
+          isPremium: user.isPremium || false,  // 🔥🔥🔥 MOST IMPORTANT 🔥🔥🔥
+          enrolledCourses: user.enrolledCourses,
           purchasedItems: user.purchasedItems || [],
           downloadHistory: user.downloadHistory || [],
           createdAt: user.createdAt,
@@ -192,313 +191,6 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// ================= ADMIN LOGIN =================
-router.post('/admin/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    const admin = await Admin.findOne({ email, isActive: true });
-
-    if (!admin) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    const isMatch = await admin.comparePassword(password);
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
-
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    const token = jwt.sign(
-      {
-        adminId: admin._id,
-        email: admin.email,
-        role: admin.role,
-        type: 'admin'
-      },
-      process.env.JWT_SECRET || 'your_super_secret_key',
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-        type: 'admin'
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error'
-    });
-  }
-});
-
-// ================= GET ALL USERS (ADMIN ONLY) =================
-router.get('/users', authMiddleware, isAdmin, async (req, res) => {
-  try {
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
-    res.json({
-      success: true,
-      users: users.map(user => ({
-        _id: user._id,
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: 'user',
-        isPremium: user.isPremium || false,
-        enrolledCourses: user.enrolledCourses || [],
-        downloadHistory: user.downloadHistory || [],
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-      }))
-    });
-  } catch (error) {
-    console.error("Get users error:", error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error'
-    });
-  }
-});
-
-// ================= DELETE USER (ADMIN ONLY) =================
-router.delete('/users/:id', authMiddleware, isAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-    
-    await User.findByIdAndDelete(id);
-    
-    res.json({
-      success: true,
-      message: 'User deleted successfully'
-    });
-    
-  } catch (error) {
-    console.error("Delete user error:", error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error'
-    });
-  }
-});
-
-// ================= GET ALL SUB-ADMINS (SUPER ADMIN ONLY) =================
-router.get('/subadmins', authMiddleware, isSuperAdmin, async (req, res) => {
-  try {
-    const subadmins = await Admin.find({ role: 'admin' }).select('-password').sort({ createdAt: -1 });
-    res.json({
-      success: true,
-      subAdmins: subadmins.map(admin => ({
-        _id: admin._id,
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-        isActive: admin.isActive,
-        createdAt: admin.createdAt,
-        lastLogin: admin.lastLogin
-      }))
-    });
-  } catch (error) {
-    console.error("Get subadmins error:", error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error'
-    });
-  }
-});
-
-// ================= REGISTER SUB-ADMIN (SUPER ADMIN ONLY) =================
-router.post('/register-subadmin', authMiddleware, isSuperAdmin, async (req, res) => {
-  try {
-    const { name, email, password, permissions } = req.body;
-
-    console.log("📝 Registering sub-admin:", { name, email, permissions });
-
-    if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Name, email and password are required'
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
-
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) {
-      return res.status(400).json({
-        success: false,
-        message: 'Sub-admin already exists with this email'
-      });
-    }
-
-    // Create sub-admin - role will be 'admin'
-    const subadmin = new Admin({
-      name,
-      email,
-      password,
-      role: 'admin',
-      permissions: { courses: permissions || [] },
-      isActive: true,
-    });
-
-    await subadmin.save();
-    console.log("✅ Sub-admin created successfully:", subadmin.email);
-
-    res.status(201).json({
-      success: true,
-      message: 'Sub-admin created successfully',
-      subadmin: {
-        _id: subadmin._id,
-        id: subadmin._id,
-        name: subadmin.name,
-        email: subadmin.email,
-        role: subadmin.role,
-        permissions: subadmin.permissions,
-        isActive: subadmin.isActive,
-        createdAt: subadmin.createdAt
-      }
-    });
-
-  } catch (error) {
-    console.error("Register subadmin error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server Error'
-    });
-  }
-});
-
-// ================= UPDATE SUB-ADMIN (SUPER ADMIN ONLY) =================
-router.put('/subadmin/:id', authMiddleware, isSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, permissions, isActive, password } = req.body;
-
-    const subadmin = await Admin.findById(id);
-
-    if (!subadmin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sub-admin not found'
-      });
-    }
-
-    if (subadmin.role === 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot modify super admin'
-      });
-    }
-
-    if (name) subadmin.name = name;
-    if (permissions) subadmin.permissions = { courses: permissions };
-    if (isActive !== undefined) subadmin.isActive = isActive;
-    
-    if (password && password.length > 0) {
-      if (password.length < 6) {
-        return res.status(400).json({
-          success: false,
-          message: 'Password must be at least 6 characters'
-        });
-      }
-      subadmin.password = password;  // Let pre-save hook handle hashing
-    }
-
-    await subadmin.save();
-
-    res.json({
-      success: true,
-      message: 'Sub-admin updated successfully',
-      subadmin: {
-        _id: subadmin._id,
-        id: subadmin._id,
-        name: subadmin.name,
-        email: subadmin.email,
-        role: subadmin.role,
-        permissions: subadmin.permissions,
-        isActive: subadmin.isActive
-      }
-    });
-
-  } catch (error) {
-    console.error("Update subadmin error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server Error'
-    });
-  }
-});
-
-// ================= DELETE SUB-ADMIN (SUPER ADMIN ONLY) =================
-router.delete('/subadmin/:id', authMiddleware, isSuperAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const subadmin = await Admin.findById(id);
-
-    if (!subadmin) {
-      return res.status(404).json({
-        success: false,
-        message: 'Sub-admin not found'
-      });
-    }
-
-    if (subadmin.role === 'super_admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Cannot delete super admin'
-      });
-    }
-
-    await Admin.findByIdAndDelete(id);
-
-    res.json({
-      success: true,
-      message: 'Sub-admin deleted successfully'
-    });
-
-  } catch (error) {
-    console.error("Delete subadmin error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Server Error'
-    });
-  }
-});
-
 // ================= UPDATE USER PROFILE =================
 router.put('/update-profile', authMiddleware, async (req, res) => {
   try {
@@ -538,9 +230,9 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
           name: user.name,
           email: user.email,
           isPremium: user.isPremium || false,
-          enrolledCourses: user.enrolledCourses || [],
-          purchasedItems: user.purchasedItems || [],
-          downloadHistory: user.downloadHistory || []
+          enrolledCourses: user.enrolledCourses,
+          purchasedItems: user.purchasedItems,
+          downloadHistory: user.downloadHistory
         }
       });
     }

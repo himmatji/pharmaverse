@@ -97,20 +97,24 @@ const Premium = () => {
   };
 
   return (
-    <div className="bg-gradient-to-b from-black to-[#0a0a0a] py-12 sm:py-16 md:py-24 min-h-screen">
+    // Laptop: Dark background, Phone: Light background
+    <div className="bg-gradient-to-b from-black to-[#0a0a0a] sm:from-gray-50 sm:to-white py-12 sm:py-16 md:py-24 min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 md:px-8">
         
         {/* Section Header - Responsive */}
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white sm:text-gray-800 mb-3 sm:mb-4">
             <span className="bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">
               Explore Our
             </span>
           </h2>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white sm:text-gray-800">
             Premium Features
           </h2>
           <div className="w-20 sm:w-24 h-1 bg-gradient-to-r from-orange-500 to-orange-700 mx-auto mt-4 sm:mt-6 rounded-full"></div>
+          <p className="text-gray-400 sm:text-gray-600 mt-3 sm:mt-4 text-sm sm:text-base">
+            Everything you need to excel in your pharmacy exams
+          </p>
         </div>
 
         {/* Cards Grid - Responsive */}
@@ -119,7 +123,7 @@ const Premium = () => {
             <div
               key={card.id}
               onClick={() => handleCardClick(card)}
-              className="group relative bg-white/5 backdrop-blur-sm rounded-2xl p-5 sm:p-6 transition-all duration-500 hover:scale-105 cursor-pointer"
+              className="group relative bg-white/5 sm:bg-white backdrop-blur-sm sm:backdrop-blur-none rounded-2xl p-5 sm:p-6 md:p-8 transition-all duration-500 hover:scale-105 cursor-pointer shadow-lg hover:shadow-2xl border border-white/10 sm:border-gray-100"
               style={{
                 animation: `fadeSlideUp 0.6s ease-out ${index * 0.1}s forwards`,
                 opacity: 0,
@@ -131,17 +135,17 @@ const Premium = () => {
               {/* Card Content */}
               <div className="relative z-10">
                 {/* Icon Circle - Responsive */}
-                <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${card.color} flex items-center justify-center mb-4 sm:mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br ${card.color} flex items-center justify-center mb-4 sm:mb-5 md:mb-6 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
                   {card.icon}
                 </div>
                 
                 {/* Title - Responsive */}
-                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white mb-1 sm:mb-2 group-hover:text-orange-400 transition-colors duration-300">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white sm:text-gray-800 mb-1 sm:mb-2 group-hover:text-orange-400 transition-colors duration-300">
                   {card.title}
                 </h3>
                 
                 {/* Description - Responsive */}
-                <p className="text-gray-400 text-xs sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-4">
+                <p className="text-gray-400 sm:text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed mb-3 sm:mb-4">
                   {card.description}
                 </p>
                 
@@ -161,7 +165,7 @@ const Premium = () => {
         <div className="text-center mt-10 sm:mt-12 md:mt-16">
           <button 
             onClick={handleViewAll}
-            className="px-6 sm:px-8 py-2.5 sm:py-3 bg-gradient-to-r from-orange-500 to-orange-700 text-white font-semibold rounded-full hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/30 text-sm sm:text-base"
+            className="px-6 sm:px-8 md:px-10 py-2.5 sm:py-3 md:py-4 bg-gradient-to-r from-orange-500 to-orange-700 text-white font-semibold rounded-full hover:scale-105 transition-all duration-300 hover:shadow-lg hover:shadow-orange-500/30 text-sm sm:text-base md:text-lg"
           >
             View All Materials →
           </button>
@@ -178,14 +182,6 @@ const Premium = () => {
           100% {
             opacity: 1;
             transform: translateY(0);
-          }
-        }
-        
-        /* Mobile responsive adjustments */
-        @media (max-width: 640px) {
-          .container {
-            padding-left: 1rem;
-            padding-right: 1rem;
           }
         }
       `}</style>

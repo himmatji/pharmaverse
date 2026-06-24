@@ -93,27 +93,27 @@ const FeatureSection = () => {
     <section
       ref={sectionRef}
       className="w-full bg-white px-4 sm:px-6 relative"
-      style={{ minHeight: "200vh sm:min-h-[250vh] md:min-h-[320vh]" }}
+      style={{ minHeight: "320vh" }}
     >
       {/* STICKY SECTION */}
-      <div className="sticky top-0 min-h-screen flex flex-col justify-center py-8 sm:py-12 md:py-16 overflow-hidden">
+      <div className="sticky top-0 min-h-screen flex flex-col justify-center py-10 sm:py-16 overflow-hidden">
 
-        {/* HEADING - Responsive */}
+        {/* HEADING */}
         <div className="text-center mb-8 sm:mb-12">
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-[42px] font-extrabold bg-gradient-to-r from-blue-700 via-sky-500 to-cyan-400 bg-clip-text text-transparent">
             Featured Sections
           </h2>
-          <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 mx-auto rounded-full mt-3 sm:mt-4 mb-2 sm:mb-3"></div>
-          <p className="text-gray-700 mt-2 sm:mt-3 text-sm sm:text-base md:text-[17px] font-serif px-4">
+          <div className="w-20 sm:w-24 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 mx-auto rounded-full mt-3 sm:mt-4 mb-2 sm:mb-3"></div>
+          <p className="text-gray-700 mt-2 sm:mt-3 text-sm sm:text-[17px] font-serif px-4">
             Explore the most useful pharmacy resources
           </p>
         </div>
 
-        {/* MAIN CONTENT - Responsive Layout */}
-        <div className="max-w-[1350px] mx-auto w-full flex flex-col-reverse lg:flex-row items-center lg:items-start justify-between gap-8 lg:gap-16 px-4 sm:px-6">
+        {/* MAIN CONTENT */}
+        <div className="max-w-[1350px] mx-auto w-full flex flex-col lg:flex-row items-start justify-between gap-8 lg:gap-16">
 
-          {/* LEFT SIDE - Feature Cards */}
-          <div className="flex flex-col gap-8 sm:gap-10 md:gap-14 w-full lg:w-auto lg:flex-1">
+          {/* LEFT SIDE */}
+          <div className="flex flex-col gap-8 sm:gap-14 ml-0 sm:ml-4 flex-1 w-full px-2 sm:px-0">
             {featuredData.map((item, index) => {
               const Icon = item.icon;
               const isVisible = index < visibleItems;
@@ -121,7 +121,7 @@ const FeatureSection = () => {
               return (
                 <div
                   key={index}
-                  className={`flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-5 md:gap-7 transition-all duration-700 ease-out cursor-pointer group text-center sm:text-left
+                  className={`flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-7 transition-all duration-700 ease-out cursor-pointer group
                   ${
                     isVisible
                       ? "opacity-100 translate-y-0"
@@ -132,10 +132,12 @@ const FeatureSection = () => {
                   }}
                   onClick={() => navigate(item.navigateTo, { state: { scrollTo: item.scrollTo } })}
                 >
-                  {/* ICON - Responsive */}
+                  {/* ICON */}
                   <div
                     className="
-                    w-[70px] h-[70px] sm:w-[80px] sm:h-[80px] md:w-[92px] md:h-[92px]
+                    w-[64px] h-[64px]
+                    sm:w-[80px] sm:h-[80px]
+                    md:w-[92px] md:h-[92px]
                     rounded-full
                     border-[3px] sm:border-[4px]
                     border-[#d4a017]
@@ -151,17 +153,17 @@ const FeatureSection = () => {
                   >
                     <Icon
                       size={32}
-                      className="sm:w-9 sm:h-9 md:w-11 md:h-11 text-[#d4a017] transition-all duration-300 group-hover:scale-110"
+                      className="sm:w-[38px] sm:h-[38px] md:w-[44px] md:h-[44px] text-[#d4a017] transition-all duration-300 group-hover:scale-110"
                       strokeWidth={2.2}
                     />
                   </div>
 
                   {/* TEXT */}
-                  <div className="max-w-[430px]">
+                  <div className="max-w-[430px] text-center sm:text-left">
                     <h3 className="text-xl sm:text-2xl md:text-[28px] font-bold text-[#111827] group-hover:text-[#d4a017] transition-colors duration-300">
                       {item.title}
                     </h3>
-                    <p className="text-gray-600 text-sm sm:text-base md:text-[18px] leading-relaxed sm:leading-8 md:leading-9 mt-2 sm:mt-3 md:mt-4">
+                    <p className="text-gray-600 text-sm sm:text-base md:text-[18px] leading-7 sm:leading-9 mt-2 sm:mt-4">
                       {item.desc}
                     </p>
                   </div>
@@ -171,22 +173,22 @@ const FeatureSection = () => {
           </div>
 
           {/* RIGHT SIDE - Video and Buttons */}
-          <div className="w-full lg:w-auto flex flex-col items-center mt-8 lg:mt-8">
+          <div className="flex flex-col items-center w-full lg:w-auto px-2 sm:px-0 mr-0 lg:mr-4 mt-6 lg:mt-8">
 
-            {/* VIDEO - Responsive */}
-            <div className="w-full sm:w-[450px] md:w-[560px] xl:w-[620px] rounded-[20px] sm:rounded-[30px] overflow-hidden shadow-2xl">
+            {/* VIDEO */}
+            <div className="w-full sm:w-[460px] md:w-[520px] lg:w-[560px] xl:w-[620px] rounded-[20px] sm:rounded-[30px] overflow-hidden shadow-2xl">
               <video
                 src={videoFile}
                 autoPlay
                 loop
                 muted
                 playsInline
-                className="w-full h-[200px] sm:h-[280px] md:h-[340px] object-cover"
+                className="w-full h-[200px] sm:h-[280px] md:h-[320px] lg:h-[340px] object-cover"
               />
             </div>
 
-            {/* BUTTONS - Responsive */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-6 sm:mt-8 w-full px-4 sm:px-0">
+            {/* BUTTONS */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 md:gap-6 mt-6 sm:mt-8 w-full">
 
               {/* EXPLORE NOTES BUTTON */}
               <button
@@ -194,14 +196,14 @@ const FeatureSection = () => {
                 className="
                 w-full sm:w-auto
                 px-6 sm:px-8 md:px-10
-                py-3 sm:py-4
+                py-3 sm:py-3.5 md:py-4
                 rounded-full
                 bg-gradient-to-r
                 from-sky-500
                 to-blue-600
                 text-white
                 font-bold
-                text-sm sm:text-base md:text-[16px]
+                text-sm sm:text-[15px] md:text-[16px]
                 shadow-xl
                 transition-all
                 duration-300
@@ -213,7 +215,7 @@ const FeatureSection = () => {
                 gap-2
               "
               >
-                <ScrollText size={16} className="sm:w-5 sm:h-5" />
+                <ScrollText size={18} className="sm:w-[20px] sm:h-[20px]" />
                 Explore Notes
               </button>
 
@@ -223,14 +225,14 @@ const FeatureSection = () => {
                 className="
                 w-full sm:w-auto
                 px-6 sm:px-8 md:px-10
-                py-3 sm:py-4
+                py-3 sm:py-3.5 md:py-4
                 rounded-full
                 bg-gradient-to-r
                 from-[#0f172a]
                 to-[#1e3a8a]
                 text-white
                 font-bold
-                text-sm sm:text-base md:text-[16px]
+                text-sm sm:text-[15px] md:text-[16px]
                 shadow-xl
                 transition-all
                 duration-300
@@ -242,12 +244,14 @@ const FeatureSection = () => {
                 gap-2
               "
               >
-                <Clapperboard size={16} className="sm:w-5 sm:h-5" />
+                <Clapperboard size={18} className="sm:w-[20px] sm:h-[20px]" />
                 Watch Videos
               </button>
 
             </div>
+
           </div>
+
         </div>
       </div>
     </section>

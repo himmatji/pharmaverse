@@ -22,20 +22,7 @@ import PharmD from "./pages/PharmD";
 import PhD from "./pages/PhD";
 import Profile from "./pages/Profile";
 
-// ========== DYNAMIC BASE URL CONFIGURATION ==========
-// This ensures all API calls work on both localhost and EC2
-const EC2_BASE_URL = "https://api.pharmaverse.co.in";
-const LOCAL_BASE_URL = "http://localhost:5000";
 
-// Auto-detect environment
-const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-export const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
-
-console.log(`🌐 App running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
-console.log(`📡 API Base URL: ${BASE_URL}`);
-
-// Set default axios base URL
-axios.defaults.baseURL = BASE_URL;
 
 /* HOME PAGE */
 const Home = () => {
@@ -106,6 +93,7 @@ function App() {
             } 
           />
 
+          
           {/* COURSE PAGES - Auth protected */}
           <Route 
             path="/bpharm" 

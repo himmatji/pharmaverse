@@ -8,17 +8,8 @@ import logo from "../assets/logo.png";
 import axios from "axios";
 import AuthModal from "./AuthModal";
 
-// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
-const EC2_BASE_URL = "https://api.pharmaverse.co.in";
-const LOCAL_BASE_URL = "http://localhost:5000";
-
-// Auto-detect environment
-const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
-
-console.log(`🌐 Navbar running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
-
-const API_URL = `${BASE_URL}/api/auth`;
+// ========== LOCALHOST ONLY - NO DYNAMIC URL ==========
+const API_URL = "http://localhost:5000/api/auth";
 
 const Navbar = () => {
   const [activeBanner, setActiveBanner] = useState(1);
@@ -29,7 +20,7 @@ const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showLoginModal, setShowLoginModal] = useState(false); // ✅ NEW STATE
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -167,10 +158,10 @@ const Navbar = () => {
     { title: "D.Pharm Premium Papers", path: "/dpharm", sectionId: "premium-papers", category: "D.Pharm", type: "Premium Papers" },
     { title: "M.Pharm Sem 1 - Notes", path: "/mpharm", sectionId: "notes", category: "M.Pharm", type: "Notes" },
     { title: "M.Pharm Sem 1 - Semester PDF", path: "/mpharm", sectionId: "semester", category: "M.Pharm", type: "Semester PDFs" },
-    { title: "Pharm.D Sem 1 - Notes", path: "/pharmd", sectionId: "notes", category: "Pharm.D", type: "Notes" },
-    { title: "Pharm.D Sem 1 - Semester PDF", path: "/pharmd", sectionId: "semester", category: "Pharm.D", type: "Semester PDFs" },
-    { title: "PhD Sem 1 - Notes", path: "/phd", sectionId: "notes", category: "PhD", type: "Notes" },
-    { title: "PhD Sem 1 - Semester PDF", path: "/phd", sectionId: "semester", category: "PhD", type: "Semester PDFs" },
+    { title: "Pharm.D Notes", path: "/pharmd", sectionId: "notes", category: "Pharm.D", type: "Notes" },
+    { title: "Pharm.D 1st Year PDFs", path: "/pharmd", sectionId: "yearwise", year: 1, category: "Pharm.D", type: "Year-wise PDFs" },
+    { title: "PhD Notes", path: "/phd", sectionId: "notes", category: "PhD", type: "Notes" },
+    { title: "PhD Semester 1 PDFs", path: "/phd", sectionId: "yearwise", year: 1, category: "PhD", type: "Semester PDFs" },
   ];
 
   const handleSearch = (query) => {
@@ -294,11 +285,6 @@ const Navbar = () => {
     }, 300);
   };
 
-  const getDisplayName = () => {
-    if (!user) return "";
-    return user.name?.split(" ")[0] || user.email?.split("@")[0];
-  };
-
   // ========== COURSE DROPDOWN ITEMS ==========
   const courseDropdownItems = [
     {
@@ -381,17 +367,15 @@ const Navbar = () => {
         { name: "Free Videos", path: "/pharmd", sectionId: "notes", hasSubmenu: false },
         { name: "Free Papers", path: "/pharmd", sectionId: "notes", hasSubmenu: false },
         { 
-          name: "Semester PDFs", 
+          name: "Year-wise PDFs", 
           hasSubmenu: true,
           submenuItems: [
-            { name: "Semester 1", path: "/pharmd", sectionId: "semester", semester: 1 },
-            { name: "Semester 2", path: "/pharmd", sectionId: "semester", semester: 2 },
-            { name: "Semester 3", path: "/pharmd", sectionId: "semester", semester: 3 },
-            { name: "Semester 4", path: "/pharmd", sectionId: "semester", semester: 4 },
-            { name: "Semester 5", path: "/pharmd", sectionId: "semester", semester: 5 },
-            { name: "Semester 6", path: "/pharmd", sectionId: "semester", semester: 6 },
-            { name: "Semester 7", path: "/pharmd", sectionId: "semester", semester: 7 },
-            { name: "Semester 8", path: "/pharmd", sectionId: "semester", semester: 8 },
+            { name: "1st Year", path: "/pharmd", sectionId: "yearwise", year: 1 },
+            { name: "2nd Year", path: "/pharmd", sectionId: "yearwise", year: 2 },
+            { name: "3rd Year", path: "/pharmd", sectionId: "yearwise", year: 3 },
+            { name: "4th Year", path: "/pharmd", sectionId: "yearwise", year: 4 },
+            { name: "5th Year", path: "/pharmd", sectionId: "yearwise", year: 5 },
+            { name: "6th Year", path: "/pharmd", sectionId: "yearwise", year: 6 },
           ]
         },
       ]
@@ -406,12 +390,12 @@ const Navbar = () => {
           name: "Semester PDFs", 
           hasSubmenu: true,
           submenuItems: [
-            { name: "Semester 1", path: "/phd", sectionId: "semester", semester: 1 },
-            { name: "Semester 2", path: "/phd", sectionId: "semester", semester: 2 },
-            { name: "Semester 3", path: "/phd", sectionId: "semester", semester: 3 },
-            { name: "Semester 4", path: "/phd", sectionId: "semester", semester: 4 },
-            { name: "Semester 5", path: "/phd", sectionId: "semester", semester: 5 },
-            { name: "Semester 6", path: "/phd", sectionId: "semester", semester: 6 },
+            { name: "Semester 1", path: "/phd", sectionId: "yearwise", year: 1 },
+            { name: "Semester 2", path: "/phd", sectionId: "yearwise", year: 2 },
+            { name: "Semester 3", path: "/phd", sectionId: "yearwise", year: 3 },
+            { name: "Semester 4", path: "/phd", sectionId: "yearwise", year: 4 },
+            { name: "Semester 5", path: "/phd", sectionId: "yearwise", year: 5 },
+            { name: "Semester 6", path: "/phd", sectionId: "yearwise", year: 6 },
           ]
         },
       ]
@@ -427,29 +411,32 @@ const Navbar = () => {
     })),
   ];
 
+  const getDisplayName = () => {
+    if (!user) return "";
+    return user.name?.split(" ")[0] || user.email?.split("@")[0];
+  };
+
   return (
     <>
-      <style>
-        {`
-          @keyframes gradientMove {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-          }
-          
-          .mobile-menu-scroll::-webkit-scrollbar {
-            width: 4px;
-          }
-          .mobile-menu-scroll::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-          .mobile-menu-scroll::-webkit-scrollbar-thumb {
-            background: #18c1b7;
-            border-radius: 4px;
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes gradientMove {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        .mobile-menu-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .mobile-menu-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 4px;
+        }
+        .mobile-menu-scroll::-webkit-scrollbar-thumb {
+          background: #18c1b7;
+          border-radius: 4px;
+        }
+      `}</style>
 
       <nav
         className={`fixed top-0 left-0 right-0 z-50 w-full px-3 sm:px-4 md:px-6 py-1 transition-all duration-300 shadow-md
@@ -463,11 +450,15 @@ const Navbar = () => {
           
           {/* Logo */}
           <Link to="/" onClick={handleHomeClick} className="flex items-center shrink-0">
-            <img src={logo} alt="PharmaVerse Logo" className="w-20 sm:w-24 md:w-28 h-auto object-contain" />
+            <img 
+              src={logo} 
+              alt="PharmaVerse Logo" 
+              className="w-14 xs:w-16 sm:w-20 md:w-24 lg:w-28 xl:w-32 h-auto object-contain" 
+            />
           </Link>
 
           {/* Desktop Navigation */}
-          <ul className="hidden lg:flex items-center justify-center gap-4 xl:gap-7 text-[13px] xl:text-[15px] font-semibold">
+          <ul className="hidden lg:flex items-center justify-center gap-3 xl:gap-5 2xl:gap-7 text-[12px] xl:text-[14px] 2xl:text-[15px] font-semibold">
             {navItems.map((item, index) => (
               <li
                 key={index}
@@ -507,7 +498,7 @@ const Navbar = () => {
                 {/* Dropdown Menu */}
                 {item.isDropdown && openDropdown === index && (
                   <div 
-                    className="absolute top-6 left-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50"
+                    className="absolute top-6 left-0 mt-2 w-56 xl:w-64 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50"
                     onMouseEnter={handleDropdownContainerMouseEnter}
                     onMouseLeave={handleMouseLeave}
                   >
@@ -519,7 +510,7 @@ const Navbar = () => {
                             onMouseEnter={() => handleSubmenuMouseEnter(idx)}
                             onMouseLeave={handleSubmenuMouseLeave}
                           >
-                            <div className="flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-[#e9f9f7] hover:text-[#18c1b7] transition cursor-pointer">
+                            <div className="flex items-center justify-between px-4 py-2 text-gray-700 hover:bg-[#e9f9f7] hover:text-[#18c1b7] transition cursor-pointer text-sm">
                               <span>{subItem.name}</span>
                               <ChevronRight size={14} />
                             </div>
@@ -556,7 +547,7 @@ const Navbar = () => {
                           <Link
                             to={subItem.path}
                             state={{ scrollTo: subItem.sectionId }}
-                            className="block px-4 py-2 text-gray-700 hover:bg-[#e9f9f7] hover:text-[#18c1b7] transition"
+                            className="block px-4 py-2 text-gray-700 hover:bg-[#e9f9f7] hover:text-[#18c1b7] transition text-sm"
                             onClick={() => { setOpenDropdown(null); }}
                           >
                             {subItem.name}
@@ -571,36 +562,37 @@ const Navbar = () => {
           </ul>
 
           {/* Right Section - Search & User */}
-          <div className="hidden md:flex items-center justify-end gap-3 lg:gap-4">
-            {/* Search Bar */}
-            <div ref={searchRef} className="relative">
+          <div className="flex items-center justify-end gap-2 xs:gap-3 sm:gap-4">
+            
+            {/* Search Bar - Desktop */}
+            <div ref={searchRef} className="relative hidden md:block">
               <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(90deg, #2563eb, #ef4444, #2563eb)", backgroundSize: "200% 200%", animation: "gradientMove 3s linear infinite" }}>
-                <div className="flex items-center bg-white rounded-full px-3 lg:px-4 py-[6px] lg:py-[7px] w-[160px] lg:w-[200px] xl:w-[220px]">
+                <div className="flex items-center bg-white rounded-full px-3 lg:px-4 py-[5px] lg:py-[7px] w-[160px] lg:w-[200px] xl:w-[220px]">
                   <input 
                     type="text" 
-                    placeholder="Search..." 
-                    className="bg-transparent outline-none text-[12px] lg:text-[13px] w-full text-gray-700" 
+                    placeholder="Search notes, videos..." 
+                    className="bg-transparent outline-none text-[12px] lg:text-[13px] w-full text-gray-700 placeholder:text-gray-400" 
                     value={searchQuery} 
                     onChange={(e) => handleSearch(e.target.value)} 
                     onFocus={() => searchQuery.trim() !== "" && setShowSearchDropdown(true)} 
                   />
-                  <Search size={16} className="lg:w-[18px] lg:h-[18px] text-gray-500 cursor-pointer hover:text-[#18c1b7]" />
+                  <Search size={16} className="lg:w-[18px] lg:h-[18px] text-gray-500 cursor-pointer hover:text-[#18c1b7] shrink-0" />
                 </div>
               </div>
 
               {showSearchDropdown && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[400px] overflow-y-auto">
+                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[320px] xl:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[400px] overflow-y-auto">
                   {searchResults.map((result, idx) => (
                     <button 
                       key={idx} 
                       onClick={() => handleResultClick(result)} 
-                      className="w-full text-left px-3 lg:px-4 py-2 lg:py-3 hover:bg-[#e9f9f7] transition-colors border-b border-gray-50 last:border-0"
+                      className="w-full text-left px-4 py-3 hover:bg-[#e9f9f7] transition-colors border-b border-gray-50 last:border-0"
                     >
-                      <div className="font-semibold text-gray-800 text-xs lg:text-sm">{result.title}</div>
+                      <div className="font-semibold text-gray-800 text-sm">{result.title}</div>
                       <div className="flex gap-2 mt-1">
-                        <span className="text-[10px] lg:text-xs text-[#18c1b7] font-medium">{result.category}</span>
-                        <span className="text-[10px] lg:text-xs text-gray-400">•</span>
-                        <span className="text-[10px] lg:text-xs text-gray-500">{result.type}</span>
+                        <span className="text-xs text-[#18c1b7] font-medium">{result.category}</span>
+                        <span className="text-xs text-gray-400">•</span>
+                        <span className="text-xs text-gray-500">{result.type}</span>
                       </div>
                     </button>
                   ))}
@@ -608,8 +600,8 @@ const Navbar = () => {
               )}
 
               {showSearchDropdown && searchQuery.trim() !== "" && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-4 z-50 text-center">
-                  <p className="text-gray-500 text-xs lg:text-sm">No results found for "{searchQuery}"</p>
+                <div className="absolute top-full left-0 mt-2 w-[280px] lg:w-[320px] xl:w-[350px] bg-white rounded-xl shadow-2xl border border-gray-100 py-4 z-50 text-center">
+                  <p className="text-gray-500 text-sm">No results found for "{searchQuery}"</p>
                 </div>
               )}
             </div>
@@ -623,26 +615,26 @@ const Navbar = () => {
                   onMouseLeave={handleUserMouseLeave}
                 >
                   <button
-                    className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-full transition-all duration-200 text-sm lg:text-base ${
+                    className={`flex items-center gap-1 xs:gap-2 px-2 xs:px-3 sm:px-4 py-1 xs:py-1.5 sm:py-2 rounded-full transition-all duration-200 text-xs xs:text-sm ${
                       activeBanner === 1
                         ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                         : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
                     }`}
                   >
-                    <UserCircle size={16} className="lg:w-[18px] lg:h-[18px]" />
-                    <span className="text-xs lg:text-sm font-medium">{getDisplayName()}</span>
-                    <ChevronDown size={12} className={`lg:w-[14px] lg:h-[14px] transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`} />
+                    <UserCircle size={16} className="xs:w-[18px] xs:h-[18px] sm:w-[20px] sm:h-[20px]" />
+                    <span className="hidden xs:inline font-medium truncate max-w-[60px] sm:max-w-[100px]">{getDisplayName()}</span>
+                    <ChevronDown size={12} className={`xs:w-[14px] xs:h-[14px] sm:w-[16px] sm:h-[16px] transition-transform duration-200 ${showUserMenu ? "rotate-180" : ""}`} />
                   </button>
 
                   {showUserMenu && (
                     <div 
-                      className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50"
+                      className="absolute right-0 mt-2 w-48 sm:w-56 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50"
                       onMouseEnter={handleDropdownMouseEnter}
                       onMouseLeave={handleDropdownMouseLeave}
                     >
                       <div className="px-4 py-3 border-b border-gray-100">
-                        <p className="font-semibold text-gray-900 text-sm truncate">{user.name}</p>
-                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                        <p className="font-semibold text-gray-900 text-sm sm:text-base truncate">{user.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{user.email}</p>
                       </div>
 
                       <div className="py-1">
@@ -653,7 +645,7 @@ const Navbar = () => {
                           }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-purple-50 hover:text-purple-600 transition-colors text-sm"
                         >
-                          <UserCircle size={16} />
+                          <UserCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
                           <span>Profile</span>
                         </button>
 
@@ -664,7 +656,7 @@ const Navbar = () => {
                           }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-red-600 hover:bg-red-50 transition-colors text-sm"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />
                           <span>Delete Account</span>
                         </button>
 
@@ -672,7 +664,7 @@ const Navbar = () => {
                           onClick={handleLogout}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-gray-100 transition-colors border-t border-gray-100 mt-1 text-sm"
                         >
-                          <LogOut size={16} />
+                          <LogOut size={16} className="sm:w-[18px] sm:h-[18px]" />
                           <span>Logout</span>
                         </button>
                       </div>
@@ -680,45 +672,83 @@ const Navbar = () => {
                   )}
                 </div>
               ) : (
-                // ✅ LOGIN BUTTON - Opens AuthModal
                 <button
                   onClick={() => setShowLoginModal(true)}
-                  className={`flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-1.5 lg:py-2 rounded-full transition-all duration-200 text-sm lg:text-base ${
+                  className={`flex items-center gap-1 xs:gap-2 px-2 xs:px-3 sm:px-4 py-1 xs:py-1.5 sm:py-2 rounded-full transition-all duration-200 text-xs xs:text-sm ${
                     activeBanner === 1
                       ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
                       : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
                   }`}
                 >
-                  <User size={14} className="lg:w-[18px] lg:h-[18px]" />
-                  <span className="text-xs lg:text-sm font-medium">Login</span>
+                  <User size={16} className="xs:w-[18px] xs:h-[18px] sm:w-[20px] sm:h-[20px]" />
+                  <span className="hidden xs:inline font-medium">Login</span>
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Mobile Menu Button */}
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-            className="lg:hidden flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-all duration-200"
-          >
-            {mobileMenuOpen ? (
-              <X size={20} className="sm:w-6 sm:h-6 text-black" />
-            ) : (
-              <Menu size={20} className="sm:w-6 sm:h-6 text-black" />
-            )}
-          </button>
+            {/* Mobile Menu Button */}
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+              className="lg:hidden flex items-center justify-center w-8 xs:w-9 sm:w-10 h-8 xs:h-9 sm:h-10 rounded-full transition-all duration-200"
+            >
+              {mobileMenuOpen ? (
+                <X size={20} className={`xs:w-[22px] xs:h-[22px] sm:w-[24px] sm:h-[24px] ${activeBanner === 1 ? "text-black" : "text-white"}`} />
+              ) : (
+                <Menu size={20} className={`xs:w-[22px] xs:h-[22px] sm:w-[24px] sm:h-[24px] ${activeBanner === 1 ? "text-black" : "text-white"}`} />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden mt-2 sm:mt-4 pb-4 border-t border-gray-200/20 max-h-[80vh] overflow-y-auto mobile-menu-scroll">
-            <div className="flex flex-col space-y-2 pt-3 sm:pt-4">
+          <div className="lg:hidden mt-2 sm:mt-4 pb-4 border-t border-gray-200/20 max-h-[70vh] sm:max-h-[75vh] md:max-h-[80vh] overflow-y-auto mobile-menu-scroll">
+            <div className="flex flex-col space-y-1 sm:space-y-2 pt-2 sm:pt-4">
+              
+              {/* Mobile Search */}
+              <div className="md:hidden px-2 sm:px-3 pb-3 sm:pb-4">
+                <div className="relative">
+                  <div className="p-[2px] rounded-full" style={{ background: "linear-gradient(90deg, #2563eb, #ef4444, #2563eb)", backgroundSize: "200% 200%", animation: "gradientMove 3s linear infinite" }}>
+                    <div className="flex items-center bg-white rounded-full px-3 py-2 w-full">
+                      <input 
+                        type="text" 
+                        placeholder="Search notes, videos..." 
+                        className="bg-transparent outline-none text-sm w-full text-gray-700 placeholder:text-gray-400" 
+                        value={searchQuery} 
+                        onChange={(e) => handleSearch(e.target.value)} 
+                        onFocus={() => searchQuery.trim() !== "" && setShowSearchDropdown(true)} 
+                      />
+                      <Search size={18} className="text-gray-500 cursor-pointer hover:text-[#18c1b7] shrink-0" />
+                    </div>
+                  </div>
+                  
+                  {showSearchDropdown && searchResults.length > 0 && (
+                    <div className="absolute top-full left-0 mt-2 w-full bg-white rounded-xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[50vh] overflow-y-auto">
+                      {searchResults.map((result, idx) => (
+                        <button 
+                          key={idx} 
+                          onClick={() => handleResultClick(result)} 
+                          className="w-full text-left px-4 py-3 hover:bg-[#e9f9f7] transition-colors border-b border-gray-50 last:border-0"
+                        >
+                          <div className="font-semibold text-gray-800 text-sm">{result.title}</div>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs text-[#18c1b7] font-medium">{result.category}</span>
+                            <span className="text-xs text-gray-400">•</span>
+                            <span className="text-xs text-gray-500">{result.type}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <button 
                 onClick={handleHomeClick} 
-                className={`block w-full text-left py-2 px-3 rounded-lg transition text-sm sm:text-base ${
+                className={`block w-full text-left py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg transition text-sm sm:text-base ${
                   location.pathname === "/" 
                     ? "bg-[#18c1b7]/10 text-[#18c1b7] font-semibold" 
-                    : "text-black hover:bg-gray-100"
+                    : activeBanner === 1 ? "text-black hover:bg-gray-100" : "text-white hover:bg-white/10"
                 }`}
               >
                 Home
@@ -728,28 +758,28 @@ const Navbar = () => {
                 <div key={idx}>
                   <button 
                     onClick={() => setOpenDropdown(openDropdown === idx ? null : idx)} 
-                    className={`flex items-center justify-between w-full py-2 px-3 rounded-lg transition text-sm sm:text-base ${
-                      "text-black hover:bg-gray-100"
+                    className={`flex items-center justify-between w-full py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg transition text-sm sm:text-base ${
+                      activeBanner === 1 ? "text-black hover:bg-gray-100" : "text-white hover:bg-white/10"
                     }`}
                   >
                     {course.name}
-                    <ChevronDown size={14} className={`transform transition-transform duration-200 ${openDropdown === idx ? "rotate-180" : ""}`} />
+                    <ChevronDown size={16} className={`transform transition-transform duration-200 ${openDropdown === idx ? "rotate-180" : ""}`} />
                   </button>
                   
                   {openDropdown === idx && (
-                    <div className="ml-3 sm:ml-4 mt-2 space-y-2 border-l-2 border-[#18c1b7] pl-2 sm:pl-3">
+                    <div className="ml-3 sm:ml-4 mt-1 sm:mt-2 space-y-1 sm:space-y-2 border-l-2 border-[#18c1b7] pl-2 sm:pl-3">
                       {course.items.map((subItem, subIdx) => (
                         <div key={subIdx}>
                           {subItem.hasSubmenu ? (
                             <>
                               <button
                                 onClick={() => setOpenSubmenu(openSubmenu === subIdx ? null : subIdx)}
-                                className={`flex items-center justify-between w-full py-2 px-2 rounded transition text-xs sm:text-sm ${
-                                  "text-gray-600 hover:text-[#18c1b7]"
+                                className={`flex items-center justify-between w-full py-1.5 sm:py-2 px-2 rounded transition text-xs sm:text-sm ${
+                                  activeBanner === 1 ? "text-gray-600 hover:text-[#18c1b7]" : "text-gray-200 hover:text-white"
                                 }`}
                               >
                                 {subItem.name}
-                                <ChevronRight size={12} className={`transform transition-transform duration-200 ${openSubmenu === subIdx ? "rotate-90" : ""}`} />
+                                <ChevronRight size={14} className={`transform transition-transform duration-200 ${openSubmenu === subIdx ? "rotate-90" : ""}`} />
                               </button>
                               
                               {openSubmenu === subIdx && (
@@ -765,7 +795,7 @@ const Navbar = () => {
                                         language: subSubItem.language
                                       }}
                                       onClick={() => { setMobileMenuOpen(false); setOpenDropdown(null); setOpenSubmenu(null); }}
-                                      className="block py-1.5 px-2 rounded text-[11px] sm:text-xs text-gray-500 hover:text-[#18c1b7] transition"
+                                      className="block py-1 sm:py-1.5 px-2 rounded text-[11px] sm:text-xs text-gray-500 hover:text-[#18c1b7] transition"
                                     >
                                       {subSubItem.name}
                                     </Link>
@@ -778,8 +808,8 @@ const Navbar = () => {
                               to={subItem.path}
                               state={{ scrollTo: subItem.sectionId }}
                               onClick={() => { setMobileMenuOpen(false); setOpenDropdown(null); }}
-                              className={`block py-2 px-2 rounded transition text-xs sm:text-sm ${
-                                "text-gray-600 hover:text-[#18c1b7]"
+                              className={`block py-1.5 sm:py-2 px-2 rounded transition text-xs sm:text-sm ${
+                                activeBanner === 1 ? "text-gray-600 hover:text-[#18c1b7]" : "text-gray-200 hover:text-white"
                               }`}
                             >
                               {subItem.name}
@@ -793,40 +823,43 @@ const Navbar = () => {
               ))}
               
               {isLoggedIn && user ? (
-                <div className="pt-3 px-3 border-t border-gray-200/20 mt-2">
-                  <div className="bg-gray-100 rounded-xl p-2 sm:p-3 mb-2">
+                <div className="pt-3 px-2 sm:px-3 border-t border-gray-200/20 mt-2">
+                  <div className="bg-white/10 rounded-xl p-3 mb-2">
                     <p className="font-semibold text-sm sm:text-base">{user.name}</p>
-                    <p className="text-[11px] sm:text-xs text-gray-500 truncate">{user.email}</p>
+                    <p className="text-xs text-gray-400 truncate">{user.email}</p>
                   </div>
                   <button 
                     onClick={() => { navigate("/profile"); setMobileMenuOpen(false); }} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-gray-100 transition"
+                    className="block w-full text-left py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg text-sm sm:text-base hover:bg-white/10 transition"
                   >
                     Profile
                   </button>
                   <button 
                     onClick={() => { setShowDeleteModal(true); setMobileMenuOpen(false); }} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm text-red-600 hover:bg-red-50 transition"
+                    className="block w-full text-left py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg text-sm sm:text-base text-red-400 hover:bg-red-500/10 transition"
                   >
                     Delete Account
                   </button>
                   <button 
                     onClick={handleLogout} 
-                    className="block w-full text-left py-2 px-3 rounded-lg text-sm hover:bg-gray-100 transition"
+                    className="block w-full text-left py-1.5 sm:py-2 px-2 sm:px-3 rounded-lg text-sm sm:text-base hover:bg-white/10 transition"
                   >
                     Logout
                   </button>
                 </div>
               ) : (
-                // ✅ Mobile Login Button
                 <button 
                   onClick={() => {
                     setShowLoginModal(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="flex items-center justify-center gap-2 mx-3 mt-2 py-2 rounded-full transition text-sm bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
+                  className={`flex items-center justify-center gap-2 mx-2 sm:mx-3 mt-2 py-1.5 sm:py-2 rounded-full transition text-sm sm:text-base ${
+                    activeBanner === 1
+                      ? "bg-[#18c1b7] text-white hover:bg-[#0fa39a]"
+                      : "bg-white/20 backdrop-blur-md text-white hover:bg-white/30"
+                  }`}
                 >
-                  <User size={14} /> Login
+                  <User size={18} className="sm:w-[20px] sm:h-[20px]" /> Login
                 </button>
               )}
             </div>
@@ -834,7 +867,7 @@ const Navbar = () => {
         )}
       </nav>
 
-      {/* ✅ AuthModal for Login */}
+      {/* AuthModal */}
       <AuthModal 
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
@@ -846,12 +879,12 @@ const Navbar = () => {
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
           <div 
             className="absolute inset-0 bg-black/70 backdrop-blur-sm" 
             onClick={() => { setShowDeleteModal(false); setDeletePassword(""); setDeleteError(""); }}
           ></div>
-          <div className="relative bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 mx-4">
+          <div className="relative bg-white rounded-2xl w-full max-w-[90%] sm:max-w-md p-4 sm:p-6 mx-2 sm:mx-4">
             <h3 className="text-lg sm:text-xl font-bold text-red-600 mb-2">Delete Account</h3>
             <p className="text-gray-600 text-sm sm:text-base mb-4">Are you sure? This action cannot be undone.</p>
             
@@ -865,17 +898,17 @@ const Navbar = () => {
             
             {deleteError && <p className="text-red-500 text-xs sm:text-sm mb-3">{deleteError}</p>}
             
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3">
               <button 
                 onClick={() => { setShowDeleteModal(false); setDeletePassword(""); setDeleteError(""); }} 
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition text-sm"
+                className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 transition text-sm"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleDeleteAccount} 
                 disabled={deleteLoading} 
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition disabled:opacity-50 text-sm"
+                className="flex-1 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition disabled:opacity-50 text-sm"
               >
                 {deleteLoading ? "Deleting..." : "Delete Account"}
               </button>
@@ -885,7 +918,7 @@ const Navbar = () => {
       )}
 
       {/* Spacer */}
-      <div className="h-[56px] sm:h-[64px] md:h-[68px] lg:h-[72px]"></div>
+      <div className="h-0"></div>
     </>
   );
 };

@@ -280,7 +280,7 @@ router.get('/user-status', authenticateToken, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error ('User status error:', error);
+    console.error('User status error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get user status'

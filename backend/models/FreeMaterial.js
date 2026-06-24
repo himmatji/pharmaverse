@@ -3,9 +3,8 @@ const mongoose = require('mongoose');
 const freeMaterialSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, default: "" },
-  course: { type: String, required: true, enum: ['B.Pharm', 'D.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'] },
+  course: { type: String, required: true, enum: ['B.Pharm', 'D.Pharm', 'M.Pharm'] },
   semester: { type: String, default: "" },
-  year: { type: String, default: "" },
   
   // File information
   fileName: { type: String, required: true },
@@ -26,7 +25,9 @@ const freeMaterialSchema = new mongoose.Schema({
   
   icon: { type: String, default: "📄" },
   
+  // 🔥 YEH ADD KARO - DOWNLOAD COUNT
   downloadCount: { type: Number, default: 0 },
+  
   createdAt: { type: Date, default: Date.now }
 });
 

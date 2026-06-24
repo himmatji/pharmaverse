@@ -2,18 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Mail, Lock, User, LogIn } from "lucide-react";
 import axios from "axios";
 
-// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
-const EC2_BASE_URL = "https://api.pharmaverse.co.in";
-const LOCAL_BASE_URL = "http://localhost:5000";
-
-// Auto-detect environment
-const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
-
-console.log(`🌐 AuthModal running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
-console.log(`📡 Auth API Base URL: ${BASE_URL}`);
-
-const API_URL = `${BASE_URL}/api/auth`;
+const API_URL = "http://localhost:5000/api/auth";
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -33,17 +22,6 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
     }
   }, [isOpen]);
 
-  // Close on escape key
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [isOpen, onClose]);
-
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
@@ -60,12 +38,10 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
         if (response.data.success) {
           localStorage.setItem("token", response.data.token);
-          localStorage.setItem("userToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           localStorage.setItem("isLoggedIn", "true");
           
           if (onLoginSuccess) onLoginSuccess();
-          onClose();
         }
       } else {
         const response = await axios.post(`${API_URL}/signup`, {
@@ -76,12 +52,10 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
         if (response.data.success) {
           localStorage.setItem("token", response.data.token);
-          localStorage.setItem("userToken", response.data.token);
           localStorage.setItem("user", JSON.stringify(response.data.user));
           localStorage.setItem("isLoggedIn", "true");
           
           if (onLoginSuccess) onLoginSuccess();
-          onClose();
         }
       }
     } catch (err) {
@@ -93,114 +67,93 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fadeIn"
-        onClick={onClose}
-      ></div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
       
-      {/* Modal */}
-      <div className="relative bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl animate-scaleIn mx-4">
-        {/* Close Button */}
+      <div className="relative bg-white rounded-3xl w-full max-w-[90%] sm:max-w-md p-6 sm:p-8 shadow-2xl animate-in fade-in zoom-in duration-300 mx-2 sm:mx-4">
         <button 
           onClick={onClose}
-          className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-all duration-300 hover:rotate-90"
+          className="absolute top-4 right-4 sm:top-5 sm:right-5 text-gray-400 hover:text-gray-600 transition"
         >
-          <X size={22} />
+          <X size={20} className="sm:w-[22px] sm:h-[22px]" />
         </button>
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-float">
-            <LogIn size={36} className="text-white" />
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
+            <LogIn size={28} className="sm:w-[36px] sm:h-[36px] text-white" />
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>
-          <p className="text-gray-500 mt-2">
+          <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
             {isLogin 
               ? "Login to access study materials" 
               : "Sign up to start learning for free"}
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm text-center animate-slideDown">
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs sm:text-sm text-center">
             {error}
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           {!isLogin && (
-            <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition-all duration-300">
-              <User size={20} className="text-gray-400" />
+            <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+              <User size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
               <input
                 type="text"
                 placeholder="Full Name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="flex-1 outline-none bg-transparent"
+                className="flex-1 outline-none bg-transparent text-sm sm:text-base"
                 required={!isLogin}
               />
             </div>
           )}
           
-          <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition-all duration-300">
-            <Mail size={20} className="text-gray-400" />
+          <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+            <Mail size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
             <input
               type="email"
               placeholder="Email Address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 outline-none bg-transparent"
+              className="flex-1 outline-none bg-transparent text-sm sm:text-base"
               required
             />
           </div>
           
-          <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition-all duration-300">
-            <Lock size={20} className="text-gray-400" />
+          <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+            <Lock size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
             <input
               type="password"
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="flex-1 outline-none bg-transparent"
+              className="flex-1 outline-none bg-transparent text-sm sm:text-base"
               required
             />
           </div>
 
           {isLogin && (
             <div className="text-right">
-              <button 
-                type="button" 
-                className="text-sm text-purple-600 hover:text-purple-700 transition-colors duration-300 hover:underline"
-              >
+              <button type="button" className="text-xs sm:text-sm text-purple-600 hover:text-purple-700">
                 Forgot Password?
               </button>
             </div>
           )}
 
-          {/* Submit Button */}
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-2.5 sm:py-3 rounded-xl font-semibold hover:scale-[1.02] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Please wait...
-              </span>
-            ) : (
-              isLogin ? "Sign In" : "Sign Up"
-            )}
+            {loading ? "Please wait..." : (isLogin ? "Sign In" : "Sign Up")}
           </button>
 
-          {/* Toggle between Login/Signup */}
-          <p className="text-center text-gray-600 text-sm">
+          <p className="text-center text-gray-600 text-xs sm:text-sm">
             {isLogin ? "Don't have an account? " : "Already have an account? "}
             <button
               type="button"
@@ -208,64 +161,19 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 setIsLogin(!isLogin);
                 setError("");
               }}
-              className="text-purple-600 font-semibold hover:underline transition-colors duration-300"
+              className="text-purple-600 font-semibold hover:underline"
             >
               {isLogin ? "Sign Up" : "Sign In"}
             </button>
           </p>
         </form>
 
-        {/* Footer */}
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
-          <p className="text-xs text-gray-400">
-            By continuing, you agree to our Terms of Service
+        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100 text-center">
+          <p className="text-[10px] sm:text-xs text-gray-400">
+            Login required to access study materials
           </p>
         </div>
       </div>
-
-      {/* CSS Animations - Fixed: removed 'jsx' attribute */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-        .animate-slideDown {
-          animation: slideDown 0.3s ease-out;
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

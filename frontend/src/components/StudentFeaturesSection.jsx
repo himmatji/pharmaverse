@@ -107,7 +107,7 @@ const DarkBanner = () => {
               specially designed for pharmacy students.
             </p>
 
-            {/* 4 ICONS SECTION - Responsive grid, NOT CLICKABLE */}
+            {/* 4 ICONS SECTION - Responsive grid, CLICKABLE */}
             <div 
               className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mt-8 sm:mt-10 md:mt-12 lg:mt-16 w-full"
               style={{
@@ -183,13 +183,6 @@ const DarkBanner = () => {
           @keyframes fadeSlideUp {
             0% { opacity: 0; transform: translateY(30px); }
             100% { opacity: 1; transform: translateY(0); }
-          }
-          
-          /* Mobile responsive adjustments */
-          @media (max-width: 640px) {
-            .grid {
-              gap: 0.75rem;
-            }
           }
         `}</style>
       </div>

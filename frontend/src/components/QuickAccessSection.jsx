@@ -199,23 +199,7 @@ const QuickAccessSection = () => {
           })}
         </div>
 
-        {/* View All Button - Responsive */}
-        <div className="text-center mt-8 sm:mt-10 md:mt-12">
-          <button 
-            onClick={() => {
-              navigate("/courses");
-              setTimeout(() => {
-                window.scrollTo({ top: 0, left: 0, behavior: "instant" });
-              }, 0);
-            }}
-            className="group bg-gradient-to-r from-[#d4a017] to-amber-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-full 
-            font-semibold text-sm sm:text-base shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105
-            flex items-center gap-2 mx-auto"
-          >
-            View All Programs
-            <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16} className="sm:w-[18px] sm:h-[18px]" />
-          </button>
-        </div>
+        
       </div>
 
       {/* Mobile responsive styles */}

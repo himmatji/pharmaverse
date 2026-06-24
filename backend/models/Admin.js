@@ -23,8 +23,8 @@ const adminSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ['super_admin', 'admin', 'sub_admin'],
-    default: 'admin'
+    enum: ['super_admin', 'sub_admin'],
+    default: 'super_admin'
   },
 
   permissions: {
@@ -49,6 +49,7 @@ const adminSchema = new mongoose.Schema({
     default: true
   },
 
+  // 🔥 PREMIUM COURSE PRICE
   premiumPrice: {
     type: Number,
     default: 999
@@ -60,7 +61,6 @@ const adminSchema = new mongoose.Schema({
   }
 });
 
-// Password hash before save
 adminSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
 
@@ -68,9 +68,8 @@ adminSchema.pre('save', async function () {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-// Compare password method
 adminSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password);
+  return await bcrypt.compare(password, this.password);
 };
 
 module.exports = mongoose.model('Admin', adminSchema);

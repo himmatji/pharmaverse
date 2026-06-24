@@ -16,22 +16,10 @@ import {
   Eye,
   Crown,
   Sparkles,
+  Rocket,
   ChevronDown,
-  ChevronRight,
-  Rocket
+  ChevronRight
 } from "lucide-react";
-
-// ========== DYNAMIC BASE URL - Works on both Localhost & EC2 ==========
-// EC2 Public IP
-const EC2_BASE_URL = "https://api.pharmaverse.co.in";
-const LOCAL_BASE_URL = "http://localhost:5000";
-
-// Auto-detect environment
-const isProduction = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
-const BASE_URL = isProduction ? EC2_BASE_URL : LOCAL_BASE_URL;
-
-console.log(`🌐 Running in ${isProduction ? "PRODUCTION (EC2)" : "DEVELOPMENT (Localhost)"} mode`);
-console.log(`📡 API Base URL: ${BASE_URL}`);
 
 const BPharm = () => {
   const location = useLocation();
@@ -42,10 +30,8 @@ const BPharm = () => {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
   
-  // For semester cards - which semester is open
+  // For semester cards - which semester is open (SINGLE CLICK OPEN)
   const [openSemester, setOpenSemester] = useState({});
-  // For mobile menu
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [notes, setNotes] = useState([]);
   const [premiumVideos, setPremiumVideos] = useState([]);
@@ -109,7 +95,7 @@ const BPharm = () => {
     });
   };
 
-  // Single click toggle - turant open/close hoga
+  // Single click toggle - turant open/close hoga (same as first file)
   const handleSemesterClick = (semester, type) => {
     setOpenSemester(prev => ({
       ...prev,
@@ -117,17 +103,17 @@ const BPharm = () => {
     }));
   };
 
-  // ========== API CALLS WITH DYNAMIC BASE_URL ==========
+  // ========== API CALLS (LOCALHOST ONLY - NO DYNAMIC URL) ==========
   const fetchNotes = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public/notes?course=B.Pharm`);
+      const res = await axios.get("http://localhost:5000/api/admin/public/notes?course=B.Pharm");
       setNotes(res.data);
     } catch (error) { console.log(error); }
   };
 
   const fetchPremiumVideos = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public/videos?course=B.Pharm`);
+      const res = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
       const premiumOnly = res.data.filter(video => video.isPremium === true);
       setPremiumVideos(premiumOnly);
       
@@ -143,13 +129,13 @@ const BPharm = () => {
 
   const fetchFreeVideos = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public/free-videos?course=B.Pharm`);
+      const res = await axios.get("http://localhost:5000/api/admin/public/free-videos?course=B.Pharm");
       const freeOnly = res.data.filter(video => video.isPremium === false);
       setFreeVideos(freeOnly);
     } catch (error) { 
       console.log(error);
       try {
-        const allRes = await axios.get(`${BASE_URL}/api/admin/public/videos?course=B.Pharm`);
+        const allRes = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
         const freeOnly = allRes.data.filter(video => video.isPremium === false);
         setFreeVideos(freeOnly);
       } catch (err) {
@@ -160,7 +146,7 @@ const BPharm = () => {
 
   const fetchPaidPDFs = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public/paid-pdfs?course=B.Pharm`);
+      const res = await axios.get("http://localhost:5000/api/admin/public/paid-pdfs?course=B.Pharm");
       setPaidPDFs(res.data);
       
       const grouped = {};
@@ -175,7 +161,7 @@ const BPharm = () => {
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public/papers?course=B.Pharm`);
+      const res = await axios.get("http://localhost:5000/api/admin/public/papers?course=B.Pharm");
       setFreePapers(res.data.filter((paper) => paper.isPremium === false));
       const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
       setPremiumPapers(premiumPapersData);
@@ -197,7 +183,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
+      const response = await axios.get("http://localhost:5000/api/auth/profile", {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -214,7 +200,7 @@ const BPharm = () => {
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/admin/public-price`);
+      const res = await axios.get("http://localhost:5000/api/admin/public-price");
       setPremiumPrice(res.data.price);
     } catch (error) {
       console.log("Price fetch error:", error);
@@ -248,11 +234,11 @@ const BPharm = () => {
       
       let viewUrl;
       if (type === "note") {
-        viewUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
+        viewUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        viewUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
+        viewUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
+        viewUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -313,7 +299,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return false;
       
-      const response = await axios.get(`${BASE_URL}/api/auth/profile`, {
+      const response = await axios.get("http://localhost:5000/api/auth/profile", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -348,13 +334,13 @@ const BPharm = () => {
       
       let downloadUrl;
       if (type === "note") {
-        downloadUrl = `${BASE_URL}/api/admin/public/download/note/${item._id}`;
+        downloadUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        downloadUrl = `${BASE_URL}/api/admin/public/download/paid-pdf/${item._id}`;
+        downloadUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper") {
-        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
       } else if (type === "premium-paper") {
-        downloadUrl = `${BASE_URL}/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -440,7 +426,7 @@ const BPharm = () => {
       const amount = premiumPrice;
 
       const orderResponse = await axios.post(
-        `${BASE_URL}/api/payment/create-order`,
+        "http://localhost:5000/api/payment/create-order",
         {
           amount: amount,
           productType: "premium_course",
@@ -467,7 +453,7 @@ const BPharm = () => {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              `${BASE_URL}/api/payment/verify-payment`,
+              "http://localhost:5000/api/payment/verify-payment",
               {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
@@ -519,7 +505,7 @@ const BPharm = () => {
     { id: "papers", label: "Premium Papers", icon: Brain },
   ];
 
-  // Render Functions
+  // Render Functions (same as first file)
   const renderFreeCard = (item, type, icon, index) => {
     const Icon = icon;
     const cardId = `${type}-${item._id}`;
@@ -902,7 +888,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== SEMESTER CARDS SECTION - SINGLE CLICK OPEN ==========
+  // ========== SEMESTER CARDS SECTION - SINGLE CLICK OPEN (Same as first file) ==========
   const renderSemesterSection = (title, data, type, renderCard, icon, semesters = [1,2,3,4,5,6,7,8]) => {
     const hasData = semesters.some(sem => data[sem] && data[sem].length > 0);
     
@@ -1279,7 +1265,7 @@ const BPharm = () => {
       </div>
 
       {/* Hide scrollbar for mobile tabs */}
-      <style jsx>{`
+      <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
         }
