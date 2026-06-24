@@ -33,7 +33,7 @@ import {
   Share2
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "https://api.pharmaverse.co.in/api/admin";
 
 const AdminNotice = () => {
   const [notices, setNotices] = useState([]);

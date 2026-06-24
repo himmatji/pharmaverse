@@ -22,8 +22,8 @@ import {
   X,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/auth";
-const MAIN_API_URL = "http://localhost:5000/api";
+const API_URL = "https://api.pharmaverse.co.in/api/auth";
+const MAIN_API_URL = "https://api.pharmaverse.co.in/api";
 
 const AdminProfile = () => {
   const [profile, setProfile] = useState({

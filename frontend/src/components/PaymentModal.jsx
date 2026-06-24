@@ -28,7 +28,7 @@ const PaymentModal = ({ isOpen, onClose, product, onSuccess }) => {
       }
       
       // Create order
-      const orderResponse = await axios.post('http://localhost:5000/api/payment/create-order', {
+      const orderResponse = await axios.post('https://api.pharmaverse.co.in/api/payment/create-order', {
         amount: product.price,
         productType: product.type,
         productId: product.id,
@@ -57,7 +57,7 @@ const PaymentModal = ({ isOpen, onClose, product, onSuccess }) => {
         order_id: orderId,
         handler: async (response) => {
           // Verify payment
-          const verifyResponse = await axios.post('http://localhost:5000/api/payment/verify-payment', {
+          const verifyResponse = await axios.post('https://api.pharmaverse.co.in/api/payment/verify-payment', {
             orderId: response.razorpay_order_id,
             paymentId: response.razorpay_payment_id,
             signature: response.razorpay_signature,

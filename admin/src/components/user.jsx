@@ -29,7 +29,7 @@ import {
   Wallet
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://api.pharmaverse.co.in/api/auth";
 
 const UsersComponent = () => {
   const [users, setUsers] = useState([]);

@@ -106,14 +106,14 @@ const BPharm = () => {
   // ========== API CALLS (LOCALHOST ONLY - NO DYNAMIC URL) ==========
   const fetchNotes = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/notes?course=B.Pharm");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/notes?course=B.Pharm");
       setNotes(res.data);
     } catch (error) { console.log(error); }
   };
 
   const fetchPremiumVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/videos?course=B.Pharm");
       const premiumOnly = res.data.filter(video => video.isPremium === true);
       setPremiumVideos(premiumOnly);
       
@@ -129,13 +129,13 @@ const BPharm = () => {
 
   const fetchFreeVideos = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/free-videos?course=B.Pharm");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/free-videos?course=B.Pharm");
       const freeOnly = res.data.filter(video => video.isPremium === false);
       setFreeVideos(freeOnly);
     } catch (error) { 
       console.log(error);
       try {
-        const allRes = await axios.get("http://localhost:5000/api/admin/public/videos?course=B.Pharm");
+        const allRes = await axios.get("https://api.pharmaverse.co.in/api/admin/public/videos?course=B.Pharm");
         const freeOnly = allRes.data.filter(video => video.isPremium === false);
         setFreeVideos(freeOnly);
       } catch (err) {
@@ -146,7 +146,7 @@ const BPharm = () => {
 
   const fetchPaidPDFs = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/paid-pdfs?course=B.Pharm");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/paid-pdfs?course=B.Pharm");
       setPaidPDFs(res.data);
       
       const grouped = {};
@@ -161,7 +161,7 @@ const BPharm = () => {
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public/papers?course=B.Pharm");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/papers?course=B.Pharm");
       setFreePapers(res.data.filter((paper) => paper.isPremium === false));
       const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
       setPremiumPapers(premiumPapersData);
@@ -183,7 +183,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return;
 
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get("https://api.pharmaverse.co.in/api/auth/profile", {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -200,7 +200,7 @@ const BPharm = () => {
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/public-price");
+      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public-price");
       setPremiumPrice(res.data.price);
     } catch (error) {
       console.log("Price fetch error:", error);
@@ -234,11 +234,11 @@ const BPharm = () => {
       
       let viewUrl;
       if (type === "note") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -299,7 +299,7 @@ const BPharm = () => {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
       if (!token) return false;
       
-      const response = await axios.get("http://localhost:5000/api/auth/profile", {
+      const response = await axios.get("https://api.pharmaverse.co.in/api/auth/profile", {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -334,13 +334,13 @@ const BPharm = () => {
       
       let downloadUrl;
       if (type === "note") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/note/${item._id}`;
+        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/note/${item._id}`;
       } else if (type === "paid-pdf") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paid-pdf/${item._id}`;
+        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
       } else if (type === "premium-paper") {
-        downloadUrl = `http://localhost:5000/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
       } else {
         throw new Error("Invalid file type");
       }
@@ -426,7 +426,7 @@ const BPharm = () => {
       const amount = premiumPrice;
 
       const orderResponse = await axios.post(
-        "http://localhost:5000/api/payment/create-order",
+        "https://api.pharmaverse.co.in/api/payment/create-order",
         {
           amount: amount,
           productType: "premium_course",
@@ -453,7 +453,7 @@ const BPharm = () => {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              "http://localhost:5000/api/payment/verify-payment",
+              "https://api.pharmaverse.co.in/api/payment/verify-payment",
               {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,

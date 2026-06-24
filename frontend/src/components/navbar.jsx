@@ -9,7 +9,7 @@ import axios from "axios";
 import AuthModal from "./AuthModal";
 
 // ========== LOCALHOST ONLY - NO DYNAMIC URL ==========
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://api.pharmaverse.co.in/api/auth";
 
 const Navbar = () => {
   const [activeBanner, setActiveBanner] = useState(1);

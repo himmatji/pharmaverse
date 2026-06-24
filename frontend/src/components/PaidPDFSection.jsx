@@ -13,7 +13,7 @@ const PaidPDFSection = () => {
 
   const fetchPaidPDFs = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/admin/public/paid-pdfs');
+      const response = await axios.get('https://api.pharmaverse.co.in/api/admin/public/paid-pdfs');
       setPaidPDFs(response.data);
     } catch (error) {
       console.error('Error fetching PDFs:', error);
@@ -62,7 +62,7 @@ const PaidPDFSection = () => {
               <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-800 mb-1 sm:mb-2">{pdf.title}</h3>
               <p className="text-gray-600 text-xs sm:text-sm mb-3 sm:mb-4">{pdf.description}</p>
               <button 
-                onClick={() => window.open(`http://localhost:5000/api/admin/download/paid-pdf/${pdf._id}`, '_blank')}
+                onClick={() => window.open(`https://api.pharmaverse.co.in/api/admin/download/paid-pdf/${pdf._id}`, '_blank')}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 sm:py-3 rounded-xl font-semibold text-sm sm:text-base flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02]"
               >
                 <Download size={16} className="sm:w-[18px] sm:h-[18px]" />

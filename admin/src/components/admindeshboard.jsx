@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 
 // ========== ONLY LOCALHOST - NO DYNAMIC URL ==========
-const API_URL = "http://localhost:5000/api/admin";
+const API_URL = "https://api.pharmaverse.co.in/api/admin";
 
 // ========== COURSE CONFIG - SEMESTER/YEAR/LANGUAGE OPTIONS ==========
 const COURSE_CONFIG = {

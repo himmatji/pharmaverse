@@ -22,7 +22,7 @@ const LockedContent = ({ product, children, previewContent }) => {
         return;
       }
       
-      const response = await axios.get(`http://localhost:5000/api/payment/check-access/${product.type}/${product.id}`, {
+      const response = await axios.get(`https://api.pharmaverse.co.in/api/payment/check-access/${product.type}/${product.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setHasAccess(response.data.hasAccess);

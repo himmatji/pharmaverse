@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://api.pharmaverse.co.in/api/auth";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -187,7 +187,7 @@ const Profile = () => {
         return;
       }
   
-      const baseUrl = `http://localhost:5000/api/admin/public/download/${item.productType}/${item.productId}`;
+      const baseUrl = `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${item.productId}`;
   
       const response = await fetch(baseUrl, {
         headers: {
@@ -222,7 +222,7 @@ const Profile = () => {
       return;
     }
     
-    const downloadUrl = `http://localhost:5000/api/admin/public/download/${item.productType}/${item.productId}?token=${token}`;
+    const downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${item.productId}?token=${token}`;
     window.open(downloadUrl, "_blank");
   };
 

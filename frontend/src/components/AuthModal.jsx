@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { X, Mail, Lock, User, LogIn } from "lucide-react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/auth";
+const API_URL = "https://api.pharmaverse.co.in/api/auth";
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
