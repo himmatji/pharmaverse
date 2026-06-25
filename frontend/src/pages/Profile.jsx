@@ -174,6 +174,10 @@ const Profile = () => {
     }
   };
 
+  // =============================================
+  // ========== FIXED handleViewFile ==========
+  // Mobile/Tablet par PDF open karne ka solution
+  // =============================================
   const handleViewFile = async (item) => {
     setViewerLoading(true);
     setViewingFile(item);
@@ -205,6 +209,17 @@ const Profile = () => {
   
       setFileUrl(blobUrl);
       setFileType(contentType);
+      
+      // ========== MOBILE / TABLET DETECTION ==========
+      const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
+      
+      if (isMobileOrTablet && blob.type === "application/pdf") {
+        // Mobile par Google Docs Viewer use karo
+        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(blobUrl)}&embedded=true`;
+        setFileUrl(googleViewerUrl);
+        setFileType("text/html");
+      }
+      
       setShowViewer(true);
     } catch (error) {
       console.error("View error:", error);
@@ -226,7 +241,7 @@ const Profile = () => {
     window.open(downloadUrl, "_blank");
   };
 
-  // ✅ FIXED: Delete using unique _id instead of productType/productId
+  // Delete using unique _id
   const handleDeleteDownload = async () => {
     if (!itemToDelete) return;
     
@@ -238,7 +253,6 @@ const Profile = () => {
         return;
       }
 
-      // Use _id for deletion
       const downloadId = itemToDelete._id;
       
       if (!downloadId) {
@@ -267,7 +281,7 @@ const Profile = () => {
   };
 
   const closeViewer = () => {
-    if (fileUrl) {
+    if (fileUrl && !fileUrl.startsWith("https://docs.google.com/")) {
       URL.revokeObjectURL(fileUrl);
     }
     setShowViewer(false);
@@ -622,26 +636,27 @@ const Profile = () => {
         )}
       </div>
 
+      {/* FILE VIEWER - Mobile Responsive */}
       {showViewer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={closeViewer}></div>
-          <div className="relative bg-white rounded-2xl w-full max-w-6xl h-[90vh] shadow-2xl animate-scaleIn overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
+          <div className="relative bg-white rounded-2xl w-full max-w-6xl h-[95vh] sm:h-[90vh] shadow-2xl animate-scaleIn overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between p-3 sm:p-4 border-b bg-gradient-to-r from-gray-50 to-white flex-wrap gap-2">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg flex items-center justify-center">
                   {viewingFile && getProductIcon(viewingFile.productType)}
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-800">{viewingFile?.productTitle || 'File Preview'}</h3>
+                  <h3 className="font-bold text-gray-800 text-sm sm:text-base">{viewingFile?.productTitle || 'File Preview'}</h3>
                   <p className="text-xs text-gray-500">{getProductTypeName(viewingFile?.productType)}</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button onClick={toggleFullscreen} className="p-2 rounded-lg hover:bg-gray-100 transition-all">
-                  {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              <div className="flex gap-1 sm:gap-2">
+                <button onClick={toggleFullscreen} className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-all">
+                  {isFullscreen ? <Minimize2 size={18} className="sm:w-5 sm:h-5" /> : <Maximize2 size={18} className="sm:w-5 sm:h-5" />}
                 </button>
-                <button onClick={closeViewer} className="p-2 rounded-lg hover:bg-gray-100 transition-all">
-                  <XCircle size={20} />
+                <button onClick={closeViewer} className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 transition-all">
+                  <XCircle size={18} className="sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
@@ -650,8 +665,8 @@ const Profile = () => {
               {viewerLoading ? (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading file...</p>
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600 text-sm sm:text-base">Loading file...</p>
                   </div>
                 </div>
               ) : (
@@ -671,7 +686,10 @@ const Profile = () => {
                   {fileType === "application/pdf" && (
                     <iframe src={fileUrl} className="w-full h-full" title="PDF Viewer" style={{ border: "none" }} />
                   )}
-                  {!fileType.startsWith("image/") && !fileType.startsWith("video/") && fileType !== "application/pdf" && (
+                  {fileType === "text/html" && fileUrl.startsWith("https://docs.google.com/") && (
+                    <iframe src={fileUrl} className="w-full h-full" title="PDF Viewer" style={{ border: "none" }} />
+                  )}
+                  {!fileType.startsWith("image/") && !fileType.startsWith("video/") && fileType !== "application/pdf" && fileType !== "text/html" && (
                     <iframe src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`} className="w-full h-full" title="Document Viewer" style={{ border: "none" }} />
                   )}
                 </>

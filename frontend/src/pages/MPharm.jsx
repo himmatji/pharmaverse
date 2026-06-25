@@ -100,7 +100,7 @@ const MPharm = () => {
     }));
   };
 
-  // ========== API CALLS (LOCALHOST ONLY - NO DYNAMIC URL) ==========
+  // ========== API CALLS ==========
   const fetchNotes = async () => {
     try {
       const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/notes?course=M.Pharm");
@@ -218,6 +218,10 @@ const MPharm = () => {
     fetchPremiumPrice();
   }, []);
 
+  // =============================================
+  // ========== FIXED handleView ==========
+  // Mobile/Tablet par PDF open karne ka solution
+  // =============================================
   const handleView = async (item, type) => {
     setLoading(true);
     try {
@@ -252,6 +256,60 @@ const MPharm = () => {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
+      // ========== MOBILE / TABLET DETECTION ==========
+      const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
+      
+      if (isMobileOrTablet) {
+        // Mobile/Tablet: Direct download or Google Docs Viewer
+        if (blob.type === "application/pdf") {
+          // Try Google Docs Viewer (best for mobile)
+          const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(blobUrl)}&embedded=true`;
+          
+          const newWindow = window.open();
+          if (newWindow) {
+            newWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <title>${item.title || 'Document'}</title>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+                    iframe { width: 100%; height: 100%; border: none; }
+                  </style>
+                </head>
+                <body>
+                  <iframe src="${googleViewerUrl}"></iframe>
+                </body>
+              </html>
+            `);
+            newWindow.document.close();
+          } else {
+            // Popup blocked - download karo
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = item.fileName || `${item.title}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert("📄 PDF downloaded! Please check your downloads folder.");
+          }
+        } else {
+          // Non-PDF files: download karo
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = item.fileName || `${item.title}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        setLoading(false);
+        return;
+      }
+      
+      // ========== DESKTOP / LAPTOP - Original code ==========
       const newWindow = window.open();
       if (!newWindow) {
         alert("Please allow popups to view files");

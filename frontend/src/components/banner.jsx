@@ -16,7 +16,11 @@ import students from "../assets/students.png";
 
 const Banner = () => {
   const navigate = useNavigate();
-  const [activeBanner, setActiveBanner] = useState(1);
+  
+  // 👇 Device ke hisaab se starting banner set karo
+  const [activeBanner, setActiveBanner] = useState(() => {
+    return window.innerWidth < 1024 ? 2 : 1;
+  });
 
   const [showCard, setShowCard] = useState(false);
   const [show1, setShow1] = useState(false);
@@ -45,8 +49,8 @@ const Banner = () => {
 
   // INITIAL EVENT
   useEffect(() => {
-    dispatchBannerChange(1);
-  }, []);
+    dispatchBannerChange(activeBanner);
+  }, [activeBanner]);
 
   // FIRST BANNER CARD ANIMATION
   useEffect(() => {
@@ -86,11 +90,67 @@ const Banner = () => {
       className="w-full overflow-hidden relative min-h-[500px] sm:min-h-[600px] md:min-h-[650px] lg:min-h-[700px] pt-[72px]"
     >
 
+      {/* ================= SECOND BANNER (D.PHARM) ================= */}
+      <div
+        className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#063b47] via-[#0b5c60] to-[#1aa19d] px-4 sm:px-8 md:px-16 py-6 sm:py-12 md:py-16 flex flex-col lg:flex-row items-center justify-center overflow-y-auto lg:overflow-hidden
+        transition-all duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform
+        ${activeBanner === 2 ? "translate-x-0 opacity-100 z-20" : "-translate-x-full opacity-0 z-10"}
+        lg:${activeBanner === 2 ? "translate-x-0 opacity-100 z-20" : "translate-x-full opacity-0 z-10"}`}
+      >
+
+        {/* LEFT CONTENT */}
+        <div className="w-full lg:w-1/2 max-w-[620px] text-white z-10 text-center lg:text-left px-4 lg:px-0 mb-2 sm:mb-4 lg:mb-0 pt-14 sm:pt-18 lg:pt-20">
+          <div className="overflow-hidden">
+            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[64px] xl:text-[72px] lg:leading-[1.2] font-black font-['Inter'] mb-3 sm:mb-6 tracking-tight">
+              Smarter AI <br className="hidden sm:block" />
+              Healthcare Starts <br className="hidden sm:block" />
+              With <span className="text-[#d9ff63] inline-block animate-bounce-subtle">PharmaVerse</span>
+            </h1>
+          </div>
+
+          <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-[#d7f9f5] mb-3 sm:mb-6 max-w-[560px] mx-auto lg:mx-0 font-medium">
+            PharmaVerse is an AI-powered medical learning platform
+            built to transform pharmacy education into smart,
+            actionable learning insights.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-5 flex-wrap">
+            <button 
+              onClick={handleDPharmNotes}
+              className="group bg-[#d9ff63] text-gray-900 px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
+              <BookOpen size={18} className="sm:w-5 sm:h-5" />
+              Download Notes
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button 
+              onClick={handleDPharmVideos}
+              className="group bg-white/10 border border-white/30 backdrop-blur-md text-white px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg hover:bg-white/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto justify-center"
+            >
+              <Video size={18} className="sm:w-5 sm:h-5" />
+              Watch Practical Videos
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        {/* RIGHT IMAGE */}
+<div className="w-full lg:w-1/2 h-full flex items-center justify-center lg:items-end lg:justify-end">
+  <img
+    src={students}
+    alt="Students"
+   className="w-full h-full object-contain object-center lg:object-cover drop-shadow-xl transition-transform duration-500 translate-x-8 translate-y-6 lg:translate-x-16 lg:translate-y-18"
+  />
+</div>
+      </div>
+
       {/* ================= FIRST BANNER (B.PHARM) ================= */}
       <div
         className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#e9f9f7] via-white to-[#f0fdfa] px-4 sm:px-8 md:px-12 py-6 sm:py-12 md:py-16 flex flex-col lg:flex-row items-center justify-center overflow-y-auto lg:overflow-hidden
         transition-all duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform
-        ${activeBanner === 1 ? "translate-x-0 opacity-100 z-20" : "-translate-x-full opacity-0 z-10"}`}
+        ${activeBanner === 1 ? "translate-x-0 opacity-100 z-20" : "translate-x-full opacity-0 z-10"}
+        lg:${activeBanner === 1 ? "translate-x-0 opacity-100 z-20" : "translate-x-full opacity-0 z-10"}`}
       >
 
         {/* LEFT CONTENT */}
@@ -130,7 +190,7 @@ const Banner = () => {
           </div>
         </div>
 
-        {/* RIGHT SIDE - Image (Hidden on phone) + Stats Card */}
+        {/* RIGHT SIDE - Image + Stats Card */}
         <div className="w-full lg:w-1/2 flex flex-col items-center justify-center gap-4 mt-4 sm:mt-8 lg:mt-0 lg:flex-row">
           
           {/* IMAGE - Hidden on phone, visible on tablet+ */}
@@ -140,7 +200,7 @@ const Banner = () => {
             className="hidden sm:block w-[200px] sm:w-[340px] md:w-[380px] lg:w-[400px] xl:w-[450px] object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500"
           />
 
-          {/* STATS CARD - Visible on all screens */}
+          {/* STATS CARD */}
           <div
             className={`bg-white/95 backdrop-blur-sm shadow-2xl w-[200px] sm:w-[240px] md:w-[260px] p-4 sm:p-5 rounded-3xl border border-white/50 transition-all duration-1000
             ${showCard ? "opacity-100 translate-x-0" : "opacity-0 translate-x-20"}`}
@@ -187,60 +247,6 @@ const Banner = () => {
         </div>
       </div>
 
-      {/* ================= SECOND BANNER (D.PHARM) ================= */}
-      <div
-        className={`absolute top-0 left-0 w-full h-full bg-gradient-to-br from-[#063b47] via-[#0b5c60] to-[#1aa19d] px-4 sm:px-8 md:px-16 py-6 sm:py-12 md:py-16 flex flex-col lg:flex-row items-center justify-center overflow-y-auto lg:overflow-hidden
-        transition-all duration-[1400ms] ease-[cubic-bezier(0.22,1,0.36,1)] transform-gpu will-change-transform
-        ${activeBanner === 2 ? "translate-x-0 opacity-100 z-20" : "-translate-x-full opacity-0 z-10"}`}
-      >
-
-        {/* LEFT CONTENT - HEADER LINES JHA HAI WHAI RHE */}
-        <div className="w-full lg:w-1/2 max-w-[620px] text-white z-10 text-center lg:text-left px-4 lg:px-0 mb-2 sm:mb-4 lg:mb-0 pt-14 sm:pt-18 lg:pt-20">
-          <div className="overflow-hidden">
-            <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[64px] xl:text-[72px] lg:leading-[1.2] font-black font-['Inter'] mb-3 sm:mb-6 tracking-tight">
-              Smarter AI <br className="hidden sm:block" />
-              Healthcare Starts <br className="hidden sm:block" />
-              With <span className="text-[#d9ff63] inline-block animate-bounce-subtle">PharmaVerse</span>
-            </h1>
-          </div>
-
-          <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-[#d7f9f5] mb-3 sm:mb-6 max-w-[560px] mx-auto lg:mx-0 font-medium">
-            PharmaVerse is an AI-powered medical learning platform
-            built to transform pharmacy education into smart,
-            actionable learning insights.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-2 sm:gap-5 flex-wrap">
-            <button 
-              onClick={handleDPharmNotes}
-              className="group bg-[#d9ff63] text-gray-900 px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg hover:scale-105 transition-all duration-300 shadow-xl hover:shadow-2xl flex items-center gap-2 w-full sm:w-auto justify-center"
-            >
-              <BookOpen size={18} className="sm:w-5 sm:h-5" />
-              Download Notes
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            <button 
-              onClick={handleDPharmVideos}
-              className="group bg-white/10 border border-white/30 backdrop-blur-md text-white px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg hover:bg-white/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto justify-center"
-            >
-              <Video size={18} className="sm:w-5 sm:h-5" />
-              Watch Practical Videos
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT IMAGE - UPER */}
-        <div className="w-full lg:w-1/2 flex justify-center items-center mt-4">
-          <img
-            src={students}
-            alt="Students"
-            className="w-[320px] sm:w-[520px] md:w-[620px] lg:w-[750px] xl:w-[850px] 2xl:w-[950px] object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500"
-          />
-        </div>
-      </div>
-
       {/* GLOBAL ANIMATIONS */}
       <style>{`
         @keyframes fadeInUp {
@@ -276,4 +282,4 @@ const Banner = () => {
   );
 };
 
-export default Banner;
+export default Banner;  

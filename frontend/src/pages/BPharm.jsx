@@ -95,7 +95,7 @@ const BPharm = () => {
     });
   };
 
-  // Single click toggle - turant open/close hoga (same as first file)
+  // Single click toggle - turant open/close hoga
   const handleSemesterClick = (semester, type) => {
     setOpenSemester(prev => ({
       ...prev,
@@ -103,7 +103,7 @@ const BPharm = () => {
     }));
   };
 
-  // ========== API CALLS (LOCALHOST ONLY - NO DYNAMIC URL) ==========
+  // ========== API CALLS ==========
   const fetchNotes = async () => {
     try {
       const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/notes?course=B.Pharm");
@@ -221,6 +221,10 @@ const BPharm = () => {
     fetchPremiumPrice();
   }, []);
 
+  // =============================================
+  // ========== FIXED handleView ==========
+  // Mobile/Tablet par PDF open karne ka solution
+  // =============================================
   const handleView = async (item, type) => {
     setLoading(true);
     try {
@@ -257,6 +261,60 @@ const BPharm = () => {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
+      // ========== MOBILE / TABLET DETECTION ==========
+      const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
+      
+      if (isMobileOrTablet) {
+        // Mobile/Tablet: Direct download or Google Docs Viewer
+        if (blob.type === "application/pdf") {
+          // Try Google Docs Viewer (best for mobile)
+          const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(blobUrl)}&embedded=true`;
+          
+          const newWindow = window.open();
+          if (newWindow) {
+            newWindow.document.write(`
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <title>${item.title || 'Document'}</title>
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <style>
+                    body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; }
+                    iframe { width: 100%; height: 100%; border: none; }
+                  </style>
+                </head>
+                <body>
+                  <iframe src="${googleViewerUrl}"></iframe>
+                </body>
+              </html>
+            `);
+            newWindow.document.close();
+          } else {
+            // Popup blocked - download karo
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = item.fileName || `${item.title}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            alert("📄 PDF downloaded! Please check your downloads folder.");
+          }
+        } else {
+          // Non-PDF files: download karo
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = item.fileName || `${item.title}.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        setLoading(false);
+        return;
+      }
+      
+      // ========== DESKTOP / LAPTOP - Original code ==========
       const newWindow = window.open();
       if (!newWindow) {
         alert("Please allow popups to view files");
@@ -505,7 +563,7 @@ const BPharm = () => {
     { id: "papers", label: "Premium Papers", icon: Brain },
   ];
 
-  // Render Functions (same as first file)
+  // Render Functions
   const renderFreeCard = (item, type, icon, index) => {
     const Icon = icon;
     const cardId = `${type}-${item._id}`;
@@ -888,13 +946,12 @@ const BPharm = () => {
     );
   };
 
-  // ========== SEMESTER CARDS SECTION - SINGLE CLICK OPEN (Same as first file) ==========
+  // ========== SEMESTER CARDS SECTION - SINGLE CLICK OPEN ==========
   const renderSemesterSection = (title, data, type, renderCard, icon, semesters = [1,2,3,4,5,6,7,8]) => {
     const hasData = semesters.some(sem => data[sem] && data[sem].length > 0);
     
     if (!hasData) return null;
     
-    // Filter semesters that have data
     const activeSemesters = semesters.filter(sem => data[sem] && data[sem].length > 0);
     
     return (
@@ -904,7 +961,6 @@ const BPharm = () => {
           {title}
         </h3>
         
-        {/* Semester Cards Grid - Responsive for mobile */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4 mb-8">
           {activeSemesters.map(sem => {
             const items = data[sem] || [];
@@ -923,24 +979,20 @@ const BPharm = () => {
                     ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-2xl' 
                     : 'bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl text-gray-700'
                 }`}>
-                  {/* Animated Background */}
                   <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   
-                  {/* Semester Number */}
                   <div className={`text-3xl sm:text-4xl font-bold mb-1 sm:mb-2 ${
                     isOpen ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'
                   }`}>
                     {sem}
                   </div>
                   
-                  {/* Semester Label */}
                   <div className={`text-[10px] sm:text-xs font-medium ${
                     isOpen ? 'text-purple-200' : 'text-gray-500'
                   }`}>
                     Semester
                   </div>
                   
-                  {/* Item Count Badge */}
                   <div className={`mt-2 sm:mt-3 inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
                     isOpen 
                       ? 'bg-white/20 text-white' 
@@ -950,7 +1002,6 @@ const BPharm = () => {
                     <span>{items.length} PDFs</span>
                   </div>
                   
-                  {/* Bottom Indicator */}
                   <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transform transition-transform duration-300 ${
                     isOpen ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
                   }`}></div>
@@ -960,7 +1011,6 @@ const BPharm = () => {
           })}
         </div>
         
-        {/* Content Section - Shows when semester card is clicked */}
         {activeSemesters.map(sem => {
           const items = data[sem] || [];
           const isOpen = openSemester[`${type}-${sem}`] === true;
@@ -1013,7 +1063,6 @@ const BPharm = () => {
       animation: fadeIn 0.5s ease-out forwards;
     }
     
-    /* ========== RESPONSIVE STYLES FOR MOBILE ========== */
     @media (max-width: 768px) {
       .hero-title {
         font-size: 2rem;
@@ -1044,7 +1093,6 @@ const BPharm = () => {
       }
     }
     
-    /* Mobile responsive grid adjustments */
     @media (max-width: 640px) {
       .grid-cols-2 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1064,7 +1112,7 @@ const BPharm = () => {
         </div>
       )}
 
-      {/* Premium Banner - Responsive */}
+      {/* Premium Banner */}
       {!isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
           <button
@@ -1088,7 +1136,7 @@ const BPharm = () => {
         </div>
       )}
 
-      {/* HERO SECTION - Responsive */}
+      {/* HERO SECTION */}
       <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <div className="relative h-[300px] sm:h-[360px] md:h-[520px] w-full">
           <div 
@@ -1115,11 +1163,10 @@ const BPharm = () => {
         </div>
       </div>
 
-      {/* TABS SECTION - Responsive Scrollable for Mobile */}
+      {/* TABS SECTION */}
       <div className="w-full bg-white">
         <div className="w-full min-h-[120px] sm:min-h-[150px] bg-gradient-to-b from-[#f3fbff] via-white to-[#f8fcff] border-b border-sky-100 flex items-center justify-center">
           <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6">
-            {/* Mobile: Horizontal Scroll, Desktop: Wrap */}
             <div className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-5 overflow-x-auto pb-3 sm:pb-0 hide-scrollbar">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1148,7 +1195,7 @@ const BPharm = () => {
         </div>
       </div>
 
-      {/* MAIN CONTENT - Responsive Padding */}
+      {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
         
         {/* NOTES SECTION - Free Materials */}
@@ -1264,7 +1311,6 @@ const BPharm = () => {
         </div>
       </div>
 
-      {/* Hide scrollbar for mobile tabs */}
       <style>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
