@@ -1033,5 +1033,62 @@ router.delete("/subadmins/:id", adminAuth, async (req, res) => {
     });
   }
 });
+// ================= REGISTER SUB ADMIN =================
+router.post("/register-subadmin", adminAuth, async (req, res) => {
+  try {
+    const { name, email, password, permissions } = req.body;
+
+    const exists = await Admin.findOne({ email });
+
+    if (exists) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin already exists",
+      });
+    }
+
+    const admin = new Admin({
+      name,
+      email,
+      password,
+      role: "sub_admin",
+      permissions: {
+        courses: Array.isArray(permissions) ? permissions : [],
+      },
+      createdBy: req.admin.id,
+    });
+
+    await admin.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Sub Admin created successfully",
+      admin,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+// ================= GET ALL NORMAL USERS =================
+router.get("/users", adminAuth, async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      users,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
 
 module.exports = router;
