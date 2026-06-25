@@ -143,10 +143,24 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
     
-    const isMatch = await admin.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
-    }
+    let isMatch = false;
+
+// .env Super Admin
+if (
+  admin.email === process.env.ADMIN_EMAIL &&
+  password === process.env.ADMIN_PASSWORD
+) {
+  isMatch = true;
+} else {
+  isMatch = await admin.comparePassword(password);
+}
+
+if (!isMatch) {
+  return res.status(401).json({
+    success: false,
+    message: "Invalid credentials"
+  });
+}
     
     admin.lastLogin = new Date();
     await admin.save();
