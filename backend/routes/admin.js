@@ -9,6 +9,7 @@ const Paper = require("../models/Paper");
 const FreeMaterial = require("../models/FreeMaterial");
 const Notice = require("../models/Notice");
 const { authMiddleware, isAdmin, hasCoursePermission } = require("../middleware/auth");
+const Payment = require("../models/Payment");
 
 const router = express.Router();
 router.use((req, res, next) => {
@@ -345,7 +346,6 @@ router.post("/paid-pdfs", adminAuth, checkPermission('course'), async (req, res)
     });
   }
 });
-
 router.delete("/paid-pdfs/:id", adminAuth, async (req, res) => {
   try {
     const pdf = await PaidPDF.findById(req.params.id);
@@ -547,7 +547,27 @@ router.get("/revenue-stats", adminAuth, async (req, res) => {
       paidPDFs.reduce((sum, item) => sum + (item.downloadCount || 0), 0) +
       papers.reduce((sum, item) => sum + (item.downloadCount || 0), 0);
     
-    const monthlyRevenue = paidPDFs.reduce((sum, pdf) => sum + (pdf.price || 0), 0);
+    const startOfMonth = new Date();
+startOfMonth.setDate(1);
+startOfMonth.setHours(0, 0, 0, 0);
+
+const revenueResult = await Payment.aggregate([
+  {
+    $match: {
+      status: "success",
+      createdAt: { $gte: startOfMonth }
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      total: { $sum: "$amount" }
+    }
+  }
+]);
+
+const monthlyRevenue =
+  revenueResult.length > 0 ? revenueResult[0].total : 0;
     
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -1129,6 +1149,7 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
     });
   }
 });
+
 // ================= ADMIN PROFILE =================
 router.get("/profile", adminAuth, async (req, res) => {
   try {
