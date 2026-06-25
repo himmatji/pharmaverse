@@ -11,6 +11,10 @@ const Notice = require("../models/Notice");
 const { authMiddleware, isAdmin, hasCoursePermission } = require("../middleware/auth");
 
 const router = express.Router();
+router.use((req, res, next) => {
+  console.log("🔥 ADMIN ROUTER HIT:", req.method, req.originalUrl);
+  next();
+});
 const JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_key";
 
 // ================= ADMIN AUTH MIDDLEWARE (FIXED) =================
@@ -1090,5 +1094,30 @@ router.get("/users", adminAuth, async (req, res) => {
     });
   }
 });
+// ================= DELETE USER =================
+router.delete("/users/:id", adminAuth, async (req, res) => {
+  try {
+    const deletedUser = await User.findByIdAndDelete(req.params.id);
+
+    if (!deletedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "User deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 
 module.exports = router;

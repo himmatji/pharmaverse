@@ -65,6 +65,14 @@ app.get("/api/collections", async (req, res) => {
 // ================= ROUTES =================
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
+console.log("✅ Admin router mounted");
+
+console.log(
+  adminRoutes.stack.map((r) => ({
+    path: r.route?.path,
+    methods: r.route?.methods,
+  }))
+);
 app.use("/api/payment", paymentRoutes); // 🔥 PAYMENT ROUTES REGISTER KARO
 
 // ================= FIXED: 404 Handler =================
@@ -112,14 +120,14 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log("\n=================================");
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📍 URL: http://localhost:${PORT}`);
+  console.log(`📍 URL: http://api.pharmaverse.co.in:${PORT}`);
   console.log("=================================");
   console.log("\n📡 Available Endpoints:");
-  console.log(`   🔐 Auth API: http://localhost:${PORT}/api/auth`);
-  console.log(`   👑 Admin API: http://localhost:${PORT}/api/admin`);
-  console.log(`   💳 Payment API: http://localhost:${PORT}/api/payment`);
-  console.log(`   📄 Test: http://localhost:${PORT}/`);
-  console.log(`   📚 Collections: http://localhost:${PORT}/api/collections`);
+  console.log(`   🔐 Auth API: http://api.pharmaverse.co.in:${PORT}/api/auth`);
+  console.log(`   👑 Admin API: http://api.pharmaverse.co.in:${PORT}/api/admin`);
+  console.log(`   💳 Payment API: http://api.pharmaverse.co.in:${PORT}/api/payment`);
+  console.log(`   📄 Test: http://api.pharmaverse.co.in:${PORT}/`);
+  console.log(`   📚 Collections: http://api.pharmaverse.co.in:${PORT}/api/collections`);
   console.log("\n=================================\n");
 });
 
