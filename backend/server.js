@@ -128,9 +128,9 @@ process.on("SIGINT", () => {
   console.log("\n🛑 Shutting down server...");
   server.close(() => {
     console.log("✅ Server closed");
-    mongoose.connection.close(() => {
-      console.log("✅ MongoDB connection closed");
-      process.exit(0);
-    });
+    mongoose.connection.close().then(() => {
+  console.log("✅ MongoDB connection closed");
+  process.exit(0);
+});
   });
 });
