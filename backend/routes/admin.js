@@ -326,12 +326,23 @@ router.get("/paid-pdfs", adminAuth, async (req, res) => {
 
 router.post("/paid-pdfs", adminAuth, checkPermission('course'), async (req, res) => {
   try {
+
+    console.log("========== PAID PDF ==========");
+    console.log(req.body);
+
     const paidPDF = new PaidPDF(req.body);
     await paidPDF.save();
+
     res.status(201).json({ success: true, message: "PDF Added" });
+
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: "Server Error" });
+    console.log("ERROR =", error);
+    console.log("BODY =", req.body);
+
+    res.status(500).json({
+      message: "Server Error",
+      error: error.message
+    });
   }
 });
 
