@@ -944,4 +944,94 @@ router.get("/public-price", async (req, res) => {
   }
 });
 
+// ================= GET ALL SUB ADMINS =================
+router.get("/subadmins", adminAuth, async (req, res) => {
+  try {
+    const subAdmins = await Admin.find({ role: "sub_admin" })
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      subAdmins,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+// ================= UPDATE SUB ADMIN =================
+router.put("/subadmins/:id", adminAuth, async (req, res) => {
+  try {
+    const { name, email, permissions, isActive } = req.body;
+
+    const updatedAdmin = await Admin.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        role: "sub_admin",
+      },
+      {
+        name,
+        email,
+        permissions: {
+          courses: Array.isArray(permissions) ? permissions : [],
+        },
+        isActive,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).select("-password");
+
+    if (!updatedAdmin) {
+      return res.status(404).json({
+        success: false,
+        message: "Sub Admin not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Sub Admin updated successfully",
+      admin: updatedAdmin,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+// ================= DELETE SUB ADMIN =================
+router.delete("/subadmins/:id", adminAuth, async (req, res) => {
+  try {
+    const deleted = await Admin.findOneAndDelete({
+      _id: req.params.id,
+      role: "sub_admin",
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Sub Admin not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Sub Admin deleted successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 module.exports = router;

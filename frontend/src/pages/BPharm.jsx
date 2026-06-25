@@ -1209,7 +1209,7 @@ const BPharm = () => {
           {notes.length > 0 && (
             <>
               <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
-                <span>📚</span> Free Notes & PDFs
+                <span></span> Free Notes & PDFs
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
                 {notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}
@@ -1220,7 +1220,7 @@ const BPharm = () => {
           {freeVideos.length > 0 && (
             <>
               <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
-                <span>🎬</span> Free Video Lectures
+                <span></span> Free Video Lectures
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                 {freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}
@@ -1231,7 +1231,7 @@ const BPharm = () => {
           {freePapers.length > 0 && (
             <>
               <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">
-                <span>📝</span> Free Practice Papers
+                <span></span> Free Practice Papers
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}

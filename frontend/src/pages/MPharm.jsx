@@ -1188,7 +1188,7 @@ const MPharm = () => {
           
           {notes.length > 0 && (
             <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">📚 Free Notes & PDFs</h3>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800"> Free Notes & PDFs</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
                 {notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}
               </div>
@@ -1197,7 +1197,7 @@ const MPharm = () => {
 
           {freeVideos.length > 0 && (
             <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">🎬 Free Video Lectures</h3>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800"> Free Video Lectures</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                 {freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}
               </div>
@@ -1206,7 +1206,7 @@ const MPharm = () => {
 
           {freePapers.length > 0 && (
             <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">📝 Free Practice Papers</h3>
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800"> Free Practice Papers</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}
               </div>
