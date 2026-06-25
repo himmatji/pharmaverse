@@ -1129,6 +1129,30 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
     });
   }
 });
+// ================= ADMIN PROFILE =================
+router.get("/profile", adminAuth, async (req, res) => {
+  try {
+    const admin = await Admin.findById(req.admin.id).select("-password");
+
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Admin not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      admin,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+});
 
 
 module.exports = router;
