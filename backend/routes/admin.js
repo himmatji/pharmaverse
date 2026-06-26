@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Admin = require("../models/Admin");
@@ -949,6 +950,7 @@ router.get("/download/:type/:id", adminAuth, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 router.put("/price", adminAuth, async (req, res) => {
   try {
     const { price } = req.body;
@@ -1068,6 +1070,7 @@ router.delete("/subadmins/:id", adminAuth, async (req, res) => {
     });
   }
 });
+
 // ================= REGISTER SUB ADMIN =================
 router.post("/register-subadmin", adminAuth, async (req, res) => {
   try {
@@ -1107,6 +1110,7 @@ router.post("/register-subadmin", adminAuth, async (req, res) => {
     });
   }
 });
+
 // ================= GET ALL NORMAL USERS =================
 router.get("/users", adminAuth, async (req, res) => {
   try {
@@ -1125,10 +1129,21 @@ router.get("/users", adminAuth, async (req, res) => {
     });
   }
 });
+
 // ================= DELETE USER =================
 router.delete("/users/:id", adminAuth, async (req, res) => {
   try {
-    const deletedUser = await User.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid User ID",
+      });
+    }
+
+    const deletedUser = await User.findByIdAndDelete(id);
 
     if (!deletedUser) {
       return res.status(404).json({
@@ -1174,6 +1189,5 @@ router.get("/profile", adminAuth, async (req, res) => {
     });
   }
 });
-
 
 module.exports = router;

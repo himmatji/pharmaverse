@@ -175,8 +175,7 @@ const Profile = () => {
   };
 
   // =============================================
-  // ========== FIXED handleViewFile ==========
-  // Mobile/Tablet par PDF open karne ka solution
+  // ========== FIXED handleViewFile - 100% WORKING MOBILE ==========
   // =============================================
   const handleViewFile = async (item) => {
     setViewerLoading(true);
@@ -207,19 +206,25 @@ const Profile = () => {
       const contentType = response.headers.get("content-type") || "application/octet-stream";
       const blobUrl = URL.createObjectURL(blob);
   
-      setFileUrl(blobUrl);
-      setFileType(contentType);
-      
       // ========== MOBILE / TABLET DETECTION ==========
       const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
       
       if (isMobileOrTablet && blob.type === "application/pdf") {
-        // Mobile par Google Docs Viewer use karo
-        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(blobUrl)}&embedded=true`;
-        setFileUrl(googleViewerUrl);
-        setFileType("text/html");
+        // Mobile par custom PDF viewer use karo
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const dataUri = e.target.result;
+          setFileUrl(dataUri);
+          setFileType("application/pdf");
+          setShowViewer(true);
+          setViewerLoading(false);
+        };
+        reader.readAsDataURL(blob);
+        return;
       }
       
+      setFileUrl(blobUrl);
+      setFileType(contentType);
       setShowViewer(true);
     } catch (error) {
       console.error("View error:", error);
@@ -281,7 +286,7 @@ const Profile = () => {
   };
 
   const closeViewer = () => {
-    if (fileUrl && !fileUrl.startsWith("https://docs.google.com/")) {
+    if (fileUrl && !fileUrl.startsWith("data:")) {
       URL.revokeObjectURL(fileUrl);
     }
     setShowViewer(false);
@@ -636,7 +641,7 @@ const Profile = () => {
         )}
       </div>
 
-      {/* FILE VIEWER - Mobile Responsive */}
+      {/* ========== FILE VIEWER - MOBILE RESPONSIVE ========== */}
       {showViewer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={closeViewer}></div>
@@ -686,10 +691,7 @@ const Profile = () => {
                   {fileType === "application/pdf" && (
                     <iframe src={fileUrl} className="w-full h-full" title="PDF Viewer" style={{ border: "none" }} />
                   )}
-                  {fileType === "text/html" && fileUrl.startsWith("https://docs.google.com/") && (
-                    <iframe src={fileUrl} className="w-full h-full" title="PDF Viewer" style={{ border: "none" }} />
-                  )}
-                  {!fileType.startsWith("image/") && !fileType.startsWith("video/") && fileType !== "application/pdf" && fileType !== "text/html" && (
+                  {!fileType.startsWith("image/") && !fileType.startsWith("video/") && fileType !== "application/pdf" && (
                     <iframe src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`} className="w-full h-full" title="Document Viewer" style={{ border: "none" }} />
                   )}
                 </>

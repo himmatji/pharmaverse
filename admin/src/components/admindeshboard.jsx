@@ -36,10 +36,8 @@ import {
   TrendingUp as TrendingUpIcon
 } from "lucide-react";
 
-// ========== ONLY LOCALHOST - NO DYNAMIC URL ==========
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
 
-// ========== COURSE CONFIG - SEMESTER/YEAR/LANGUAGE OPTIONS ==========
 const COURSE_CONFIG = {
   "B.Pharm": {
     type: "semester",
@@ -108,6 +106,9 @@ const COURSE_CONFIG = {
 const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
 };
+
+// ========== MAX FILE SIZE: 50MB ==========
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -217,7 +218,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   }, []);
 
-  // ==================== FILTER FUNCTIONS ====================
   const getFilteredNotes = () => {
     if (isSuperAdmin) return notes;
     return notes.filter(note => allowedCourses.includes(note.course));
@@ -358,7 +358,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     fetchAllData();
   }, []);
 
-  // ========== HELPER: Reset semester/year/language when course changes ==========
   const handleCourseChange = (formType, course) => {
     const resetData = { semester: "", year: "", language: "" };
     
@@ -377,7 +376,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== RENDER SEMESTER/YEAR + LANGUAGE DROPDOWNS ==========
   const renderSemesterYearLanguageDropdowns = (formType, formData, setFormData) => {
     const config = getCourseOptions(formData.course);
     const isSemester = config.type === "semester";
@@ -413,10 +411,60 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     );
   };
 
-  // ==================== FREE PDF UPLOAD ====================
+  // =============================================
+  // ========== FIXED FILE UPLOAD FUNCTIONS ==========
+  // =============================================
+
+  // Compress image before upload (thumbnail)
+  const compressImage = (file, maxWidth = 400, maxHeight = 400) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+          
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Quality 0.7 for smaller size
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // ========== FREE PDF UPLOAD - FIXED ==========
   const handleNoteFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds maximum limit of 50MB. Please upload a smaller file.`);
+        e.target.value = '';
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setNoteForm({
@@ -431,14 +479,21 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  const handleNoteThumbnail = (e) => {
+  const handleNoteThumbnail = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNoteForm({ ...noteForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setNoteForm({ ...noteForm, thumbnail: compressed });
+      } catch (error) {
+        console.error("Thumbnail compression error:", error);
+        // Fallback: read as is
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setNoteForm({ ...noteForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -448,69 +503,38 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
+      
+      // Validate file data
+      if (!noteForm.fileData) {
+        alert("Please upload a file first");
+        setUploading(false);
+        return;
+      }
+      
       await axios.post(`${API_URL}/notes`, noteForm, headers);
       setShowModal({ type: null, open: false });
       setNoteForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
       fetchAllData();
       alert("✅ Free PDF uploaded successfully!");
     } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.message || "Upload failed");
+      console.error("Upload error:", error);
+      const msg = error.response?.data?.message || error.message || "Upload failed";
+      alert(`❌ Upload failed: ${msg}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // ==================== FREE VIDEO UPLOAD ====================
-  const handleFreeVideoThumbnail = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFreeVideoForm({ ...freeVideoForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFreeVideoSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      await axios.post(
-        `${API_URL}/videos`,
-        {
-          ...freeVideoForm,
-          isPremium: false,
-        },
-        headers
-      );
-      setShowModal({ type: null, open: false });
-      setFreeVideoForm({
-        title: "",
-        description: "",
-        course: "B.Pharm",
-        semester: "", year: "", language: "",
-        videoUrl: "",
-        thumbnail: "",
-        isPremium: false
-      });
-      fetchAllData();
-      alert("✅ Free Video added successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // ==================== FREE PAPER UPLOAD ====================
+  // ========== FREE PAPER UPLOAD - FIXED ==========
   const handleFreePaperFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds maximum limit of 50MB.`);
+        e.target.value = '';
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setFreePaperForm({
@@ -525,14 +549,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  const handleFreePaperThumbnail = (e) => {
+  const handleFreePaperThumbnail = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFreePaperForm({ ...freePaperForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setFreePaperForm({ ...freePaperForm, thumbnail: compressed });
+      } catch (error) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFreePaperForm({ ...freePaperForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -542,30 +571,36 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
-      await axios.post(
-        `${API_URL}/papers`,
-        {
-          ...freePaperForm,
-          isPremium: false,
-        },
-        headers
-      );
+      
+      if (!freePaperForm.fileData) {
+        alert("Please upload a file first");
+        setUploading(false);
+        return;
+      }
+      
+      await axios.post(`${API_URL}/papers`, { ...freePaperForm, isPremium: false }, headers);
       setShowModal({ type: null, open: false });
       setFreePaperForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", difficulty: "Medium", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
       fetchAllData();
       alert("✅ Free Paper uploaded successfully!");
     } catch (error) {
       console.error(error);
-      alert("Upload failed");
+      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // ==================== PAID PDF UPLOAD - WITHOUT PRICE ====================
+  // ========== PAID PDF UPLOAD - FIXED ==========
   const handlePdfFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds maximum limit of 50MB.`);
+        e.target.value = '';
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setPdfForm({
@@ -580,14 +615,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  const handlePdfThumbnail = (e) => {
+  const handlePdfThumbnail = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPdfForm({ ...pdfForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setPdfForm({ ...pdfForm, thumbnail: compressed });
+      } catch (error) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPdfForm({ ...pdfForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -597,6 +637,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
+      
+      if (!pdfForm.fileData) {
+        alert("Please upload a file first");
+        setUploading(false);
+        return;
+      }
+      
       await axios.post(`${API_URL}/paid-pdfs`, pdfForm, headers);
       setShowModal({ type: null, open: false });
       setPdfForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
@@ -604,62 +651,22 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("✅ Paid PDF uploaded successfully!");
     } catch (error) {
       console.error(error);
-      alert("Upload failed");
+      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
     } finally {
       setUploading(false);
     }
   };
 
-  // ==================== PREMIUM VIDEO UPLOAD ====================
-  const handlePremiumVideoThumbnail = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPremiumVideoForm({ ...premiumVideoForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePremiumVideoSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      await axios.post(
-        `${API_URL}/videos`,
-        {
-          ...premiumVideoForm,
-          isPremium: true,
-        },
-        headers
-      );
-      setShowModal({ type: null, open: false });
-      setPremiumVideoForm({
-        title: "",
-        description: "",
-        course: "B.Pharm",
-        semester: "", year: "", language: "",
-        videoUrl: "",
-        thumbnail: "",
-        isPremium: true
-      });
-      fetchAllData();
-      alert("✅ Premium Video added successfully!");
-    } catch (error) {
-      console.error(error);
-      alert("Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  // ==================== PREMIUM PAPER UPLOAD ====================
+  // ========== PREMIUM PAPER UPLOAD - FIXED ==========
   const handlePremiumPaperFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File size (${(file.size / 1024 / 1024).toFixed(2)} MB) exceeds maximum limit of 50MB.`);
+        e.target.value = '';
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onloadend = () => {
         setPremiumPaperForm({
@@ -674,14 +681,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  const handlePremiumPaperThumbnail = (e) => {
+  const handlePremiumPaperThumbnail = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPremiumPaperForm({ ...premiumPaperForm, thumbnail: reader.result });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setPremiumPaperForm({ ...premiumPaperForm, thumbnail: compressed });
+      } catch (error) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPremiumPaperForm({ ...premiumPaperForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
     }
   };
 
@@ -691,21 +703,123 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
-      await axios.post(
-        `${API_URL}/papers`,
-        {
-          ...premiumPaperForm,
-          isPremium: true,
-        },
-        headers
-      );
+      
+      if (!premiumPaperForm.fileData) {
+        alert("Please upload a file first");
+        setUploading(false);
+        return;
+      }
+      
+      await axios.post(`${API_URL}/papers`, { ...premiumPaperForm, isPremium: true }, headers);
       setShowModal({ type: null, open: false });
       setPremiumPaperForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", difficulty: "Medium", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "", isPremium: true });
       fetchAllData();
       alert("✅ Premium Paper uploaded successfully!");
     } catch (error) {
       console.error(error);
-      alert("Upload failed");
+      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ========== FREE VIDEO UPLOAD (No file upload, only URL) ==========
+  const handleFreeVideoThumbnail = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setFreeVideoForm({ ...freeVideoForm, thumbnail: compressed });
+      } catch (error) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFreeVideoForm({ ...freeVideoForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const handleFreeVideoSubmit = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const headers = getAuthHeaders();
+      if (!headers) throw new Error("No token");
+      
+      if (!freeVideoForm.videoUrl) {
+        alert("Please enter a video URL");
+        setUploading(false);
+        return;
+      }
+      
+      await axios.post(`${API_URL}/videos`, { ...freeVideoForm, isPremium: false }, headers);
+      setShowModal({ type: null, open: false });
+      setFreeVideoForm({
+        title: "",
+        description: "",
+        course: "B.Pharm",
+        semester: "", year: "", language: "",
+        videoUrl: "",
+        thumbnail: "",
+        isPremium: false
+      });
+      fetchAllData();
+      alert("✅ Free Video added successfully!");
+    } catch (error) {
+      console.error(error);
+      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ========== PREMIUM VIDEO UPLOAD ==========
+  const handlePremiumVideoThumbnail = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const compressed = await compressImage(file, 300, 300);
+        setPremiumVideoForm({ ...premiumVideoForm, thumbnail: compressed });
+      } catch (error) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPremiumVideoForm({ ...premiumVideoForm, thumbnail: reader.result });
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
+
+  const handlePremiumVideoSubmit = async (e) => {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const headers = getAuthHeaders();
+      if (!headers) throw new Error("No token");
+      
+      if (!premiumVideoForm.videoUrl) {
+        alert("Please enter a video URL");
+        setUploading(false);
+        return;
+      }
+      
+      await axios.post(`${API_URL}/videos`, { ...premiumVideoForm, isPremium: true }, headers);
+      setShowModal({ type: null, open: false });
+      setPremiumVideoForm({
+        title: "",
+        description: "",
+        course: "B.Pharm",
+        semester: "", year: "", language: "",
+        videoUrl: "",
+        thumbnail: "",
+        isPremium: true
+      });
+      fetchAllData();
+      alert("✅ Premium Video added successfully!");
+    } catch (error) {
+      console.error(error);
+      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
     } finally {
       setUploading(false);
     }
@@ -845,7 +959,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           <div className="animate-fadeIn">
             <div className="mb-8">
               <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Dashboard Overview</h2>
-              <p className="text-gray-500 mt-2">Welcome back, {adminName}! Here's your real-time platform analytics</p>
+              <p className="text-gray-500 mt-2">Welcome , {adminName}! Here's your real-time platform analytics</p>
             </div>
             <div className="grid md:grid-cols-5 gap-6 mb-8">
               <StatCard title="Free Materials" value={stats.totalNotes} icon={FileText} color="from-blue-500 to-blue-700" />
@@ -904,7 +1018,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               <p className="text-gray-500 mt-1">Upload PDF, Video, or Paper - Sab FREE hoga students ke liye</p>
             </div>
 
-            {/* 3 Upload Cards */}
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               <div onClick={() => setShowModal({ type: "freePdf", open: true })} className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-6 text-white cursor-pointer hover:scale-105 transition-all duration-500">
                 <div className="flex items-center justify-between mb-4"><div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center"><FileText size={28} /></div><span className="text-2xl font-bold">{getFilteredNotes().length}</span></div>
@@ -926,7 +1039,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </div>
             </div>
 
-            {/* SHOW ALL FREE CONTENT */}
             {(getFilteredNotes().length === 0 && getFreeVideos().length === 0 && getFreePapers().length === 0) ? (
               <div className="bg-white rounded-2xl shadow-lg border p-16 text-center">
                 <div className="text-7xl mb-4">📭</div>
@@ -935,7 +1047,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </div>
             ) : (
               <>
-                {/* Free PDFs */}
                 {getFilteredNotes().length > 0 && (
                   <div className="mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><FileText size={24} className="text-blue-500" /> Free PDFs & Notes ({getFilteredNotes().length})</h3>
@@ -953,7 +1064,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     </div>
                   </div>
                 )}
-                {/* Free Videos */}
                 {getFreeVideos().length > 0 && (
                   <div className="mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Video size={24} className="text-red-500" /> Free Videos ({getFreeVideos().length})</h3>
@@ -972,7 +1082,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     </div>
                   </div>
                 )}
-                {/* Free Papers */}
                 {getFreePapers().length > 0 && (
                   <div className="mb-8">
                     <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2"><Brain size={24} className="text-green-500" /> Free Papers ({getFreePapers().length})</h3>
@@ -1089,8 +1198,18 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               
               {renderSemesterYearLanguageDropdowns("note", noteForm, setNoteForm)}
 
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-blue-600"><input type="file" accept="image/*" onChange={handleNoteThumbnail} className="hidden" />{noteForm.thumbnail ? <img src={noteForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-blue-600"><input type="file" onChange={handleNoteFileUpload} className="hidden" />{noteForm.fileName ? <div>📄 {noteForm.fileName}</div> : <div>📁 Upload PDF/DOC/PPT</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-blue-600">
+                  <input type="file" accept="image/*" onChange={handleNoteThumbnail} className="hidden" />
+                  {noteForm.thumbnail ? <img src={noteForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-blue-600">
+                  <input type="file" onChange={handleNoteFileUpload} className="hidden" />
+                  {noteForm.fileName ? <div className="text-green-600">✅ {noteForm.fileName} ({(noteForm.fileSize)})</div> : <div>📁 Upload PDF/DOC/PPT (Max 50MB)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">{uploading ? "Uploading..." : "Upload Free PDF"}</button>
             </form>
           </div>
@@ -1116,7 +1235,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               {renderSemesterYearLanguageDropdowns("freeVideo", freeVideoForm, setFreeVideoForm)}
 
               <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={freeVideoForm.videoUrl} onChange={(e) => setFreeVideoForm({...freeVideoForm, videoUrl: e.target.value})} required />
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-red-600"><input type="file" accept="image/*" onChange={handleFreeVideoThumbnail} className="hidden" />{freeVideoForm.thumbnail ? <img src={freeVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-red-600">
+                  <input type="file" accept="image/*" onChange={handleFreeVideoThumbnail} className="hidden" />
+                  {freeVideoForm.thumbnail ? <img src={freeVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition">{uploading ? "Uploading..." : "Upload Free Video"}</button>
             </form>
           </div>
@@ -1147,15 +1271,25 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Hard">Hard</option>
                 <option value="Expert">Expert</option>
               </select>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-green-600"><input type="file" accept="image/*" onChange={handleFreePaperThumbnail} className="hidden" />{freePaperForm.thumbnail ? <img src={freePaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-green-600"><input type="file" onChange={handleFreePaperFileUpload} className="hidden" />{freePaperForm.fileName ? <div>📄 {freePaperForm.fileName}</div> : <div>📁 Upload PDF</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-green-600">
+                  <input type="file" accept="image/*" onChange={handleFreePaperThumbnail} className="hidden" />
+                  {freePaperForm.thumbnail ? <img src={freePaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-green-600">
+                  <input type="file" onChange={handleFreePaperFileUpload} className="hidden" />
+                  {freePaperForm.fileName ? <div className="text-green-600">✅ {freePaperForm.fileName} ({(freePaperForm.fileSize)})</div> : <div>📁 Upload PDF (Max 50MB)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">{uploading ? "Uploading..." : "Upload Free Paper"}</button>
             </form>
           </div>
         </div>
       )}
 
-      {/* PAID PDF MODAL - WITHOUT PRICE FIELD */}
+      {/* PAID PDF MODAL */}
       {showModal.type === "paidPdf" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -1173,10 +1307,18 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               
               {renderSemesterYearLanguageDropdowns("paidPdf", pdfForm, setPdfForm)}
 
-              {/* ❌ PRICE FIELD REMOVED ❌ */}
-              
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-purple-600"><input type="file" accept="image/*" onChange={handlePdfThumbnail} className="hidden" />{pdfForm.thumbnail ? <img src={pdfForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-purple-600"><input type="file" onChange={handlePdfFileUpload} className="hidden" />{pdfForm.fileName ? <div>📄 {pdfForm.fileName}</div> : <div>📁 Upload PDF</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-purple-600">
+                  <input type="file" accept="image/*" onChange={handlePdfThumbnail} className="hidden" />
+                  {pdfForm.thumbnail ? <img src={pdfForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-purple-600">
+                  <input type="file" onChange={handlePdfFileUpload} className="hidden" />
+                  {pdfForm.fileName ? <div className="text-green-600">✅ {pdfForm.fileName} ({(pdfForm.fileSize)})</div> : <div>📁 Upload PDF (Max 50MB)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition">{uploading ? "Uploading..." : "Upload Paid PDF"}</button>
             </form>
           </div>
@@ -1202,7 +1344,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               {renderSemesterYearLanguageDropdowns("premiumVideo", premiumVideoForm, setPremiumVideoForm)}
 
               <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={premiumVideoForm.videoUrl} onChange={(e) => setPremiumVideoForm({...premiumVideoForm, videoUrl: e.target.value})} required />
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-red-600"><input type="file" accept="image/*" onChange={handlePremiumVideoThumbnail} className="hidden" />{premiumVideoForm.thumbnail ? <img src={premiumVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-red-600">
+                  <input type="file" accept="image/*" onChange={handlePremiumVideoThumbnail} className="hidden" />
+                  {premiumVideoForm.thumbnail ? <img src={premiumVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition">{uploading ? "Uploading..." : "Upload Premium Video"}</button>
             </form>
           </div>
@@ -1233,8 +1380,18 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <option value="Hard">Hard</option>
                 <option value="Expert">Expert</option>
               </select>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-green-600"><input type="file" accept="image/*" onChange={handlePremiumPaperThumbnail} className="hidden" />{premiumPaperForm.thumbnail ? <img src={premiumPaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}</label></div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center"><label className="cursor-pointer text-green-600"><input type="file" onChange={handlePremiumPaperFileUpload} className="hidden" />{premiumPaperForm.fileName ? <div>📄 {premiumPaperForm.fileName}</div> : <div>📁 Upload PDF</div>}</label></div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-green-600">
+                  <input type="file" accept="image/*" onChange={handlePremiumPaperThumbnail} className="hidden" />
+                  {premiumPaperForm.thumbnail ? <img src={premiumPaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail (Auto-compressed)</div>}
+                </label>
+              </div>
+              <div className="border-2 border-dashed rounded-xl p-4 text-center">
+                <label className="cursor-pointer text-green-600">
+                  <input type="file" onChange={handlePremiumPaperFileUpload} className="hidden" />
+                  {premiumPaperForm.fileName ? <div className="text-green-600">✅ {premiumPaperForm.fileName} ({(premiumPaperForm.fileSize)})</div> : <div>📁 Upload PDF (Max 50MB)</div>}
+                </label>
+              </div>
               <button type="submit" disabled={uploading} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">{uploading ? "Uploading..." : "Upload Premium Paper"}</button>
             </form>
           </div>

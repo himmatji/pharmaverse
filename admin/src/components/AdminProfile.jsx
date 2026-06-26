@@ -318,7 +318,7 @@ const AdminProfile = () => {
             </div>
           </div>
 
-          {/* Course Price Card */}
+          {/* Course Price Card - FIXED */}
           <div className="bg-white/80 backdrop-blur-lg rounded-3xl border border-white shadow-lg p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
@@ -346,7 +346,17 @@ const AdminProfile = () => {
                       <input
                         type="number"
                         value={editPriceValue}
-                        onChange={(e) => setEditPriceValue(parseInt(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // If empty, set to 0, otherwise convert to number
+                          if (value === '') {
+                            setEditPriceValue(0);
+                          } else {
+                            const numValue = Number(value);
+                            // Remove leading zeros by converting to number and back
+                            setEditPriceValue(numValue);
+                          }
+                        }}
                         className="w-28 px-2 py-1 border border-gray-300 rounded-lg text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
                         autoFocus
                         min="0"

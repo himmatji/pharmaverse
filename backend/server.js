@@ -61,6 +61,9 @@ app.get("/api/collections", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+console.log("authRoutes =", typeof authRoutes);
+console.log("adminRoutes =", typeof adminRoutes);
+console.log("paymentRoutes =", typeof paymentRoutes);  
 
 // ================= ROUTES =================
 app.use("/api/auth", authRoutes);

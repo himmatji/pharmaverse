@@ -83,7 +83,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             <LogIn size={28} className="sm:w-[36px] sm:h-[36px] text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {isLogin ? "Welcome Back!" : "Create Account"}
+            {isLogin ? "Welcome !" : "Create Account"}
           </h2>
           <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
             {isLogin 
