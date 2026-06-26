@@ -344,23 +344,29 @@ const AdminProfile = () => {
                   ) : (
                     <div className="flex items-center gap-2 mt-1">
                       <input
-                        type="number"
-                        value={editPriceValue}
+                        type="text"
+                        value={editPriceValue === 0 ? '' : editPriceValue}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // If empty, set to 0, otherwise convert to number
-                          if (value === '') {
+                          // Remove all non-digit characters
+                          const cleaned = value.replace(/\D/g, '');
+                          if (cleaned === '') {
                             setEditPriceValue(0);
                           } else {
-                            const numValue = Number(value);
-                            // Remove leading zeros by converting to number and back
+                            // Convert to number to remove leading zeros
+                            const numValue = Number(cleaned);
                             setEditPriceValue(numValue);
+                          }
+                        }}
+                        onBlur={() => {
+                          // If empty, set to 0
+                          if (editPriceValue === 0 || editPriceValue === null || editPriceValue === undefined) {
+                            setEditPriceValue(0);
                           }
                         }}
                         className="w-28 px-2 py-1 border border-gray-300 rounded-lg text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
                         autoFocus
-                        min="0"
-                        step="100"
+                        placeholder="0"
                       />
                       <button
                         onClick={updatePremiumPrice}
