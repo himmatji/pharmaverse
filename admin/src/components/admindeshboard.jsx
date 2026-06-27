@@ -308,7 +308,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       if (activityRes.status === "fulfilled") setRecentActivities(activityRes.value.data.activities || []);
       if (revenueRes.status === "fulfilled") {
         setRevenueStats({
-          monthlyRevenue: revenueRes.value.data.monthlyRevenue || 0,
+          monthlyRevenue: revenueRes.value.data.totalRevenue || 0,
           totalDownloads: revenueRes.value.data.totalDownloads || 0,
           activeUsers: revenueRes.value.data.activeUsers || 0,
           revenueGrowth: revenueRes.value.data.revenueGrowth || 0,
@@ -877,7 +877,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <div className="p-3 bg-green-100 rounded-xl"><Wallet size={24} className="text-green-600" /></div>
                     <div>
                       <p className="text-gray-500 text-sm font-medium">Monthly Revenue</p>
-                      <p className="text-3xl font-bold text-gray-800">{formatCurrency(getMonthlyRevenueFromData())}</p>
+                      <p className="text-3xl font-bold text-gray-800">{formatCurrency(revenueStats.monthlyRevenue)}</p>
                     </div>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.revenueGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -885,7 +885,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   </div>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.min((getMonthlyRevenueFromData() / 100000) * 100, 100)}%` }}></div>
+                  <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.min((revenueStats.monthlyRevenue / 100000) * 100, 100)}%` }}></div>
                 </div>
                 <p className="text-gray-400 text-sm mt-2">vs last month • Real-time analytics</p>
               </div>

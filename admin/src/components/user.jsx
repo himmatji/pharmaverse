@@ -302,7 +302,7 @@ const UsersComponent = () => {
 
   // ================= STATS =================
   const activeSubAdmins = subAdmins.filter(a => a.isActive).length;
-  const totalCoursesEnrolled = users.reduce((sum, user) => sum + (user.enrolledCourses?.length || 0), 0);
+ const totalCoursesEnrolled = users.filter(user => user.isPremium).length;
   const premiumUsers = users.filter(u => u.isPremium).length;
   const totalRevenue = users.reduce((sum, u) => sum + (u.totalSpent || 0), 0);
 

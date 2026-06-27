@@ -548,15 +548,10 @@ router.get("/revenue-stats", adminAuth, async (req, res) => {
       paidPDFs.reduce((sum, item) => sum + (item.downloadCount || 0), 0) +
       papers.reduce((sum, item) => sum + (item.downloadCount || 0), 0);
     
-    const startOfMonth = new Date();
-startOfMonth.setDate(1);
-startOfMonth.setHours(0, 0, 0, 0);
-
-const revenueResult = await Payment.aggregate([
+   const revenueResult = await Payment.aggregate([
   {
     $match: {
-      status: "success",
-      createdAt: { $gte: startOfMonth }
+      status: "success"
     }
   },
   {
@@ -567,23 +562,23 @@ const revenueResult = await Payment.aggregate([
   }
 ]);
 
-const monthlyRevenue =
+const totalRevenue =
   revenueResult.length > 0 ? revenueResult[0].total : 0;
     
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const activeUsers = users.filter(user => user.lastLogin && new Date(user.lastLogin) >= thirtyDaysAgo).length;
     
-    console.log(`📊 Stats: Downloads=${totalDownloads}, Revenue=${monthlyRevenue}, ActiveUsers=${activeUsers}`);
+    console.log(`📊 Stats: Downloads=${totalDownloads}, Revenue=${totalRevenue}, ActiveUsers=${activeUsers}`);
     
-    res.json({ 
-      success: true, 
-      monthlyRevenue: monthlyRevenue,
-      totalDownloads: totalDownloads,
-      activeUsers: activeUsers,
-      revenueGrowth: 12.5,
-      downloadGrowth: totalDownloads > 0 ? 8.3 : 0
-    });
+    res.json({
+  success: true,
+  totalRevenue: totalRevenue,
+  totalDownloads: totalDownloads,
+  activeUsers: activeUsers,
+  revenueGrowth: 12.5,
+  downloadGrowth: totalDownloads > 0 ? 8.3 : 0
+});
   } catch (error) {
     console.error("Revenue stats error:", error);
     res.json({ success: true, monthlyRevenue: 0, totalDownloads: 0, activeUsers: 0 });

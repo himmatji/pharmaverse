@@ -99,6 +99,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
     });
 
     await payment.save();
+    console.log("✅ PAYMENT SAVED:", payment);
 
     console.log('✅ ORDER CREATED:', order.id);
 
@@ -122,6 +123,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
 // ================= VERIFY PAYMENT =================
 router.post('/verify-payment', authenticateToken, async (req, res) => {
   try {
+    console.log("🔥 VERIFY PAYMENT ROUTE HIT");
     const {
       orderId,
       paymentId,
@@ -146,6 +148,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
 
     // Update payment
     const paymentData = await Payment.findOneAndUpdate(
+      
       { orderId: orderId },
       {
         paymentId: paymentId,
@@ -154,6 +157,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
       },
       { new: true }
     );
+    console.log("UPDATED PAYMENT:", paymentData);
 
     // ========== 🔥 PREMIUM COURSE LOGIC 🔥 ==========
     if (productType === 'premium_course') {
