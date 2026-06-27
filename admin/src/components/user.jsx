@@ -304,7 +304,7 @@ const UsersComponent = () => {
   const activeSubAdmins = subAdmins.filter(a => a.isActive).length;
  const totalCoursesEnrolled = users.filter(user => user.isPremium).length;
   const premiumUsers = users.filter(u => u.isPremium).length;
-  const totalRevenue = users.reduce((sum, u) => sum + (u.totalSpent || 0), 0);
+  const totalRevenue = revenueStats.monthlyRevenue || 0;
 
   // ================= ACCESS DENIED =================
   if (!isSuperAdmin) {
