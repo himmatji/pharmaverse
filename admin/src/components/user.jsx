@@ -42,6 +42,7 @@ const UsersComponent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [selectedStats, setSelectedStats] = useState(null);
+  const [totalRevenue, setTotalRevenue] = useState(0);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -152,16 +153,36 @@ const UsersComponent = () => {
     }
   };
 
+  const fetchRevenue = async () => {
+  const headers = getAuthHeaders();
+  if (!headers) return;
+
+  try {
+    const response = await axios.get(
+      `${API_URL}/revenue-stats`,
+      headers
+    );
+
+    setTotalRevenue(response.data.totalRevenue || 0);
+  } catch (error) {
+    console.error("FETCH REVENUE ERROR:", error);
+  }
+};
+
   // ================= LOAD DATA =================
   useEffect(() => {
-    if (isSuperAdmin) {
-      Promise.all([fetchSubAdmins(), fetchNormalUsers()]).finally(() => {
-        setLoading(false);
-      });
-    } else {
+  if (isSuperAdmin) {
+    Promise.all([
+      fetchSubAdmins(),
+      fetchNormalUsers(),
+      fetchRevenue()
+    ]).finally(() => {
       setLoading(false);
-    }
-  }, [isSuperAdmin]);
+    });
+  } else {
+    setLoading(false);
+  }
+}, [isSuperAdmin]);
 
   // ================= SUBMIT =================
   const handleSubmit = async (e) => {
@@ -304,7 +325,7 @@ const UsersComponent = () => {
   const activeSubAdmins = subAdmins.filter(a => a.isActive).length;
  const totalCoursesEnrolled = users.filter(user => user.isPremium).length;
   const premiumUsers = users.filter(u => u.isPremium).length;
-  const totalRevenue = revenueStats.monthlyRevenue || 0;
+  
 
   // ================= ACCESS DENIED =================
   if (!isSuperAdmin) {
