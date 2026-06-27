@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Mail, Lock, User, LogIn } from "lucide-react";
+import { X, Mail, Lock, User, LogIn, Eye, EyeOff } from "lucide-react"; // 👈 Eye icons import karo
 import axios from "axios";
 
 const API_URL = "https://api.pharmaverse.co.in/api/auth";
@@ -11,6 +11,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // 👈 YEH ADD KARO
 
   useEffect(() => {
     if (!isOpen) {
@@ -19,6 +20,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
       setName("");
       setIsLogin(true);
       setError("");
+      setShowPassword(false); // 👈 Reset karo jab modal band ho
     }
   }, [isOpen]);
 
@@ -125,16 +127,29 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             />
           </div>
           
+          {/* 👇 UPDATED PASSWORD FIELD WITH EYE ICON */}
           <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
             <Lock size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"} // 👈 TOGGLE KARO
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="flex-1 outline-none bg-transparent text-sm sm:text-base"
               required
             />
+            {/* 👇 CUSTOM EYE ICON BUTTON */}
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-gray-400 hover:text-gray-600 transition p-1"
+            >
+              {showPassword ? (
+                <EyeOff size={18} className="sm:w-[20px] sm:h-[20px]" />
+              ) : (
+                <Eye size={18} className="sm:w-[20px] sm:h-[20px]" />
+              )}
+            </button>
           </div>
 
           {isLogin && (
@@ -160,6 +175,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError("");
+                setShowPassword(false); // 👈 Reset karo jab toggle ho
               }}
               className="text-purple-600 font-semibold hover:underline"
             >
