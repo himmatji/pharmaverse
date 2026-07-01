@@ -11,6 +11,7 @@ const FreeMaterial = require("../models/FreeMaterial");
 const Notice = require("../models/Notice");
 const { authMiddleware, isAdmin, hasCoursePermission } = require("../middleware/auth");
 const Payment = require("../models/Payment");
+const CoursePrice = require("../models/CoursePrice");
 
 const router = express.Router();
 router.use((req, res, next) => {
@@ -19,7 +20,7 @@ router.use((req, res, next) => {
 });
 const JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_key";
 
-// ================= ADMIN AUTH MIDDLEWARE (FIXED) =================
+// ================= ADMIN AUTH MIDDLEWARE =================
 const adminAuth = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
   
@@ -70,7 +71,7 @@ const adminAuth = async (req, res, next) => {
           email: process.env.ADMIN_EMAIL,
           password: process.env.ADMIN_PASSWORD,
           role: 'super_admin',
-          permissions: { courses: ['B.Pharm', 'D.Pharm', 'M.Pharm', 'PharmaD', 'PhD'] },
+          permissions: { courses: ['B.Pharm', 'D.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'] },
           isActive: true
         });
         await superAdmin.save();
@@ -138,7 +139,7 @@ router.post("/login", async (req, res) => {
           email: process.env.ADMIN_EMAIL,
           password: process.env.ADMIN_PASSWORD,
           role: 'super_admin',
-          permissions: { courses: ['B.Pharm', 'D.Pharm', 'M.Pharm', 'PharmaD', 'PhD'] },
+          permissions: { courses: ['B.Pharm', 'D.Pharm', 'M.Pharm', 'Pharm.D', 'PhD'] },
           isActive: true
         });
         await admin.save();
@@ -151,22 +152,18 @@ router.post("/login", async (req, res) => {
     
     let isMatch = false;
 
-// .env Super Admin
-if (
-  admin.email === process.env.ADMIN_EMAIL &&
-  password === process.env.ADMIN_PASSWORD
-) {
-  isMatch = true;
-} else {
-  isMatch = await admin.comparePassword(password);
-}
+    if (admin.email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+      isMatch = true;
+    } else {
+      isMatch = await admin.comparePassword(password);
+    }
 
-if (!isMatch) {
-  return res.status(401).json({
-    success: false,
-    message: "Invalid credentials"
-  });
-}
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
+    }
     
     admin.lastLogin = new Date();
     await admin.save();
@@ -216,6 +213,61 @@ router.get("/stats", adminAuth, async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server Error" });
+  }
+});
+
+// ================= COURSE PRICES CRUD =================
+// GET - Fetch course prices
+router.get("/course-prices", adminAuth, async (req, res) => {
+  try {
+    let prices = await CoursePrice.findOne();
+    if (!prices) {
+      // Default prices
+      const defaultPrices = {
+        "B.Pharm": { price: 99, discount: 0 },
+        "D.Pharm": { price: 79, discount: 0 },
+        "M.Pharm": { price: 149, discount: 0 },
+        "Pharm.D": { price: 129, discount: 0 },
+        "PhD": { price: 199, discount: 0 }
+      };
+      // Save default to database
+      prices = new CoursePrice({ prices: defaultPrices });
+      await prices.save();
+      return res.json(defaultPrices);
+    }
+    res.json(prices.prices);
+  } catch (error) {
+    console.error('Error fetching course prices:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT - Update course prices
+router.put("/course-prices", adminAuth, async (req, res) => {
+  try {
+    const { prices } = req.body;
+    if (!prices) {
+      return res.status(400).json({ error: 'Prices data is required' });
+    }
+
+    let coursePrices = await CoursePrice.findOne();
+    if (!coursePrices) {
+      coursePrices = new CoursePrice({ prices });
+    } else {
+      coursePrices.prices = prices;
+    }
+    coursePrices.updatedAt = new Date();
+    coursePrices.updatedBy = req.admin.id;
+    await coursePrices.save();
+
+    res.json({ 
+      success: true, 
+      message: 'Prices updated successfully', 
+      data: coursePrices.prices 
+    });
+  } catch (error) {
+    console.error('Error updating course prices:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -328,25 +380,21 @@ router.get("/paid-pdfs", adminAuth, async (req, res) => {
 
 router.post("/paid-pdfs", adminAuth, checkPermission('course'), async (req, res) => {
   try {
-
     console.log("========== PAID PDF ==========");
     console.log(req.body);
-
     const paidPDF = new PaidPDF(req.body);
     await paidPDF.save();
-
     res.status(201).json({ success: true, message: "PDF Added" });
-
   } catch (error) {
     console.log("ERROR =", error);
     console.log("BODY =", req.body);
-
     res.status(500).json({
       message: "Server Error",
       error: error.message
     });
   }
 });
+
 router.delete("/paid-pdfs/:id", adminAuth, async (req, res) => {
   try {
     const pdf = await PaidPDF.findById(req.params.id);
@@ -548,22 +596,11 @@ router.get("/revenue-stats", adminAuth, async (req, res) => {
       paidPDFs.reduce((sum, item) => sum + (item.downloadCount || 0), 0) +
       papers.reduce((sum, item) => sum + (item.downloadCount || 0), 0);
     
-   const revenueResult = await Payment.aggregate([
-  {
-    $match: {
-      status: "success"
-    }
-  },
-  {
-    $group: {
-      _id: null,
-      total: { $sum: "$amount" }
-    }
-  }
-]);
-
-const totalRevenue =
-  revenueResult.length > 0 ? revenueResult[0].total : 0;
+    const revenueResult = await Payment.aggregate([
+      { $match: { status: "success" } },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
     
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -572,13 +609,13 @@ const totalRevenue =
     console.log(`📊 Stats: Downloads=${totalDownloads}, Revenue=${totalRevenue}, ActiveUsers=${activeUsers}`);
     
     res.json({
-  success: true,
-  totalRevenue: totalRevenue,
-  totalDownloads: totalDownloads,
-  activeUsers: activeUsers,
-  revenueGrowth: 12.5,
-  downloadGrowth: totalDownloads > 0 ? 8.3 : 0
-});
+      success: true,
+      totalRevenue: totalRevenue,
+      totalDownloads: totalDownloads,
+      activeUsers: activeUsers,
+      revenueGrowth: 12.5,
+      downloadGrowth: totalDownloads > 0 ? 8.3 : 0
+    });
   } catch (error) {
     console.error("Revenue stats error:", error);
     res.json({ success: true, monthlyRevenue: 0, totalDownloads: 0, activeUsers: 0 });
@@ -689,38 +726,24 @@ router.get("/public/notes", async (req, res) => {
   }
 });
 
-// STEP 1: Premium videos route (isPremium: true)
 router.get("/public/videos", async (req, res) => {
   try {
     const { course } = req.query;
-
-    let filter = {
-      isPremium: true,
-    };
-
+    let filter = { isPremium: true };
     if (course) filter.course = course;
-
     const videos = await Video.find(filter).sort({ createdAt: -1 });
-
     res.json(videos);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-// STEP 2: Free videos route (isPremium: false)
 router.get("/public/free-videos", async (req, res) => {
   try {
     const { course } = req.query;
-
-    let filter = {
-      isPremium: false,
-    };
-
+    let filter = { isPremium: false };
     if (course) filter.course = course;
-
     const videos = await Video.find(filter).sort({ createdAt: -1 });
-
     res.json(videos);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
@@ -730,15 +753,9 @@ router.get("/public/free-videos", async (req, res) => {
 router.get("/public/paid-pdfs", async (req, res) => {
   try {
     const { course } = req.query;
-
     let filter = {};
-
-    if (course) {
-      filter.course = course;
-    }
-
+    if (course) filter.course = course;
     const pdfs = await PaidPDF.find(filter).sort({ createdAt: -1 });
-
     res.json(pdfs);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
@@ -757,7 +774,7 @@ router.get("/public/papers", async (req, res) => {
   }
 });
 
-// ================= 🔥 PUBLIC DOWNLOAD FOR USERS (WITH HISTORY) 🔥 =================
+// ================= PUBLIC DOWNLOAD FOR USERS =================
 router.get("/public/download/:type/:id", authMiddleware, async (req, res) => {
   try {
     const { type, id } = req.params;
@@ -770,39 +787,23 @@ router.get("/public/download/:type/:id", authMiddleware, async (req, res) => {
 
     if (type === 'note') {
       Model = Note;
-    }
-    else if (
-      type === 'video' ||
-      type === 'practical-video'
-    ) {
+    } else if (type === 'video' || type === 'practical-video') {
       Model = Video;
-    }
-    else if (
-      type === 'paid-pdf'
-    ) {
+    } else if (type === 'paid-pdf') {
       Model = PaidPDF;
-    }
-    else if (
-      type === 'paper' ||
-      type === 'predictive-paper'
-    ) {
+    } else if (type === 'paper' || type === 'predictive-paper') {
       Model = Paper;
-    }
-    else {
-      return res.status(400).json({
-        message: "Invalid type"
-      });
+    } else {
+      return res.status(400).json({ message: "Invalid type" });
     }
 
     const content = await Model.findById(id);
     if (!content) return res.status(404).json({ message: "Content not found" });
     
-    // 🔥 DOWNLOAD COUNT BADHAO
     content.downloadCount = (content.downloadCount || 0) + 1;
     await content.save();
     console.log("3. Download count updated to:", content.downloadCount);
     
-    // 🔥🔥🔥 DOWNLOAD HISTORY SAVE (USER TOKEN SE) 🔥🔥🔥
     const token = req.headers.authorization?.split(' ')[1];
     console.log("4. Token present?", token ? "YES" : "NO");
     
@@ -811,14 +812,12 @@ router.get("/public/download/:type/:id", authMiddleware, async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         console.log("5. Decoded token:", decoded);
         
-        // User token me 'userId' ya 'id' hoga
         const userId = decoded.userId || decoded.id || decoded._id;
         console.log("6. User ID:", userId);
         
         if (userId) {
           const user = await User.findById(userId);
           if (user) {
-            // Initialize downloadHistory if not exists
             if (!user.downloadHistory) user.downloadHistory = [];
             
             user.downloadHistory.push({
@@ -847,22 +846,15 @@ router.get("/public/download/:type/:id", authMiddleware, async (req, res) => {
     console.log(`📥 Download: ${type} - ${content.title} (Total: ${content.downloadCount})`);
     console.log("=====================================\n");
     
-    // FILE RETURN KARO
     if (content.fileData) {
       const base64Data = content.fileData.split(',')[1] || content.fileData;
       const fileBuffer = Buffer.from(base64Data, 'base64');
       
-      // 🔥 FILE TYPE
       const fileType = content.fileType || 'application/octet-stream';
-      
-      // 🔥 CHECK VIEWABLE TYPES
       const isViewable =
         fileType.startsWith("image/") ||
         fileType.startsWith("video/") ||
         fileType === "application/pdf";
-      
-      // 🔥 PDF/IMAGE/VIDEO => OPEN IN BROWSER
-      // 🔥 ZIP/RAR => DOWNLOAD
       const disposition = isViewable ? "inline" : "attachment";
       
       res.setHeader('Content-Type', fileType);
@@ -879,7 +871,7 @@ router.get("/public/download/:type/:id", authMiddleware, async (req, res) => {
   }
 });
 
-// ================= ADMIN DOWNLOAD (for admin panel) =================
+// ================= ADMIN DOWNLOAD =================
 router.get("/download/:type/:id", adminAuth, async (req, res) => {
   try {
     const { type, id } = req.params;
@@ -888,40 +880,24 @@ router.get("/download/:type/:id", adminAuth, async (req, res) => {
 
     if (type === 'note') {
       Model = Note;
-    }
-    else if (
-      type === 'video' ||
-      type === 'practical-video'
-    ) {
+    } else if (type === 'video' || type === 'practical-video') {
       Model = Video;
-    }
-    else if (
-      type === 'paid-pdf'
-    ) {
+    } else if (type === 'paid-pdf') {
       Model = PaidPDF;
-    }
-    else if (
-      type === 'paper' ||
-      type === 'predictive-paper'
-    ) {
+    } else if (type === 'paper' || type === 'predictive-paper') {
       Model = Paper;
-    }
-    else {
-      return res.status(400).json({
-        message: "Invalid type"
-      });
+    } else {
+      return res.status(400).json({ message: "Invalid type" });
     }
     
     const content = await Model.findById(id);
     if (!content) return res.status(404).json({ message: "Content not found" });
     
-    // 🔥 DOWNLOAD COUNT BADHAO
     content.downloadCount = (content.downloadCount || 0) + 1;
     await content.save();
     
     console.log(`📥 Admin Download: ${type} - ${content.title} (Total: ${content.downloadCount})`);
     
-    // FILE RETURN KARO
     if (content.fileData) {
       const base64Data = content.fileData.split(',')[1] || content.fileData;
       const fileBuffer = Buffer.from(base64Data, 'base64');
@@ -946,19 +922,14 @@ router.get("/download/:type/:id", adminAuth, async (req, res) => {
   }
 });
 
+// ================= PREMIUM PRICE =================
 router.put("/price", adminAuth, async (req, res) => {
   try {
     const { price } = req.body;
-
     const admin = await Admin.findById(req.admin.id);
-
     admin.premiumPrice = price;
     await admin.save();
-
-    res.json({
-      success: true,
-      price: admin.premiumPrice
-    });
+    res.json({ success: true, price: admin.premiumPrice });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -967,196 +938,99 @@ router.put("/price", adminAuth, async (req, res) => {
 router.get("/public-price", async (req, res) => {
   try {
     const admin = await Admin.findOne({ role: "super_admin" });
-
-    res.json({
-      price: admin?.premiumPrice || 999
-    });
+    res.json({ price: admin?.premiumPrice || 999 });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ================= GET ALL SUB ADMINS =================
+// ================= SUB ADMINS =================
 router.get("/subadmins", adminAuth, async (req, res) => {
   try {
     const subAdmins = await Admin.find({ role: "sub_admin" })
       .select("-password")
       .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      subAdmins,
-    });
+    res.json({ success: true, subAdmins });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ================= UPDATE SUB ADMIN =================
 router.put("/subadmins/:id", adminAuth, async (req, res) => {
   try {
     const { name, email, permissions, isActive } = req.body;
-
     const updatedAdmin = await Admin.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        role: "sub_admin",
-      },
-      {
-        name,
-        email,
-        permissions: {
-          courses: Array.isArray(permissions) ? permissions : [],
-        },
-        isActive,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
+      { _id: req.params.id, role: "sub_admin" },
+      { name, email, permissions: { courses: Array.isArray(permissions) ? permissions : [] }, isActive },
+      { new: true, runValidators: true }
     ).select("-password");
-
     if (!updatedAdmin) {
-      return res.status(404).json({
-        success: false,
-        message: "Sub Admin not found",
-      });
+      return res.status(404).json({ success: false, message: "Sub Admin not found" });
     }
-
-    res.json({
-      success: true,
-      message: "Sub Admin updated successfully",
-      admin: updatedAdmin,
-    });
+    res.json({ success: true, message: "Sub Admin updated successfully", admin: updatedAdmin });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ================= DELETE SUB ADMIN =================
 router.delete("/subadmins/:id", adminAuth, async (req, res) => {
   try {
-    const deleted = await Admin.findOneAndDelete({
-      _id: req.params.id,
-      role: "sub_admin",
-    });
-
+    const deleted = await Admin.findOneAndDelete({ _id: req.params.id, role: "sub_admin" });
     if (!deleted) {
-      return res.status(404).json({
-        success: false,
-        message: "Sub Admin not found",
-      });
+      return res.status(404).json({ success: false, message: "Sub Admin not found" });
     }
-
-    res.json({
-      success: true,
-      message: "Sub Admin deleted successfully",
-    });
+    res.json({ success: true, message: "Sub Admin deleted successfully" });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ================= REGISTER SUB ADMIN =================
 router.post("/register-subadmin", adminAuth, async (req, res) => {
   try {
     const { name, email, password, permissions } = req.body;
-
     const exists = await Admin.findOne({ email });
-
     if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: "Admin already exists",
-      });
+      return res.status(400).json({ success: false, message: "Admin already exists" });
     }
-
     const admin = new Admin({
       name,
       email,
       password,
       role: "sub_admin",
-      permissions: {
-        courses: Array.isArray(permissions) ? permissions : [],
-      },
-      createdBy: req.admin.id,
+      permissions: { courses: Array.isArray(permissions) ? permissions : [] },
+      createdBy: req.admin.id
     });
-
     await admin.save();
-
-    res.status(201).json({
-      success: true,
-      message: "Sub Admin created successfully",
-      admin,
-    });
+    res.status(201).json({ success: true, message: "Sub Admin created successfully", admin });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ================= GET ALL NORMAL USERS =================
+// ================= USERS =================
 router.get("/users", adminAuth, async (req, res) => {
   try {
-    const users = await User.find({})
-      .select("-password")
-      .sort({ createdAt: -1 });
-
-    res.json({
-      success: true,
-      users,
-    });
+    const users = await User.find({}).select("-password").sort({ createdAt: -1 });
+    res.json({ success: true, users });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// ================= DELETE USER =================
 router.delete("/users/:id", adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid User ID",
-      });
+      return res.status(400).json({ success: false, message: "Invalid User ID" });
     }
-
     const deletedUser = await User.findByIdAndDelete(id);
-
     if (!deletedUser) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
-
-    res.json({
-      success: true,
-      message: "User deleted successfully",
-    });
+    res.json({ success: true, message: "User deleted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -1164,24 +1038,46 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
 router.get("/profile", adminAuth, async (req, res) => {
   try {
     const admin = await Admin.findById(req.admin.id).select("-password");
-
     if (!admin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin not found",
-      });
+      return res.status(404).json({ success: false, message: "Admin not found" });
     }
+    res.json({ success: true, admin });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
+});
 
+router.put("/update-profile", adminAuth, async (req, res) => {
+  try {
+    const { name, email, currentPassword, newPassword } = req.body;
+    const admin = await Admin.findById(req.admin.id);
+    if (!admin) {
+      return res.status(404).json({ success: false, message: "Admin not found" });
+    }
+    if (name) admin.name = name;
+    if (email) admin.email = email;
+    if (currentPassword && newPassword) {
+      const isMatch = await admin.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({ success: false, message: "Current password is incorrect" });
+      }
+      admin.password = newPassword;
+    }
+    await admin.save();
     res.json({
       success: true,
-      admin,
+      message: "Profile updated successfully",
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role
+      }
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

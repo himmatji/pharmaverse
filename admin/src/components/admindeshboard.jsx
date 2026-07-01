@@ -33,7 +33,9 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  Edit,
+  Save
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -146,6 +148,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     { day: "Sat", views: 0, downloads: 0, revenue: 0 },
     { day: "Sun", views: 0, downloads: 0, revenue: 0 }
   ]);
+
+  // ========== COURSE PRICES STATE ==========
+  const [coursePrices, setCoursePrices] = useState({
+    "B.Pharm": { price: 99, discount: 0 },
+    "D.Pharm": { price: 79, discount: 0 },
+    "M.Pharm": { price: 149, discount: 0 },
+    "Pharm.D": { price: 129, discount: 0 },
+    "PhD": { price: 199, discount: 0 }
+  });
+  const [showPriceModal, setShowPriceModal] = useState(false);
 
   // ========== FORMS ==========
   const [noteForm, setNoteForm] = useState({
@@ -276,6 +288,33 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
+  // ========== DISCOUNT FUNCTIONS ==========
+  const getDiscountedPrice = (price, discount) => {
+    if (discount > 0) {
+      return Math.round(price - (price * discount / 100));
+    }
+    return price;
+  };
+
+  const getDiscountDisplay = (price, discount) => {
+    if (discount > 0) {
+      const discounted = getDiscountedPrice(price, discount);
+      return {
+        original: price,
+        discounted: discounted,
+        display: `₹${discounted}`,
+        badge: `${discount}% OFF`
+      };
+    }
+    return {
+      original: price,
+      discounted: price,
+      display: `₹${price}`,
+      badge: null
+    };
+  };
+
+  // ========== FETCH DATA ==========
   const fetchAllData = async () => {
     const token = localStorage.getItem("adminToken");
     if (!token || !isTokenValid()) {
@@ -288,7 +327,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     setError(null);
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      const [statsRes, notesRes, videosRes, paidRes, papersRes, popularRes, activityRes, revenueRes, weeklyRes] = await Promise.allSettled([
+      const [statsRes, notesRes, videosRes, paidRes, papersRes, popularRes, activityRes, revenueRes, weeklyRes, pricesRes] = await Promise.allSettled([
         axios.get(`${API_URL}/stats`, { headers }),
         axios.get(`${API_URL}/notes`, { headers }),
         axios.get(`${API_URL}/videos`, { headers }),
@@ -297,7 +336,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         axios.get(`${API_URL}/popular-content`, { headers }),
         axios.get(`${API_URL}/recent-activity`, { headers }),
         axios.get(`${API_URL}/revenue-stats`, { headers }),
-        axios.get(`${API_URL}/weekly-performance`, { headers })
+        axios.get(`${API_URL}/weekly-performance`, { headers }),
+        axios.get(`${API_URL}/course-prices`, { headers })
       ]);
       if (statsRes.status === "fulfilled") setStats(statsRes.value.data);
       if (notesRes.status === "fulfilled") setNotes(notesRes.value.data || []);
@@ -318,6 +358,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       if (weeklyRes.status === "fulfilled" && weeklyRes.value.data.data) {
         setWeeklyData(weeklyRes.value.data.data);
       }
+      if (pricesRes.status === "fulfilled" && pricesRes.value.data) {
+        setCoursePrices(pricesRes.value.data);
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
       setError("Failed to load dashboard data. Please refresh the page.");
@@ -334,6 +377,20 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  // ========== SAVE COURSE PRICES ==========
+  const handleSaveCoursePrices = async () => {
+    try {
+      const headers = getAuthHeaders();
+      if (!headers) throw new Error("No token");
+      await axios.put(`${API_URL}/course-prices`, { prices: coursePrices }, headers);
+      alert("✅ Course prices updated successfully!");
+      setShowPriceModal(false);
+      fetchAllData();
+    } catch (error) {
+      alert("❌ Failed to update prices: " + (error.response?.data?.message || error.message));
+    }
+  };
 
   // ========== COMPRESS IMAGE ==========
   const compressImage = (file, maxWidth = 400, maxHeight = 400) => {
@@ -813,6 +870,49 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
+  // ========== PRICE MANAGEMENT CARD ==========
+  const CoursePriceCard = () => (
+    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-amber-100 rounded-xl">
+            <DollarSign size={24} className="text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">Premium Course Prices</h3>
+            <p className="text-gray-500 text-sm">Set prices & discounts for each course</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowPriceModal(true)}
+          className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all duration-300 flex items-center gap-2 text-sm"
+        >
+          <Edit size={16} /> Manage Prices
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {Object.entries(coursePrices).map(([course, data]) => {
+          const discountInfo = getDiscountDisplay(data.price, data.discount);
+          return (
+            <div key={course} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200">
+              <p className="font-semibold text-gray-700 text-sm">{course}</p>
+              <p className="text-2xl font-bold text-gray-900">{discountInfo.display}</p>
+              {discountInfo.badge && (
+                <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                  {discountInfo.badge}
+                </span>
+              )}
+              {!discountInfo.badge && (
+                <span className="inline-block mt-1 text-xs text-gray-400">No Discount</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -847,19 +947,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       <AdminNavbar />
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={onLogout} />
       
-      {/* MAIN CONTENT - Fixed margin for sidebar */}
       <div className="lg:ml-[250px] p-4 sm:p-6 md:p-8 mt-16 min-h-[calc(100vh-64px)]">
         
         {/* ========== DASHBOARD ========== */}
         {activeTab === "dashboard" && (
           <div className="animate-fadeIn">
-            {/* Header */}
             <div className="mb-8">
               <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Dashboard Overview</h2>
               <p className="text-gray-500 mt-2">Welcome, {adminName}! Here's your real-time platform analytics</p>
             </div>
 
-            {/* Stats Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
               <StatCard title="Free Materials" value={stats.totalNotes} icon={FileText} color="from-blue-500 to-blue-700" />
               <StatCard title="Paid PDFs" value={stats.totalPaidPDFs} icon={CreditCard} color="from-purple-500 to-purple-700" />
@@ -868,9 +965,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               <StatCard title="Active Users" value={stats.totalUsers} icon={Users} color="from-orange-500 to-orange-700" />
             </div>
 
-            {/* Revenue & Downloads */}
+            {/* Course Price Card */}
+            <div className="mb-8">
+              <CoursePriceCard />
+            </div>
+
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
-              {/* Revenue Card */}
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -890,7 +990,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <p className="text-gray-400 text-sm mt-2">vs last month • Real-time analytics</p>
               </div>
 
-              {/* Downloads Card */}
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
@@ -911,7 +1010,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </div>
             </div>
 
-            {/* Weekly Performance & Recent Activity */}
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
               <EnhancedCard title="Weekly Performance" icon={BarChart3} color="from-blue-500 to-cyan-700">
                 <div className="mt-2">
@@ -980,7 +1078,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </EnhancedCard>
             </div>
 
-            {/* Popular Content */}
             <EnhancedCard title="Popular Content" icon={Star} color="from-yellow-500 to-amber-700">
               <div className="mt-2 space-y-2">
                 {popularContent.length > 0 ? (
@@ -1007,7 +1104,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         )}
 
-        {/* ========== OTHER TABS ========== */}
+        {/* ========== MATERIALS TAB ========== */}
         {activeTab === "materials" && (
           <div className="animate-fadeIn">
             <div className="mb-6">
@@ -1033,7 +1130,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </div>
             </div>
 
-            {/* Show content */}
             {getFilteredNotes().length === 0 && getFreeVideos().length === 0 && getFreePapers().length === 0 ? (
               <div className="bg-white rounded-2xl shadow-lg border p-12 text-center">
                 <div className="text-6xl mb-4">📭</div>
@@ -1124,6 +1220,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         )}
 
+        {/* ========== PAID TAB ========== */}
         {activeTab === "paid" && (
           <div className="animate-fadeIn">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
@@ -1160,6 +1257,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         )}
 
+        {/* ========== VIDEOS TAB ========== */}
         {activeTab === "videos" && (
           <div className="animate-fadeIn">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
@@ -1196,6 +1294,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         )}
 
+        {/* ========== PAPERS TAB ========== */}
         {activeTab === "papers" && (
           <div className="animate-fadeIn">
             <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
@@ -1236,6 +1335,106 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         {activeTab === "profile" && <AdminProfile />}
         {activeTab === "notice" && <AdminNotice />}
       </div>
+
+      {/* ========== PRICE MANAGEMENT MODAL ========== */}
+      {showPriceModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <DollarSign size={24} className="text-amber-500" />
+                Manage Course Prices
+              </h3>
+              <button onClick={() => setShowPriceModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {Object.entries(coursePrices).map(([course, data]) => (
+                <div key={course} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-lg font-bold text-gray-800">{course}</h4>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">
+                        {data.discount > 0 ? `${data.discount}% OFF` : 'No Discount'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-600 font-medium">Price (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        className="w-full border rounded-xl px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        value={data.price}
+                        onChange={(e) => {
+                          const newPrice = parseInt(e.target.value) || 0;
+                          setCoursePrices({
+                            ...coursePrices,
+                            [course]: { ...data, price: newPrice }
+                          });
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-600 font-medium">Discount %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        className="w-full border rounded-xl px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        value={data.discount}
+                        onChange={(e) => {
+                          const newDiscount = parseInt(e.target.value) || 0;
+                          setCoursePrices({
+                            ...coursePrices,
+                            [course]: { ...data, discount: Math.min(newDiscount, 100) }
+                          });
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
+                    <p className="text-sm text-gray-500">Preview:</p>
+                    <div className="flex items-center gap-3">
+                      {data.discount > 0 ? (
+                        <>
+                          <span className="text-gray-400 line-through">₹{data.price}</span>
+                          <span className="text-2xl font-bold text-green-600">
+                            ₹{getDiscountedPrice(data.price, data.discount)}
+                          </span>
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                            {data.discount}% OFF
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-2xl font-bold text-gray-800">₹{data.price}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  onClick={handleSaveCoursePrices}
+                  className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-semibold hover:bg-amber-600 transition"
+                >
+                  <Save size={18} className="inline mr-2" /> Save All Prices
+                </button>
+                <button
+                  onClick={() => setShowPriceModal(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========== MODALS ========== */}
       {/* FREE PDF MODAL */}

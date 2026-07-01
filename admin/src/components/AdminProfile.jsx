@@ -16,14 +16,9 @@ import {
   Crown,
   ShieldCheck,
   Sparkles,
-  DollarSign,
-  Edit2,
-  Check,
-  X,
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
-const MAIN_API_URL = "https://api.pharmaverse.co.in/api";
 
 const AdminProfile = () => {
   const [profile, setProfile] = useState({
@@ -41,12 +36,6 @@ const AdminProfile = () => {
     newPassword: "",
     confirmPassword: "",
   });
-
-  const [premiumPrice, setPremiumPrice] = useState(999);
-  const [isEditingPrice, setIsEditingPrice] = useState(false);
-  const [editPriceValue, setEditPriceValue] = useState(999);
-  const [priceSaving, setPriceSaving] = useState(false);
-  const [priceMessage, setPriceMessage] = useState({ type: "", text: "" });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,61 +61,6 @@ const AdminProfile = () => {
         Authorization: `Bearer ${token}`,
       },
     };
-  };
-
-  // Fetch current price from backend
-  const fetchPremiumPrice = async () => {
-    try {
-      const res = await axios.get(`${MAIN_API_URL}/admin/public-price`);
-      setPremiumPrice(res.data.price);
-      setEditPriceValue(res.data.price);
-    } catch (err) {
-      console.log("Error fetching price:", err);
-      // Fallback to localStorage
-      const savedPrice = localStorage.getItem("premium_price");
-      if (savedPrice) {
-        setPremiumPrice(parseInt(savedPrice));
-        setEditPriceValue(parseInt(savedPrice));
-      }
-    }
-  };
-
-  // Update price in backend
-  const updatePremiumPrice = async () => {
-    if (editPriceValue < 0) {
-      setPriceMessage({ type: "error", text: "Price cannot be negative" });
-      return;
-    }
-
-    setPriceSaving(true);
-    try {
-      const token = getToken();
-      await axios.put(
-        `${MAIN_API_URL}/admin/price`,
-        { price: editPriceValue },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      
-      // Also save to localStorage for frontend
-      localStorage.setItem("premium_price", editPriceValue);
-      
-      setPremiumPrice(editPriceValue);
-      setPriceMessage({ type: "success", text: `Price updated to ₹${editPriceValue}!` });
-      setIsEditingPrice(false);
-      
-      setTimeout(() => {
-        setPriceMessage({ type: "", text: "" });
-      }, 3000);
-    } catch (error) {
-      console.error("Error updating price:", error);
-      setPriceMessage({ type: "error", text: "Failed to update price" });
-    } finally {
-      setPriceSaving(false);
-    }
   };
 
   const fetchProfile = async () => {
@@ -160,7 +94,6 @@ const AdminProfile = () => {
 
   useEffect(() => {
     fetchProfile();
-    fetchPremiumPrice();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -257,7 +190,7 @@ const AdminProfile = () => {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-800">Admin Profile</h1>
-                <p className="text-gray-500 mt-1">Manage your account settings & course pricing</p>
+                <p className="text-gray-500 mt-1">Manage your account settings</p>
               </div>
             </div>
           </div>
@@ -277,8 +210,8 @@ const AdminProfile = () => {
           </div>
         </div>
 
-        {/* Stats Cards - 4 cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Stats Cards - Full Width Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Joined On Card */}
           <div className="bg-white/80 backdrop-blur-lg rounded-3xl border border-white shadow-lg p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
             <div className="flex items-center gap-4">
@@ -287,7 +220,7 @@ const AdminProfile = () => {
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Joined On</p>
-                <h3 className="font-bold text-gray-800">{formatDate(profile.createdAt)}</h3>
+                <h3 className="font-bold text-gray-800 text-lg">{formatDate(profile.createdAt)}</h3>
               </div>
             </div>
           </div>
@@ -300,7 +233,7 @@ const AdminProfile = () => {
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Last Login</p>
-                <h3 className="font-bold text-gray-800">{formatDate(profile.lastLogin)}</h3>
+                <h3 className="font-bold text-gray-800 text-lg">{formatDate(profile.lastLogin)}</h3>
               </div>
             </div>
           </div>
@@ -313,97 +246,9 @@ const AdminProfile = () => {
               </div>
               <div>
                 <p className="text-gray-500 text-sm">Status</p>
-                <h3 className="font-bold text-green-600">Active</h3>
+                <h3 className="font-bold text-green-600 text-lg">Active</h3>
               </div>
             </div>
-          </div>
-
-          {/* Course Price Card - FIXED */}
-          <div className="bg-white/80 backdrop-blur-lg rounded-3xl border border-white shadow-lg p-6 hover:-translate-y-1 hover:shadow-2xl transition-all duration-300">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="bg-gradient-to-r from-violet-500 to-purple-500 p-4 rounded-2xl">
-                  <DollarSign className="text-white" size={24} />
-                </div>
-                <div className="flex-1">
-                  <p className="text-gray-500 text-sm">Premium Course Price</p>
-                  {!isEditingPrice ? (
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-2xl text-gray-800">₹{premiumPrice}</h3>
-                      <button
-                        onClick={() => {
-                          setEditPriceValue(premiumPrice);
-                          setIsEditingPrice(true);
-                        }}
-                        className="p-1 hover:bg-gray-100 rounded-lg transition-all"
-                        title="Edit Price"
-                      >
-                        <Edit2 size={16} className="text-gray-400 hover:text-blue-600" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 mt-1">
-                      <input
-                        type="text"
-                        value={editPriceValue === 0 ? '' : editPriceValue}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // Remove all non-digit characters
-                          const cleaned = value.replace(/\D/g, '');
-                          if (cleaned === '') {
-                            setEditPriceValue(0);
-                          } else {
-                            // Convert to number to remove leading zeros
-                            const numValue = Number(cleaned);
-                            setEditPriceValue(numValue);
-                          }
-                        }}
-                        onBlur={() => {
-                          // If empty, set to 0
-                          if (editPriceValue === 0 || editPriceValue === null || editPriceValue === undefined) {
-                            setEditPriceValue(0);
-                          }
-                        }}
-                        className="w-28 px-2 py-1 border border-gray-300 rounded-lg text-lg font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                        autoFocus
-                        placeholder="0"
-                      />
-                      <button
-                        onClick={updatePremiumPrice}
-                        disabled={priceSaving}
-                        className="p-1 bg-green-500 hover:bg-green-600 rounded-lg transition-all disabled:opacity-50"
-                        title="Save"
-                      >
-                        {priceSaving ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        ) : (
-                          <Check size={16} className="text-white" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingPrice(false);
-                          setEditPriceValue(premiumPrice);
-                          setPriceMessage({ type: "", text: "" });
-                        }}
-                        className="p-1 bg-red-500 hover:bg-red-600 rounded-lg transition-all"
-                        title="Cancel"
-                      >
-                        <X size={16} className="text-white" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {priceMessage.text && (
-              <div className={`mt-3 text-xs font-medium ${priceMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                {priceMessage.text}
-              </div>
-            )}
-            {!isEditingPrice && (
-              <p className="text-xs text-gray-400 mt-3">Click on edit icon to change course price</p>
-            )}
           </div>
         </div>
 
