@@ -26,17 +26,28 @@ const authMiddleware = async (req, res, next) => {
   type: 'admin'
 };
     } else {
-      const user = await User.findById(decoded.userId).select('-password');
-      if (!user) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-      req.user = {
+      const user = await User.findById(decoded.userId).select("-password");
+
+if (!user) {
+  return res.status(401).json({
+    message: "User not found"
+  });
+}
+
+// ✅ Check if user logged in from another device
+if (decoded.sessionToken !== user.sessionToken) {
+  return res.status(401).json({
+    message: "Session expired. Please login again."
+  });
+}
+
+req.user = {
   userId: user._id,
   id: user._id,
   email: user.email,
   mobile: user.mobile,
-  role: 'user',
-  type: 'user'
+  role: "user",
+  type: "user"
 };
     }
     next();

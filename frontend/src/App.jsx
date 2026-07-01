@@ -61,6 +61,37 @@ function App() {
     checkRazorpay();
   }, []);
 
+  useEffect(() => {
+  const interval = setInterval(async () => {
+    const token = localStorage.getItem("token");
+
+    if (!token) return;
+
+    try {
+      await axios.get("https://api.pharmaverse.co.in/api/auth/verify", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    } catch (err) {
+      if (
+        err.response?.status === 401 &&
+        err.response?.data?.message === "Session expired. Please login again."
+      ) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("isLoggedIn");
+
+        alert("Your account has been logged in on another device.");
+
+        window.location.reload();
+      }
+    }
+  }, 5000);
+
+  return () => clearInterval(interval);
+}, []);
+
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center z-50">

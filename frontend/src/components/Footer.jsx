@@ -618,12 +618,19 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Bottom Bar */}
+          {/* Bottom Bar - UPDATED with full copyright notice */}
           <div className="border-t border-gray-200 mt-10 sm:mt-12 pt-6 sm:pt-8">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <div className="text-center md:text-left">
-                <p className="text-gray-500 text-xs sm:text-sm">© {currentYear} PharmaVerse. All Rights Reserved.</p>
-                <p className="text-gray-400 text-[10px] sm:text-xs mt-1">🔒 All content is protected by copyright law</p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="text-center">
+                <p className="text-gray-500 text-xs sm:text-sm font-medium">
+                  © {currentYear} PharmaVerse. All Rights Reserved.
+                </p>
+                <p className="text-gray-400 text-[10px] sm:text-xs mt-2 max-w-4xl leading-relaxed">
+                  Unauthorized copying, recording, downloading, sharing, redistribution, or commercial use of any PharmaVerse content is strictly prohibited and may result in civil and criminal legal action under applicable intellectual property laws.
+                </p>
+                <p className="text-gray-400 text-[10px] sm:text-xs mt-1">
+                  🔒 All content is protected by copyright law
+                </p>
               </div>
               
               <div className="flex gap-4 sm:gap-6 flex-wrap justify-center">

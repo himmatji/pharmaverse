@@ -110,6 +110,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  sessionToken: {
+  type: String,
+  default: null
+},
 
   isActive: {
     type: Boolean,

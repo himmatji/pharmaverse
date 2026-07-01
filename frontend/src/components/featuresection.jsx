@@ -31,7 +31,7 @@ const FeatureSection = () => {
     navigate(path, { state });
   };
 
-  // Featured Data
+  // Featured Data - UPDATED
   const featuredData = [
     {
       icon: ScrollText,
@@ -63,8 +63,8 @@ const FeatureSection = () => {
     },
     {
       icon: FileSpreadsheet,
-      title: "Upcoming Exam Papers",
-      desc: "Prepare smarter with important exam-focused question papers and PYQs.",
+      title: "Predictive Exam Question Paper",
+      desc: "Prepare smarter with important exam-focused question papers and predictive questions.",
       navigateTo: "/bpharm",
       scrollTo: "papers",
       badge: "POPULAR",
@@ -77,12 +77,12 @@ const FeatureSection = () => {
     },
     {
       icon: BellRing,
-      title: "Latest Pharmacy Update",
-      desc: "Stay updated with the latest pharmacy news, jobs, exams, and notifications.",
+      title: "Exam Crash Course",
+      desc: "Quick revision and crash course materials for exam preparation.",
       navigateTo: "/bpharm",
       scrollTo: "notes",
       badge: "UPDATES",
-      emoji: "📰",
+      emoji: "⚡",
       stat: "Daily Updates",
       color: "from-cyan-400 to-blue-500",
       lightBg: "bg-cyan-50",
@@ -311,8 +311,6 @@ const FeatureSection = () => {
                   
                 </div>
 
-                
-
                 {/* Premium Video Badge */}
                 <div className="absolute top-4 left-4 text-xs bg-gradient-to-r from-amber-400 to-orange-500 backdrop-blur-sm px-3 py-1 rounded-full text-white font-semibold shadow-lg">
                   <Sparkles className="w-3 h-3 inline mr-1" />
@@ -321,7 +319,7 @@ const FeatureSection = () => {
               </div>
             </div>
 
-            {/* Premium Quick Actions */}
+            {/* Premium Quick Actions - Updated */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={function() { handleNavigate('/bpharm', { scrollTo: 'notes' }); }}
@@ -349,7 +347,7 @@ const FeatureSection = () => {
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
                 <FileText className="w-4 h-4" />
-                <span>Exam Papers</span>
+                <span>Predictive Papers</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
 
@@ -358,8 +356,8 @@ const FeatureSection = () => {
                 className="group relative overflow-hidden bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold text-sm px-6 py-4 rounded-xl shadow-lg shadow-cyan-500/20 hover:shadow-2xl hover:shadow-cyan-500/30 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-                <Newspaper className="w-4 h-4" />
-                <span>Get Updates</span>
+                <Zap className="w-4 h-4" />
+                <span>Crash Course</span>
                 <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>

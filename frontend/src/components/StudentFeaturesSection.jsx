@@ -235,7 +235,7 @@ const DarkBanner = () => {
                 </div>
               </div>
               <a
-                href="https://t.me/PharmaVerse_official"
+                href="https://t.me/pharmacyebookbypharmaverse"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold transition-all duration-300 shadow-lg shadow-orange-500/25 hover:shadow-orange-500/50 flex-shrink-0 w-full sm:w-auto justify-center"

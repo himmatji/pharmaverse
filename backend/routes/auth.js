@@ -1,5 +1,7 @@
 const express = require('express');
+
 const jwt = require('jsonwebtoken');
+const crypto = require("crypto");
 const User = require('../models/User');
 const Admin = require('../models/Admin');
 const { authMiddleware, isSuperAdmin } = require('../middleware/auth');
@@ -37,14 +39,17 @@ if (mobile) {
   }
 }
 
+const sessionToken = crypto.randomBytes(32).toString("hex");
+
 const user = new User({
   name,
   email,
   mobile,
-  password
+  password,
+  sessionToken
 });
 
-    await user.save();
+await user.save();
 
    const token = jwt.sign(
   {
@@ -110,19 +115,25 @@ const user = await User.findOne({
       });
     }
 
-    user.lastLogin = new Date();
-    await user.save();
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+
+user.lastLogin = new Date();
+user.sessionToken = sessionToken;
+
+await user.save();
 
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        role: 'user',
-        type: 'user'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+{
+  userId: user._id,
+  email: user.email,
+  mobile: user.mobile,
+  role: 'user',
+  type: 'user',
+  sessionToken
+},
+process.env.JWT_SECRET,
+{ expiresIn: '7d' }
+);
 
     res.json({
       success: true,
