@@ -331,7 +331,7 @@ const Footer = () => {
                 </div>
                 <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <Phone size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
-                  <span>+91 98765 43210</span>
+                  <span>+91 9548787579</span>
                 </div>
                 <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <MapPin size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
@@ -339,7 +339,7 @@ const Footer = () => {
                 </div>
                 <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <Clock size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
-                  <span>Mon - Sat, 9 AM - 7 PM</span>
+                  <span>Mon - Sat, 1PM - 4 PM</span>
                 </div>
               </div>
 

@@ -276,3 +276,100 @@
     min-width: 280px;
   }
 }
+
+/* ================= FEATURE SECTION ANIMATIONS ================= */
+
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+    opacity: 0.8; 
+  }
+}
+
+.animate-float {
+  animation: float linear infinite;
+}
+
+/* Custom Scrollbar for Feature Section */
+.feature-section ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.feature-section ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.feature-section ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #f59e0b, #f97316);
+  border-radius: 4px;
+}
+
+.feature-section ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #fbbf24, #f59e0b);
+}
+
+/* Card Hover Glow Animation */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+.glow-pulse {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Shine Effect */
+@keyframes shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shine-effect {
+  animation: shine 1.5s ease-in-out;
+}
+
+@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+    opacity: 0.8; 
+  }
+}@keyframes float {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-20px) rotate(180deg); 
+    opacity: 0.8; 
+  }
+}
+@keyframes floatSuper {
+  0%, 100% { 
+    transform: translateY(0px) rotate(0deg) scale(1); 
+    opacity: 0.1; 
+  }
+  25% { 
+    transform: translateY(-25px) rotate(90deg) scale(1.3); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: translateY(-50px) rotate(180deg) scale(0.7); 
+    opacity: 0.2; 
+  }
+  75% { 
+    transform: translateY(-25px) rotate(270deg) scale(1.3); 
+    opacity: 0.3; 
+  }
+}
+
+.shadow-3xl {
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.15);
+}
