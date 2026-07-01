@@ -18,23 +18,26 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ message: 'Admin not found' });
       }
       req.user = {
-        id: admin._id,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-        type: 'admin'
-      };
+  adminId: admin._id,
+  id: admin._id,
+  email: admin.email,
+  role: admin.role,
+  permissions: admin.permissions,
+  type: 'admin'
+};
     } else {
       const user = await User.findById(decoded.userId).select('-password');
       if (!user) {
         return res.status(401).json({ message: 'User not found' });
       }
       req.user = {
-        id: user._id,
-        email: user.email,
-        role: 'user',
-        type: 'user'
-      };
+  userId: user._id,
+  id: user._id,
+  email: user.email,
+  mobile: user.mobile,
+  role: 'user',
+  type: 'user'
+};
     }
     next();
   } catch (error) {

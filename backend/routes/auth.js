@@ -9,50 +9,71 @@ const router = express.Router();
 // ================= USER SIGNUP =================
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, mobile, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+if (!email && !mobile) {
+  return res.status(400).json({
+    message: "Email or Mobile is required"
+  });
+}
 
-    if (existingUser) {
-      return res.status(400).json({
-        message: 'User already exists'
-      });
-    }
+if (email) {
+  const existingEmail = await User.findOne({ email });
 
-    const user = new User({
-      name,
-      email,
-      password
+  if (existingEmail) {
+    return res.status(400).json({
+      message: "Email already exists"
     });
+  }
+}
+
+if (mobile) {
+  const existingMobile = await User.findOne({ mobile });
+
+  if (existingMobile) {
+    return res.status(400).json({
+      message: "Mobile already exists"
+    });
+  }
+}
+
+const user = new User({
+  name,
+  email,
+  mobile,
+  password
+});
 
     await user.save();
 
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        role: 'user',
-        type: 'user'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+   const token = jwt.sign(
+  {
+    userId: user._id,
+    email: user.email,
+    mobile: user.mobile,
+    role: 'user',
+    type: 'user'
+  },
+  process.env.JWT_SECRET,
+  { expiresIn: '7d' }
+);
 
     res.status(201).json({
       success: true,
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: 'user',
-        isPremium: user.isPremium || false,  // 🔥 ADD THIS
-        enrolledCourses: user.enrolledCourses,
-        purchasedItems: user.purchasedItems,
-        downloadHistory: user.downloadHistory,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-      }
+     user: {
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  mobile: user.mobile,
+  role: 'user',
+  isPremium: user.isPremium || false,
+  enrolledCourses: user.enrolledCourses,
+  purchasedItems: user.purchasedItems,
+  downloadHistory: user.downloadHistory,
+  createdAt: user.createdAt,
+  lastLogin: user.lastLogin
+}
     });
 
   } catch (error) {
@@ -66,9 +87,14 @@ router.post('/signup', async (req, res) => {
 // ================= USER SIGNIN =================
 router.post('/signin', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    const user = await User.findOne({ email });
+const user = await User.findOne({
+  $or: [
+    { email: identifier },
+    { mobile: identifier }
+  ]
+});
 
     if (!user) {
       return res.status(401).json({
@@ -195,7 +221,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
 router.put('/update-profile', authMiddleware, async (req, res) => {
   try {
     if (req.user.type === 'user') {
-      const { name, email } = req.body;
+      const { name, email, mobile } = req.body;
       const user = await User.findById(req.user.id);
 
       if (!user) {
@@ -217,23 +243,38 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
         }
       }
 
-      if (name) user.name = name;
-      if (email) user.email = email;
+      if (mobile && mobile !== user.mobile) {
+  const existingMobile = await User.findOne({
+    mobile,
+    _id: { $ne: user._id }
+  });
+
+  if (existingMobile) {
+    return res.status(400).json({
+      message: 'Mobile already in use'
+    });
+  }
+}
+
+     if (name) user.name = name;
+if (email) user.email = email;
+if (mobile) user.mobile = mobile;
 
       await user.save();
 
       return res.json({
-        success: true,
-        message: 'Profile updated successfully',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          isPremium: user.isPremium || false,
-          enrolledCourses: user.enrolledCourses,
-          purchasedItems: user.purchasedItems,
-          downloadHistory: user.downloadHistory
-        }
+       success: true,
+message: 'Profile updated successfully',
+user: {
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  mobile: user.mobile,
+  isPremium: user.isPremium || false,
+  enrolledCourses: user.enrolledCourses,
+  purchasedItems: user.purchasedItems,
+  downloadHistory: user.downloadHistory
+}
       });
     }
 

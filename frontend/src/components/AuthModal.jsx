@@ -1,26 +1,30 @@
 import { useState, useEffect } from "react";
-import { X, Mail, Lock, User, LogIn, Eye, EyeOff } from "lucide-react"; // 👈 Eye icons import karo
+import { X, Mail, Lock, User, LogIn, Eye, EyeOff, Phone } from "lucide-react";
 import axios from "axios";
 
 const API_URL = "https://api.pharmaverse.co.in/api/auth";
 
 const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
+  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // 👈 YEH ADD KARO
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
+      setIdentifier("");
       setEmail("");
+      setMobile("");
       setPassword("");
       setName("");
       setIsLogin(true);
       setError("");
-      setShowPassword(false); // 👈 Reset karo jab modal band ho
+      setShowPassword(false);
     }
   }, [isOpen]);
 
@@ -33,8 +37,15 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
     try {
       if (isLogin) {
+        // Login
+        if (!identifier) {
+          setError("Please enter Email or Mobile Number");
+          setLoading(false);
+          return;
+        }
+
         const response = await axios.post(`${API_URL}/signin`, {
-          email,
+          identifier,
           password,
         });
 
@@ -46,9 +57,29 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
           if (onLoginSuccess) onLoginSuccess();
         }
       } else {
+        // ✅ FIX 1: Signup validation
+        if (!email && !mobile) {
+          setError("Please enter Email or Mobile Number");
+          setLoading(false);
+          return;
+        }
+
+        if (!name) {
+          setError("Please enter your Full Name");
+          setLoading(false);
+          return;
+        }
+
+        if (password.length < 6) {
+          setError("Password must be at least 6 characters");
+          setLoading(false);
+          return;
+        }
+
         const response = await axios.post(`${API_URL}/signup`, {
           name,
-          email,
+          email: email || undefined,
+          mobile: mobile || undefined,
           password,
         });
 
@@ -85,7 +116,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
             <LogIn size={28} className="sm:w-[36px] sm:h-[36px] text-white" />
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            {isLogin ? "Welcome !" : "Create Account"}
+            {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>
           <p className="text-sm sm:text-base text-gray-500 mt-1 sm:mt-2">
             {isLogin 
@@ -101,44 +132,77 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          {/* Signup Fields */}
           {!isLogin && (
+            <>
+              {/* Name Field */}
+              <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+                <User size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="flex-1 outline-none bg-transparent text-sm sm:text-base"
+                  required
+                />
+              </div>
+
+              {/* Email Field (Optional) */}
+              <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+                <Mail size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
+                <input
+                  type="email"
+                  placeholder="Email (Optional)"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1 outline-none bg-transparent text-sm sm:text-base"
+                />
+              </div>
+
+              {/* ✅ FIX 2: Mobile Field - Only Numbers, Max 10 digits */}
+              <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
+                <Phone size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
+                <input
+                  type="tel"
+                  placeholder="Mobile Number (Optional)"
+                  value={mobile}
+                  onChange={(e) =>
+                    setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  className="flex-1 outline-none bg-transparent text-sm sm:text-base"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Login Field */}
+          {isLogin && (
             <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
-              <User size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
+              <Mail size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
               <input
                 type="text"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                placeholder="Email or Mobile Number"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="flex-1 outline-none bg-transparent text-sm sm:text-base"
-                required={!isLogin}
+                required
               />
             </div>
           )}
-          
-          <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
-            <Mail size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1 outline-none bg-transparent text-sm sm:text-base"
-              required
-            />
-          </div>
-          
-          {/* 👇 UPDATED PASSWORD FIELD WITH EYE ICON */}
+
+          {/* Password Field with Toggle */}
           <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 focus-within:border-purple-500 focus-within:ring-2 focus-within:ring-purple-100 transition">
             <Lock size={18} className="sm:w-[20px] sm:h-[20px] text-gray-400" />
             <input
-              type={showPassword ? "text" : "password"} // 👈 TOGGLE KARO
+              type={showPassword ? "text" : "password"}
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="flex-1 outline-none bg-transparent text-sm sm:text-base"
               required
+              minLength={6}
             />
-            {/* 👇 CUSTOM EYE ICON BUTTON */}
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
@@ -175,7 +239,12 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError("");
-                setShowPassword(false); // 👈 Reset karo jab toggle ho
+                setShowPassword(false);
+                setIdentifier("");
+                setEmail("");
+                setMobile("");
+                setPassword("");
+                setName("");
               }}
               className="text-purple-600 font-semibold hover:underline"
             >
