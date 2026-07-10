@@ -235,7 +235,15 @@ router.get("/course-prices", adminAuth, async (req, res) => {
       await prices.save();
       return res.json(defaultPrices);
     }
-    res.json(prices.prices);
+    const p = prices.prices;
+
+res.json({
+  "B.Pharm": p.get ? p.get("BPharm") : p.BPharm,
+  "D.Pharm": p.get ? p.get("DPharm") : p.DPharm,
+  "M.Pharm": p.get ? p.get("MPharm") : p.MPharm,
+  "Pharm.D": p.get ? p.get("PharmD") : p.PharmD,
+  "PhD": p.get ? p.get("PhD") : p.PhD,
+});
   } catch (error) {
     console.error('Error fetching course prices:', error);
     res.status(500).json({ error: error.message });
@@ -254,7 +262,15 @@ router.put("/course-prices", adminAuth, async (req, res) => {
     if (!coursePrices) {
       coursePrices = new CoursePrice({ prices });
     } else {
-      coursePrices.prices = prices;
+      const formattedPrices = {
+  BPharm: prices.BPharm || prices["B.Pharm"] || { price: 99, discount: 0 },
+  DPharm: prices.DPharm || prices["D.Pharm"] || { price: 79, discount: 0 },
+  MPharm: prices.MPharm || prices["M.Pharm"] || { price: 149, discount: 0 },
+  PharmD: prices.PharmD || prices["Pharm.D"] || { price: 129, discount: 0 },
+  PhD: prices.PhD || prices["PhD"] || { price: 199, discount: 0 },
+};
+
+coursePrices.prices = formattedPrices;
     }
     coursePrices.updatedAt = new Date();
     coursePrices.updatedBy = req.admin.id;
