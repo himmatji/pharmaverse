@@ -39,12 +39,14 @@ const CoursePriceSchema = new mongoose.Schema({
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Admin",
+    default: null,
   },
 });
 
 // Auto update timestamp
-CoursePriceSchema.pre("save", function () {
+CoursePriceSchema.pre("save", function (next) {
   this.updatedAt = new Date();
+  next();
 });
 
 module.exports = mongoose.model("CoursePrice", CoursePriceSchema);
