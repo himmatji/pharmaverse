@@ -35,9 +35,8 @@ const CoursePriceSchema = new mongoose.Schema({
 });
 
 // Update timestamp on save
-CoursePriceSchema.pre('save', function(next) {
+CoursePriceSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('CoursePrice', CoursePriceSchema);
