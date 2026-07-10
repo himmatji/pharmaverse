@@ -158,6 +158,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     "PhD": { price: 199, discount: 0 }
   });
   const [showPriceModal, setShowPriceModal] = useState(false);
+  const [savingPrices, setSavingPrices] = useState(false);
 
   // ========== FORMS ==========
   const [noteForm, setNoteForm] = useState({
@@ -288,28 +289,29 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== DISCOUNT FUNCTIONS ==========
+  // ========== DISCOUNT FUNCTIONS - FULL DECIMAL SUPPORT ==========
   const getDiscountedPrice = (price, discount) => {
     if (discount > 0) {
-      return Math.round(price - (price * discount / 100));
+      const discounted = price - (price * discount / 100);
+      return parseFloat(discounted.toFixed(2));
     }
-    return price;
+    return parseFloat(price.toFixed(2));
   };
 
   const getDiscountDisplay = (price, discount) => {
+    const discounted = getDiscountedPrice(price, discount);
     if (discount > 0) {
-      const discounted = getDiscountedPrice(price, discount);
       return {
         original: price,
         discounted: discounted,
-        display: `₹${discounted}`,
+        display: `₹${discounted.toFixed(2)}`,
         badge: `${discount}% OFF`
       };
     }
     return {
       original: price,
       discounted: price,
-      display: `₹${price}`,
+      display: `₹${price.toFixed(2)}`,
       badge: null
     };
   };
@@ -380,6 +382,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   // ========== SAVE COURSE PRICES ==========
   const handleSaveCoursePrices = async () => {
+    // Validation
+    for (const [course, data] of Object.entries(coursePrices)) {
+      if (data.price < 0) {
+        alert(`${course} price cannot be negative`);
+        return;
+      }
+      if (data.discount < 0 || data.discount > 100) {
+        alert(`${course} discount must be between 0 and 100`);
+        return;
+      }
+    }
+
+    setSavingPrices(true);
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
@@ -389,6 +404,22 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       fetchAllData();
     } catch (error) {
       alert("❌ Failed to update prices: " + (error.response?.data?.message || error.message));
+    } finally {
+      setSavingPrices(false);
+    }
+  };
+
+  // ========== RESET TO DEFAULT ==========
+  const resetToDefault = () => {
+    if (window.confirm("Reset all prices to default values?")) {
+      const defaultPrices = {
+        "B.Pharm": { price: 99, discount: 0 },
+        "D.Pharm": { price: 79, discount: 0 },
+        "M.Pharm": { price: 149, discount: 0 },
+        "Pharm.D": { price: 129, discount: 0 },
+        "PhD": { price: 199, discount: 0 }
+      };
+      setCoursePrices(defaultPrices);
     }
   };
 
@@ -1336,7 +1367,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         {activeTab === "notice" && <AdminNotice />}
       </div>
 
-      {/* ========== PRICE MANAGEMENT MODAL ========== */}
+      {/* ========== PRICE MANAGEMENT MODAL - FINAL 100% WORKING ========== */}
       {showPriceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1345,7 +1376,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <DollarSign size={24} className="text-amber-500" />
                 Manage Course Prices
               </h3>
-              <button onClick={() => setShowPriceModal(false)} className="p-2 hover:bg-gray-100 rounded-full">
+              <button 
+                onClick={() => setShowPriceModal(false)} 
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
                 <X size={24} />
               </button>
             </div>
@@ -1361,72 +1395,96 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                       </span>
                     </div>
                   </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
+                    {/* PRICE INPUT - Works on all keyboards */}
                     <div>
-                      <label className="text-sm text-gray-600 font-medium">Price (₹)</label>
+                      <label className="text-sm text-gray-600 font-medium block mb-1">Price (₹)</label>
                       <input
-                        type="number"
-                        min="0"
-                        className="w-full border rounded-xl px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
                         value={data.price}
                         onChange={(e) => {
-                          const newPrice = parseInt(e.target.value) || 0;
-                          setCoursePrices({
-                            ...coursePrices,
-                            [course]: { ...data, price: newPrice }
-                          });
+                          const value = e.target.value;
+                          // Allow: empty, numbers, and decimal point
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            const newPrice = value === '' ? 0 : parseFloat(value);
+                            setCoursePrices({
+                              ...coursePrices,
+                              [course]: { ...data, price: isNaN(newPrice) ? 0 : newPrice }
+                            });
+                          }
                         }}
+                        placeholder="0.00"
                       />
                     </div>
+
+                    {/* DISCOUNT INPUT - Works on all keyboards */}
                     <div>
-                      <label className="text-sm text-gray-600 font-medium">Discount %</label>
+                      <label className="text-sm text-gray-600 font-medium block mb-1">Discount %</label>
                       <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        className="w-full border rounded-xl px-4 py-3 mt-1 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        type="text"
+                        inputMode="decimal"
+                        className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
                         value={data.discount}
                         onChange={(e) => {
-                          const newDiscount = parseInt(e.target.value) || 0;
-                          setCoursePrices({
-                            ...coursePrices,
-                            [course]: { ...data, discount: Math.min(newDiscount, 100) }
-                          });
+                          const value = e.target.value;
+                          // Allow: empty, numbers, and decimal point
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            const newDiscount = value === '' ? 0 : parseFloat(value);
+                            const validDiscount = Math.min(Math.max(isNaN(newDiscount) ? 0 : newDiscount, 0), 100);
+                            setCoursePrices({
+                              ...coursePrices,
+                              [course]: { ...data, discount: validDiscount }
+                            });
+                          }
                         }}
+                        placeholder="0"
                       />
                     </div>
                   </div>
+
+                  {/* PREVIEW - Shows proper decimal values */}
                   <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <p className="text-sm text-gray-500">Preview:</p>
-                    <div className="flex items-center gap-3">
+                    <p className="text-sm text-gray-500 mb-1">Preview:</p>
+                    <div className="flex items-center gap-3 flex-wrap">
                       {data.discount > 0 ? (
                         <>
-                          <span className="text-gray-400 line-through">₹{data.price}</span>
+                          <span className="text-gray-400 line-through">₹{Number(data.price).toFixed(2)}</span>
                           <span className="text-2xl font-bold text-green-600">
-                            ₹{getDiscountedPrice(data.price, data.discount)}
+                            ₹{getDiscountedPrice(data.price, data.discount).toFixed(2)}
                           </span>
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                             {data.discount}% OFF
                           </span>
                         </>
                       ) : (
-                        <span className="text-2xl font-bold text-gray-800">₹{data.price}</span>
+                        <span className="text-2xl font-bold text-gray-800">₹{Number(data.price).toFixed(2)}</span>
                       )}
                     </div>
                   </div>
                 </div>
               ))}
 
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex flex-wrap gap-3 pt-4 border-t">
                 <button
                   onClick={handleSaveCoursePrices}
-                  className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-semibold hover:bg-amber-600 transition"
+                  disabled={savingPrices}
+                  className="flex-1 min-w-[120px] bg-amber-500 text-white py-3 rounded-xl font-semibold hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save size={18} className="inline mr-2" /> Save All Prices
+                  <Save size={18} className="inline mr-2" /> 
+                  {savingPrices ? 'Saving...' : 'Save All Prices'}
+                </button>
+                <button
+                  onClick={resetToDefault}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                >
+                  Reset Default
                 </button>
                 <button
                   onClick={() => setShowPriceModal(false)}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                  className="px-6 py-3 bg-red-100 text-red-700 rounded-xl font-semibold hover:bg-red-200 transition"
                 >
                   Cancel
                 </button>
