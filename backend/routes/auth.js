@@ -1,5 +1,4 @@
 const express = require('express');
-
 const jwt = require('jsonwebtoken');
 const crypto = require("crypto");
 const User = require('../models/User');
@@ -13,72 +12,69 @@ router.post('/signup', async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
 
-if (!email && !mobile) {
-  return res.status(400).json({
-    message: "Email or Mobile is required"
-  });
-}
+    if (!email && !mobile) {
+      return res.status(400).json({
+        message: "Email or Mobile is required"
+      });
+    }
 
-if (email) {
-  const existingEmail = await User.findOne({ email });
+    if (email) {
+      const existingEmail = await User.findOne({ email });
+      if (existingEmail) {
+        return res.status(400).json({
+          message: "Email already exists"
+        });
+      }
+    }
 
-  if (existingEmail) {
-    return res.status(400).json({
-      message: "Email already exists"
+    if (mobile) {
+      const existingMobile = await User.findOne({ mobile });
+      if (existingMobile) {
+        return res.status(400).json({
+          message: "Mobile already exists"
+        });
+      }
+    }
+
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    const user = new User({
+      name,
+      email,
+      mobile,
+      password,
+      sessionToken
     });
-  }
-}
 
-if (mobile) {
-  const existingMobile = await User.findOne({ mobile });
+    await user.save();
 
-  if (existingMobile) {
-    return res.status(400).json({
-      message: "Mobile already exists"
-    });
-  }
-}
-
-const sessionToken = crypto.randomBytes(32).toString("hex");
-
-const user = new User({
-  name,
-  email,
-  mobile,
-  password,
-  sessionToken
-});
-
-await user.save();
-
-   const token = jwt.sign(
-  {
-    userId: user._id,
-    email: user.email,
-    mobile: user.mobile,
-    role: 'user',
-    type: 'user'
-  },
-  process.env.JWT_SECRET,
-  { expiresIn: '7d' }
-);
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        email: user.email,
+        mobile: user.mobile,
+        role: 'user',
+        type: 'user'
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.status(201).json({
       success: true,
       token,
-     user: {
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  mobile: user.mobile,
-  role: 'user',
-  isPremium: user.isPremium || false,
-  enrolledCourses: user.enrolledCourses,
-  purchasedItems: user.purchasedItems,
-  downloadHistory: user.downloadHistory,
-  createdAt: user.createdAt,
-  lastLogin: user.lastLogin
-}
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        role: 'user',
+        isPremium: user.isPremium || false,
+        enrolledCourses: user.enrolledCourses,
+        purchasedItems: user.purchasedItems,
+        downloadHistory: user.downloadHistory,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin
+      }
     });
 
   } catch (error) {
@@ -94,12 +90,12 @@ router.post('/signin', async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
-const user = await User.findOne({
-  $or: [
-    { email: identifier },
-    { mobile: identifier }
-  ]
-});
+    const user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { mobile: identifier }
+      ]
+    });
 
     if (!user) {
       return res.status(401).json({
@@ -116,24 +112,22 @@ const user = await User.findOne({
     }
 
     const sessionToken = crypto.randomBytes(32).toString("hex");
-
-user.lastLogin = new Date();
-user.sessionToken = sessionToken;
-
-await user.save();
+    user.lastLogin = new Date();
+    user.sessionToken = sessionToken;
+    await user.save();
 
     const token = jwt.sign(
-{
-  userId: user._id,
-  email: user.email,
-  mobile: user.mobile,
-  role: 'user',
-  type: 'user',
-  sessionToken
-},
-process.env.JWT_SECRET,
-{ expiresIn: '7d' }
-);
+      {
+        userId: user._id,
+        email: user.email,
+        mobile: user.mobile,
+        role: 'user',
+        type: 'user',
+        sessionToken
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
     res.json({
       success: true,
@@ -143,7 +137,7 @@ process.env.JWT_SECRET,
         name: user.name,
         email: user.email,
         role: 'user',
-        isPremium: user.isPremium || false,  // 🔥 ADD THIS
+        isPremium: user.isPremium || false,
         enrolledCourses: user.enrolledCourses,
         purchasedItems: user.purchasedItems,
         downloadHistory: user.downloadHistory,
@@ -180,7 +174,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
           name: user.name,
           email: user.email,
           role: 'user',
-          isPremium: user.isPremium || false,  // 🔥🔥🔥 MOST IMPORTANT 🔥🔥🔥
+          isPremium: user.isPremium || false,
           enrolledCourses: user.enrolledCourses,
           purchasedItems: user.purchasedItems || [],
           downloadHistory: user.downloadHistory || [],
@@ -255,37 +249,37 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
       }
 
       if (mobile && mobile !== user.mobile) {
-  const existingMobile = await User.findOne({
-    mobile,
-    _id: { $ne: user._id }
-  });
+        const existingMobile = await User.findOne({
+          mobile,
+          _id: { $ne: user._id }
+        });
 
-  if (existingMobile) {
-    return res.status(400).json({
-      message: 'Mobile already in use'
-    });
-  }
-}
+        if (existingMobile) {
+          return res.status(400).json({
+            message: 'Mobile already in use'
+          });
+        }
+      }
 
-     if (name) user.name = name;
-if (email) user.email = email;
-if (mobile) user.mobile = mobile;
+      if (name) user.name = name;
+      if (email) user.email = email;
+      if (mobile) user.mobile = mobile;
 
       await user.save();
 
       return res.json({
-       success: true,
-message: 'Profile updated successfully',
-user: {
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  mobile: user.mobile,
-  isPremium: user.isPremium || false,
-  enrolledCourses: user.enrolledCourses,
-  purchasedItems: user.purchasedItems,
-  downloadHistory: user.downloadHistory
-}
+        success: true,
+        message: 'Profile updated successfully',
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          isPremium: user.isPremium || false,
+          enrolledCourses: user.enrolledCourses,
+          purchasedItems: user.purchasedItems,
+          downloadHistory: user.downloadHistory
+        }
       });
     }
 
@@ -502,6 +496,59 @@ router.delete('/download-history/:downloadId', authMiddleware, async (req, res) 
     res.status(500).json({
       success: false,
       message: 'Server Error'
+    });
+  }
+});
+
+// ================= DELETE USER ACCOUNT =================
+router.delete("/delete-account", authMiddleware, async (req, res) => {
+  try {
+    if (req.user.type !== "user") {
+      return res.status(403).json({
+        success: false,
+        message: "Only users can delete their account"
+      });
+    }
+
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required"
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password"
+      });
+    }
+
+    await User.findByIdAndDelete(user._id);
+
+    return res.json({
+      success: true,
+      message: "Account deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Delete account error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error"
     });
   }
 });
