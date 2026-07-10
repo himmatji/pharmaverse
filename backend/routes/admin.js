@@ -1034,6 +1034,102 @@ router.delete("/users/:id", adminAuth, async (req, res) => {
   }
 });
 
+// ================= DELETE USER ACCOUNT (Self) =================
+router.delete("/delete-user-account", authMiddleware, async (req, res) => {
+  try {
+    if (req.user.type !== "user") {
+      return res.status(403).json({
+        success: false,
+        message: "Only users can delete their account"
+      });
+    }
+
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        message: "Password is required"
+      });
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Incorrect password"
+      });
+    }
+
+    await User.findByIdAndDelete(user._id);
+
+    res.json({
+      success: true,
+      message: "Account deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Delete account error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error"
+    });
+  }
+});
+
+// ================= DELETE ADMIN ACCOUNT (Self) =================
+router.delete("/delete-admin-account", adminAuth, async (req, res) => {
+  try {
+    const adminId = req.admin.id;
+    
+    // Check if the admin exists
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Admin not found" 
+      });
+    }
+
+    // Check if trying to delete the last super admin
+    if (admin.role === 'super_admin') {
+      const superAdminCount = await Admin.countDocuments({ role: 'super_admin' });
+      if (superAdminCount === 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot delete the last super admin account. Please create another super admin first."
+        });
+      }
+    }
+
+    // Delete the admin account
+    await Admin.findByIdAndDelete(adminId);
+    
+    res.json({
+      success: true,
+      message: "Admin account deleted successfully"
+    });
+    
+  } catch (error) {
+    console.error("Error deleting admin account:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting admin account",
+      error: error.message
+    });
+  }
+});
+
 // ================= ADMIN PROFILE =================
 router.get("/profile", adminAuth, async (req, res) => {
   try {
