@@ -953,8 +953,28 @@ router.put("/price", adminAuth, async (req, res) => {
 
 router.get("/public-price", async (req, res) => {
   try {
-    const admin = await Admin.findOne({ role: "super_admin" });
-    res.json({ price: admin?.premiumPrice || 999 });
+    const coursePrices = await CoursePrice.findOne();
+
+    if (!coursePrices) {
+      return res.json({
+        "B.Pharm": { price: 99, discount: 0 },
+        "D.Pharm": { price: 79, discount: 0 },
+        "M.Pharm": { price: 149, discount: 0 },
+        "Pharm.D": { price: 129, discount: 0 },
+        "PhD": { price: 199, discount: 0 }
+      });
+    }
+
+    const p = coursePrices.prices;
+
+    res.json({
+      "B.Pharm": p.get("BPharm"),
+      "D.Pharm": p.get("DPharm"),
+      "M.Pharm": p.get("MPharm"),
+      "Pharm.D": p.get("PharmD"),
+      "PhD": p.get("PhD")
+    });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

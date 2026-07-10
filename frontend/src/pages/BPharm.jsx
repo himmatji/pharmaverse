@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import toast, { Toaster } from "react-hot-toast";
 
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
 
@@ -21,16 +22,18 @@ import {
   ChevronRight
 } from "lucide-react";
 
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
+
 const BPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingItemId, setLoadingItemId] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
   
-  // For semester cards - which semester is open (SINGLE CLICK OPEN)
   const [openSemester, setOpenSemester] = useState({});
 
   const [notes, setNotes] = useState([]);
@@ -43,10 +46,100 @@ const BPharm = () => {
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // Group data by semester
   const [pdfsBySemester, setPdfsBySemester] = useState({});
   const [videosBySemester, setVideosBySemester] = useState({});
   const [papersBySemester, setPapersBySemester] = useState({});
+
+  // ========== STYLES - FIXED MEMORY LEAK ==========
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+      @keyframes cinematicReveal {
+        0% {
+          opacity: 0;
+          transform: translateY(40px) scale(0.96);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      
+      @media (max-width: 768px) {
+        .hero-title {
+          font-size: 2rem;
+        }
+        .hero-subtitle {
+          font-size: 0.875rem;
+        }
+        .tab-button {
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+        }
+        .tab-icon {
+          width: 2rem;
+          height: 2rem;
+        }
+      }
+      
+      @media (max-width: 640px) {
+        .section-title {
+          font-size: 1.75rem;
+        }
+        .card-title {
+          font-size: 1rem;
+        }
+        .premium-button {
+          font-size: 0.75rem;
+          padding: 0.5rem 1rem;
+        }
+      }
+      
+      @media (max-width: 640px) {
+        .grid-cols-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    `;
+    document.head.appendChild(styleSheet);
+
+    return () => {
+      document.head.removeChild(styleSheet);
+    };
+  }, []);
+
+  // ========== GOOGLE FONTS - FIXED CLEANUP ==========
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, []);
 
   // Scroll to top on page load
   useEffect(() => {
@@ -71,14 +164,6 @@ const BPharm = () => {
     }
   }, [location]);
 
-  // Add Google Fonts
-  useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-  }, []);
-
   const handleCardMouseMove = (cardId, e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -95,7 +180,6 @@ const BPharm = () => {
     });
   };
 
-  // Single click toggle - turant open/close hoga
   const handleSemesterClick = (semester, type) => {
     setOpenSemester(prev => ({
       ...prev,
@@ -106,14 +190,20 @@ const BPharm = () => {
   // ========== API CALLS ==========
   const fetchNotes = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/notes?course=B.Pharm");
+      const res = await axios.get(`${API_BASE}/api/admin/public/notes?course=B.Pharm`);
       setNotes(res.data);
-    } catch (error) { console.log(error); }
+      return { success: true, data: res.data };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Notes fetch error:", error);
+      }
+      return { success: false, error };
+    }
   };
 
   const fetchPremiumVideos = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/videos?course=B.Pharm");
+      const res = await axios.get(`${API_BASE}/api/admin/public/videos?course=B.Pharm`);
       const premiumOnly = res.data.filter(video => video.isPremium === true);
       setPremiumVideos(premiumOnly);
       
@@ -124,29 +214,42 @@ const BPharm = () => {
         grouped[sem].push(video);
       });
       setVideosBySemester(grouped);
-    } catch (error) { console.log(error); }
+      return { success: true, data: premiumOnly };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Premium videos fetch error:", error);
+      }
+      return { success: false, error };
+    }
   };
 
   const fetchFreeVideos = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/free-videos?course=B.Pharm");
+      const res = await axios.get(`${API_BASE}/api/admin/public/free-videos?course=B.Pharm`);
       const freeOnly = res.data.filter(video => video.isPremium === false);
       setFreeVideos(freeOnly);
-    } catch (error) { 
-      console.log(error);
+      return { success: true, data: freeOnly };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Free videos fetch error:", error);
+      }
       try {
-        const allRes = await axios.get("https://api.pharmaverse.co.in/api/admin/public/videos?course=B.Pharm");
+        const allRes = await axios.get(`${API_BASE}/api/admin/public/videos?course=B.Pharm`);
         const freeOnly = allRes.data.filter(video => video.isPremium === false);
         setFreeVideos(freeOnly);
+        return { success: true, data: freeOnly };
       } catch (err) {
-        console.log(err);
+        if (import.meta.env.DEV) {
+          console.error("Fallback video fetch error:", err);
+        }
+        return { success: false, error: err };
       }
     }
   };
 
   const fetchPaidPDFs = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/paid-pdfs?course=B.Pharm");
+      const res = await axios.get(`${API_BASE}/api/admin/public/paid-pdfs?course=B.Pharm`);
       setPaidPDFs(res.data);
       
       const grouped = {};
@@ -156,12 +259,18 @@ const BPharm = () => {
         grouped[sem].push(pdf);
       });
       setPdfsBySemester(grouped);
-    } catch (error) { console.log(error); }
+      return { success: true, data: res.data };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Paid PDFs fetch error:", error);
+      }
+      return { success: false, error };
+    }
   };
 
   const fetchPapers = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public/papers?course=B.Pharm");
+      const res = await axios.get(`${API_BASE}/api/admin/public/papers?course=B.Pharm`);
       setFreePapers(res.data.filter((paper) => paper.isPremium === false));
       const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
       setPremiumPapers(premiumPapersData);
@@ -173,17 +282,21 @@ const BPharm = () => {
         grouped[sem].push(paper);
       });
       setPapersBySemester(grouped);
+      return { success: true, data: res.data };
     } catch (error) {
-      console.log(error);
+      if (import.meta.env.DEV) {
+        console.error("Papers fetch error:", error);
+      }
+      return { success: false, error };
     }
   };
 
   const fetchUserStatus = async () => {
     try {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-      if (!token) return;
+      if (!token) return { success: false, error: "No token" };
 
-      const response = await axios.get("https://api.pharmaverse.co.in/api/auth/profile", {
+      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -192,58 +305,111 @@ const BPharm = () => {
         setUser(userData);
         setIsPremium(userData.isPremium || false);
         localStorage.setItem("user", JSON.stringify(userData));
+        return { success: true, data: userData };
       }
+      return { success: false, error: "API returned false" };
     } catch (error) {
-      console.error("Failed to fetch user status:", error);
+      if (import.meta.env.DEV) {
+        console.error("User status fetch error:", error);
+      }
+      return { success: false, error };
     }
   };
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get("https://api.pharmaverse.co.in/api/admin/public-price");
-      setPremiumPrice(res.data.price);
-    } catch (error) {
-      console.log("Price fetch error:", error);
-      const savedPrice = localStorage.getItem("premium_price");
-      if (savedPrice) {
-        setPremiumPrice(parseInt(savedPrice));
+      const res = await axios.get(`${API_BASE}/api/admin/course-prices`);
+      const data = res.data;
+      const course = data["B.Pharm"];
+
+      if (course && course.price !== undefined) {
+        const discountedPrice = course.price - (course.price * (course.discount || 0)) / 100;
+        setPremiumPrice(Math.round(discountedPrice));
+        return { success: true, data: discountedPrice };
       }
+      return { success: false, error: "Course not found" };
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Price fetch error:", error);
+      }
+      return { success: false, error };
     }
   };
 
+  // ========== PARALLEL API CALLS - USING Promise.allSettled ==========
   useEffect(() => {
-    fetchNotes();
-    fetchFreeVideos();
-    fetchPremiumVideos();
-    fetchPaidPDFs();
-    fetchPapers();
-    fetchUserStatus();
-    fetchPremiumPrice();
+    const fetchAllData = async () => {
+      setLoading(true);
+      
+      const results = await Promise.allSettled([
+        fetchNotes(),
+        fetchFreeVideos(),
+        fetchPremiumVideos(),
+        fetchPaidPDFs(),
+        fetchPapers(),
+        fetchUserStatus(),
+        fetchPremiumPrice()
+      ]);
+
+      // Log any rejected promises in development
+      if (import.meta.env.DEV) {
+        results.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(`API call ${index} failed:`, result.reason);
+          }
+        });
+      }
+
+      setLoading(false);
+    };
+    
+    fetchAllData();
   }, []);
 
-  // =============================================
-  // ========== FIXED handleView - 100% WORKING ==========
-  // =============================================
-  const handleView = async (item, type) => {
-    setLoading(true);
+  // ========== HELPER FUNCTIONS ==========
+  const getToken = () => {
+    return localStorage.getItem("userToken") || localStorage.getItem("token");
+  };
+
+  const getUserFromStorage = () => {
     try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      return savedUser;
+    } catch {
+      return {};
+    }
+  };
+
+  // ========== VIEW FUNCTION WITH SECURE window.open ==========
+  const handleView = async (item, type) => {
+    setLoadingItemId(item._id);
+    try {
+      const token = getToken();
       
       if (!token) {
-        alert("Please login first to view");
-        setLoading(false);
+        toast.error("Please login first to view");
+        setLoadingItemId(null);
         return;
       }
       
       let viewUrl;
       if (type === "note") {
-        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/note/${item._id}`;
-      } else if (type === "paid-pdf") {
-        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paid-pdf/${item._id}`;
+        viewUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
+      } else if (type === "paid-pdf" || type === "premium-pdf") {
+        viewUrl = `${API_BASE}/api/admin/public/download/paid-pdf/${item._id}`;
       } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
+        viewUrl = `${API_BASE}/api/admin/public/download/paper/${item._id}`;
+      } else if (type === "premium-video") {
+        if (item.videoUrl) {
+          window.open(item.videoUrl, "_blank", "noopener,noreferrer");
+          setLoadingItemId(null);
+          return;
+        }
+        viewUrl = `${API_BASE}/api/admin/public/download/video/${item._id}`;
       } else {
-        throw new Error("Invalid file type");
+        toast.error("Invalid file type");
+        setLoadingItemId(null);
+        return;
       }
       
       const response = await fetch(viewUrl, {
@@ -260,18 +426,16 @@ const BPharm = () => {
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
       
-      // ========== MOBILE / TABLET DETECTION ==========
       const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
       
       if (isMobileOrTablet) {
-        // ========== MOBILE FIX - PDF VIEWER ==========
         if (blob.type === "application/pdf") {
           try {
-            // Convert blob to base64 data URI
             const reader = new FileReader();
             reader.onload = function(e) {
               const dataUri = e.target.result;
-              const newWindow = window.open();
+              // FIXED: Secure window.open with noopener,noreferrer
+              const newWindow = window.open("", "_blank", "noopener,noreferrer");
               if (newWindow) {
                 newWindow.document.write(`
                   <!DOCTYPE html>
@@ -405,7 +569,6 @@ const BPharm = () => {
                           link.click();
                           document.body.removeChild(link);
                         }
-                        // Auto-hide loading after 3 seconds
                         setTimeout(function() {
                           const loading = document.getElementById('loading');
                           if (loading) loading.style.display = 'none';
@@ -415,19 +578,18 @@ const BPharm = () => {
                   </html>
                 `);
                 newWindow.document.close();
-                setLoading(false);
+                setLoadingItemId(null);
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
                 return;
               } else {
-                // Popup blocked - download directly
                 const link = document.createElement('a');
                 link.href = blobUrl;
                 link.download = `${item.title || 'document'}.pdf`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
-                alert("📄 PDF downloaded! Please check your downloads folder.");
-                setLoading(false);
+                toast.success("PDF downloaded!");
+                setLoadingItemId(null);
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
                 return;
               }
@@ -435,38 +597,38 @@ const BPharm = () => {
             reader.readAsDataURL(blob);
             return;
           } catch (err) {
-            console.log("Mobile PDF view error:", err);
-            // Fallback: Download directly
+            if (import.meta.env.DEV) {
+              console.error("Mobile PDF view error:", err);
+            }
             const link = document.createElement('a');
             link.href = blobUrl;
             link.download = `${item.title || 'document'}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            alert("📄 PDF downloaded! Please check your downloads folder.");
-            setLoading(false);
+            toast.success("PDF downloaded!");
+            setLoadingItemId(null);
             setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
             return;
           }
         } else {
-          // Non-PDF files: download
           const link = document.createElement('a');
           link.href = blobUrl;
           link.download = item.fileName || `${item.title}.pdf`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-          setLoading(false);
+          setLoadingItemId(null);
           setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
           return;
         }
       }
       
-      // ========== DESKTOP / LAPTOP ==========
-      const newWindow = window.open();
+      // FIXED: Secure window.open for desktop
+      const newWindow = window.open("", "_blank", "noopener,noreferrer");
       if (!newWindow) {
-        alert("Please allow popups to view files");
-        setLoading(false);
+        toast.error("Please allow popups to view files");
+        setLoadingItemId(null);
         return;
       }
       
@@ -490,36 +652,19 @@ const BPharm = () => {
         newWindow.location.href = blobUrl;
       }
       newWindow.document.close();
-      setLoading(false);
+      setLoadingItemId(null);
       setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
       
     } catch (error) {
-      console.error("View error:", error);
-      alert(error.message || "Failed to open file");
-      setLoading(false);
-    }
-  };
-
-  const updateLocalStorageAfterPurchase = async () => {
-    try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-      if (!token) return false;
-      
-      const response = await axios.get("https://api.pharmaverse.co.in/api/auth/profile", {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        setIsPremium(response.data.user.isPremium || false);
-        setUser(response.data.user);
-        return true;
+      if (import.meta.env.DEV) {
+        console.error("View error:", error);
       }
-    } catch (error) {
-      console.error("Failed to update localStorage:", error);
-      return false;
+      toast.error(error.message || "Failed to open file");
+      setLoadingItemId(null);
     }
   };
 
+  // ========== DOWNLOAD FUNCTION ==========
   const handleDownload = async (item, type) => {
     const isPremiumContent = type === "paid-pdf" || type === "premium-paper" || type === "premium-video";
     
@@ -528,27 +673,35 @@ const BPharm = () => {
       return;
     }
 
-    setLoading(true);
+    setLoadingItemId(item._id);
     try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+      const token = getToken();
       
       if (!token) {
-        alert("Please login first to download");
-        setLoading(false);
+        toast.error("Please login first to download");
+        setLoadingItemId(null);
         return;
       }
       
       let downloadUrl;
       if (type === "note") {
-        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/note/${item._id}`;
-      } else if (type === "paid-pdf") {
-        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paid-pdf/${item._id}`;
-      } else if (type === "free-paper") {
-        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
-      } else if (type === "premium-paper") {
-        downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/paper/${item._id}`;
+        downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
+      } else if (type === "paid-pdf" || type === "premium-pdf") {
+        downloadUrl = `${API_BASE}/api/admin/public/download/paid-pdf/${item._id}`;
+      } else if (type === "free-paper" || type === "premium-paper") {
+        downloadUrl = `${API_BASE}/api/admin/public/download/paper/${item._id}`;
+      } else if (type === "premium-video") {
+        if (item.videoUrl) {
+          window.open(item.videoUrl, "_blank", "noopener,noreferrer");
+          toast.success("Opening video in new tab!");
+          setLoadingItemId(null);
+          return;
+        }
+        downloadUrl = `${API_BASE}/api/admin/public/download/video/${item._id}`;
       } else {
-        throw new Error("Invalid file type");
+        toast.error("Invalid file type");
+        setLoadingItemId(null);
+        return;
       }
       
       const response = await fetch(downloadUrl, {
@@ -572,13 +725,15 @@ const BPharm = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
       
-      alert("✅ Download started!");
+      toast.success("Download started!");
       
     } catch (error) {
-      console.error("Download error:", error);
-      alert(error.message || "Download failed. Please try again.");
+      if (import.meta.env.DEV) {
+        console.error("Download error:", error);
+      }
+      toast.error(error.message || "Download failed. Please try again.");
     } finally {
-      setLoading(false);
+      setLoadingItemId(null);
     }
   };
 
@@ -588,51 +743,76 @@ const BPharm = () => {
       return;
     }
     if (video.videoUrl) {
-      window.open(video.videoUrl, "_blank");
+      window.open(video.videoUrl, "_blank", "noopener,noreferrer");
     } else {
-      alert("Video URL not available");
+      toast.error("Video URL not available");
     }
   };
 
   const handleFreeVideoDownload = async (video) => {
-    setLoading(true);
+    setLoadingItemId(video._id);
     try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+      const token = getToken();
       
       if (!token) {
-        alert("Please login first to download");
-        setLoading(false);
+        toast.error("Please login first to download");
+        setLoadingItemId(null);
         return;
       }
       
       if (video.videoUrl) {
-        window.open(video.videoUrl, "_blank");
-        alert("Opening video in new tab!");
+        window.open(video.videoUrl, "_blank", "noopener,noreferrer");
+        toast.success("Opening video in new tab!");
       } else {
-        alert("Video URL not available");
+        toast.error("Video URL not available");
       }
     } catch (error) {
-      console.error("Free video error:", error);
-      alert("Failed to open video");
+      if (import.meta.env.DEV) {
+        console.error("Free video error:", error);
+      }
+      toast.error("Failed to open video");
     } finally {
-      setLoading(false);
+      setLoadingItemId(null);
     }
   };
 
+  const updateLocalStorageAfterPurchase = async () => {
+    try {
+      const token = getToken();
+      if (!token) return false;
+      
+      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        setIsPremium(response.data.user.isPremium || false);
+        setUser(response.data.user);
+        return true;
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error("Failed to update localStorage:", error);
+      }
+      return false;
+    }
+  };
+
+  // ========== PURCHASE FUNCTION ==========
   const handlePremiumPurchase = async () => {
     try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+      const token = getToken();
 
       if (!token) {
-        alert("Please login first");
+        toast.error("Please login first");
         navigate('/login');
         return;
       }
 
-      const amount = premiumPrice;
+      const amount = Math.round(premiumPrice);
 
       const orderResponse = await axios.post(
-        "https://api.pharmaverse.co.in/api/payment/create-order",
+        `${API_BASE}/api/payment/create-order`,
         {
           amount: amount,
           productType: "premium_course",
@@ -659,7 +839,7 @@ const BPharm = () => {
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
-              "https://api.pharmaverse.co.in/api/payment/verify-payment",
+              `${API_BASE}/api/payment/verify-payment`,
               {
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
@@ -675,19 +855,30 @@ const BPharm = () => {
             );
 
             if (verifyResponse.data.success) {
-              alert("✅ Payment Successful! All content is now unlocked!");
+              toast.success("Payment Successful! All content is now unlocked!");
               await updateLocalStorageAfterPurchase();
-              window.location.reload();
+              
+              // Refresh data using Promise.allSettled
+              await Promise.allSettled([
+                fetchNotes(),
+                fetchFreeVideos(),
+                fetchPremiumVideos(),
+                fetchPaidPDFs(),
+                fetchPapers(),
+                fetchUserStatus()
+              ]);
             }
           } catch (error) {
-            console.error("Verification error:", error);
-            alert("Payment verification failed");
+            if (import.meta.env.DEV) {
+              console.error("Verification error:", error);
+            }
+            toast.error("Payment verification failed");
           }
         },
 
         prefill: {
-          name: user?.name || JSON.parse(localStorage.getItem("user"))?.name || "",
-          email: user?.email || JSON.parse(localStorage.getItem("user"))?.email || "",
+          name: user?.name || getUserFromStorage()?.name || "",
+          email: user?.email || getUserFromStorage()?.email || "",
         },
 
         theme: {
@@ -699,8 +890,10 @@ const BPharm = () => {
       razor.open();
 
     } catch (error) {
-      console.log("Payment Error:", error);
-      alert("Payment Failed: " + (error.response?.data?.message || error.message));
+      if (import.meta.env.DEV) {
+        console.error("Payment Error:", error);
+      }
+      toast.error("Payment Failed: " + (error.response?.data?.message || error.message));
     }
   };
 
@@ -711,7 +904,7 @@ const BPharm = () => {
     { id: "papers", label: "Premium Papers", icon: Brain },
   ];
 
-  // Render Functions
+  // ========== RENDER FUNCTIONS ==========
   const renderFreeCard = (item, type, icon, index) => {
     const Icon = icon;
     const cardId = `${type}-${item._id}`;
@@ -790,11 +983,11 @@ const BPharm = () => {
               </button>
               <button
                 onClick={() => handleDownload(item, type)}
-                disabled={loading}
+                disabled={loadingItemId === item._id}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50"
               >
                 <Download size={16} />
-                Download
+                {loadingItemId === item._id ? 'Downloading...' : 'Download'}
               </button>
             </div>
           </div>
@@ -907,11 +1100,11 @@ const BPharm = () => {
                   </button>
                   <button
                     onClick={() => handleDownload(item, type)}
-                    disabled={loading}
+                    disabled={loadingItemId === item._id}
                     className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105 disabled:opacity-50"
                   >
                     <Download size={16} />
-                    Download
+                    {loadingItemId === item._id ? 'Downloading...' : 'Download'}
                   </button>
                 </>
               )}
@@ -985,8 +1178,9 @@ const BPharm = () => {
               <button onClick={() => handleWatchVideo(video, true)} className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105">
                 <PlayCircle size={16} /> Watch Now
               </button>
-              <button onClick={() => handleFreeVideoDownload(video)} disabled={loading} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
-                <Download size={16} /> Download
+              <button onClick={() => handleFreeVideoDownload(video)} disabled={loadingItemId === video._id} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
+                <Download size={16} /> 
+                {loadingItemId === video._id ? 'Opening...' : 'Download'}
               </button>
             </div>
           </div>
@@ -1082,8 +1276,9 @@ const BPharm = () => {
                   <button onClick={() => handleWatchVideo(video, false)} className="flex-1 bg-gradient-to-r from-rose-600 to-pink-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105">
                     <PlayCircle size={16} /> Watch
                   </button>
-                  <button onClick={() => handleDownload(video, "premium-video")} disabled={loading} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
-                    <Download size={16} /> Download
+                  <button onClick={() => handleDownload(video, "premium-video")} disabled={loadingItemId === video._id} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
+                    <Download size={16} />
+                    {loadingItemId === video._id ? 'Opening...' : 'Download'}
                   </button>
                 </>
               )}
@@ -1094,13 +1289,19 @@ const BPharm = () => {
     );
   };
 
-  // ========== SEMESTER CARDS SECTION - SINGLE CLICK OPEN ==========
+  // ========== SEMESTER SECTION ==========
   const renderSemesterSection = (title, data, type, renderCard, icon, semesters = [1,2,3,4,5,6,7,8]) => {
     const hasData = semesters.some(sem => data[sem] && data[sem].length > 0);
     
     if (!hasData) return null;
     
     const activeSemesters = semesters.filter(sem => data[sem] && data[sem].length > 0);
+    
+    const getItemLabel = (count) => {
+      if (type.includes('video')) return `${count} ${count === 1 ? 'Video' : 'Videos'}`;
+      if (type.includes('paper')) return `${count} ${count === 1 ? 'Paper' : 'Papers'}`;
+      return `${count} ${count === 1 ? 'PDF' : 'PDFs'}`;
+    };
     
     return (
       <div className="mb-12">
@@ -1147,7 +1348,7 @@ const BPharm = () => {
                       : 'bg-purple-100 text-purple-600'
                   }`}>
                     <FileText size={10} />
-                    <span>{items.length} PDFs</span>
+                    <span>{getItemLabel(items.length)}</span>
                   </div>
                   
                   <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transform transition-transform duration-300 ${
@@ -1171,8 +1372,8 @@ const BPharm = () => {
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">
                   {sem}
                 </div>
-                <h4 className="text-lg sm:text-xl font-bold text-gray-800">Semester {sem} PDFs</h4>
-                <span className="text-xs sm:text-sm text-gray-500">({items.length} items)</span>
+                <h4 className="text-lg sm:text-xl font-bold text-gray-800">Semester {sem}</h4>
+                <span className="text-xs sm:text-sm text-gray-500">({getItemLabel(items.length)})</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {items.map((item, idx) => renderCard(item, type, idx))}
@@ -1184,78 +1385,39 @@ const BPharm = () => {
     );
   };
 
-  // Add CSS animations
-  const styleSheet = document.createElement("style");
-  styleSheet.textContent = `
-    @keyframes cinematicReveal {
-      0% {
-        opacity: 0;
-        transform: translateY(40px) scale(0.96);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-    }
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    .animate-fadeIn {
-      animation: fadeIn 0.5s ease-out forwards;
-    }
-    
-    @media (max-width: 768px) {
-      .hero-title {
-        font-size: 2rem;
-      }
-      .hero-subtitle {
-        font-size: 0.875rem;
-      }
-      .tab-button {
-        padding: 0.5rem 1rem;
-        font-size: 0.75rem;
-      }
-      .tab-icon {
-        width: 2rem;
-        height: 2rem;
-      }
-    }
-    
-    @media (max-width: 640px) {
-      .section-title {
-        font-size: 1.75rem;
-      }
-      .card-title {
-        font-size: 1rem;
-      }
-      .premium-button {
-        font-size: 0.75rem;
-        padding: 0.5rem 1rem;
-      }
-    }
-    
-    @media (max-width: 640px) {
-      .grid-cols-2 {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-  `;
-  document.head.appendChild(styleSheet);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white">
+      {/* Note: Toaster should be in App.jsx, remove if already there */}
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+          success: {
+            duration: 3000,
+            style: {
+              background: '#10b981',
+              color: '#fff',
+            },
+          },
+          error: {
+            duration: 4000,
+            style: {
+              background: '#ef4444',
+              color: '#fff',
+            },
+          },
+        }}
+      />
+
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-4 sm:p-6 flex items-center gap-3 shadow-xl">
             <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium text-sm sm:text-base">Processing...</span>
+            <span className="text-gray-700 font-medium text-sm sm:text-base">Loading...</span>
           </div>
         </div>
       )}
@@ -1458,16 +1620,6 @@ const BPharm = () => {
           )}
         </div>
       </div>
-
-      <style>{`
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 };
