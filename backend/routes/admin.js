@@ -224,10 +224,10 @@ router.get("/course-prices", adminAuth, async (req, res) => {
     if (!prices) {
       // Default prices
       const defaultPrices = {
-        "B.Pharm": { price: 99, discount: 0 },
-        "D.Pharm": { price: 79, discount: 0 },
-        "M.Pharm": { price: 149, discount: 0 },
-        "Pharm.D": { price: 129, discount: 0 },
+        "BPharm": { price: 99, discount: 0 },
+        "DPharm": { price: 79, discount: 0 },
+        "MPharm": { price: 149, discount: 0 },
+        "PharmD": { price: 129, discount: 0 },
         "PhD": { price: 199, discount: 0 }
       };
       // Save default to database
