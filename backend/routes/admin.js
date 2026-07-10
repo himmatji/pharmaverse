@@ -222,7 +222,6 @@ router.get("/course-prices", adminAuth, async (req, res) => {
   try {
     let prices = await CoursePrice.findOne();
     if (!prices) {
-      // Default prices
       const defaultPrices = {
         "BPharm": { price: 99, discount: 0 },
         "DPharm": { price: 79, discount: 0 },
@@ -230,7 +229,6 @@ router.get("/course-prices", adminAuth, async (req, res) => {
         "PharmD": { price: 129, discount: 0 },
         "PhD": { price: 199, discount: 0 }
       };
-      // Save default to database
       prices = new CoursePrice({ prices: defaultPrices });
       await prices.save();
       return res.json(defaultPrices);
@@ -258,11 +256,7 @@ router.put("/course-prices", adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Prices data is required' });
     }
 
-    let coursePrices = await CoursePrice.findOne();
-    if (!coursePrices) {
-      coursePrices = new CoursePrice({ prices });
-    } else {
-      const formattedPrices = {
+    const formattedPrices = {
   BPharm: prices.BPharm || prices["B.Pharm"] || { price: 99, discount: 0 },
   DPharm: prices.DPharm || prices["D.Pharm"] || { price: 79, discount: 0 },
   MPharm: prices.MPharm || prices["M.Pharm"] || { price: 149, discount: 0 },
@@ -270,8 +264,15 @@ router.put("/course-prices", adminAuth, async (req, res) => {
   PhD: prices.PhD || prices["PhD"] || { price: 199, discount: 0 },
 };
 
-coursePrices.prices = formattedPrices;
-    }
+let coursePrices = await CoursePrice.findOne();
+
+if (!coursePrices) {
+  coursePrices = new CoursePrice({
+    prices: formattedPrices,
+  });
+} else {
+  coursePrices.prices = formattedPrices;
+}
     coursePrices.updatedAt = new Date();
     coursePrices.updatedBy = req.admin.id;
     await coursePrices.save();
@@ -938,19 +939,7 @@ router.get("/download/:type/:id", adminAuth, async (req, res) => {
   }
 });
 
-// ================= PREMIUM PRICE =================
-router.put("/price", adminAuth, async (req, res) => {
-  try {
-    const { price } = req.body;
-    const admin = await Admin.findById(req.admin.id);
-    admin.premiumPrice = price;
-    await admin.save();
-    res.json({ success: true, price: admin.premiumPrice });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
+// ✅ CORRECT PUBLIC PRICE ROUTE - Uses CoursePrice collection
 router.get("/public-price", async (req, res) => {
   try {
     const coursePrices = await CoursePrice.findOne();
@@ -976,6 +965,7 @@ router.get("/public-price", async (req, res) => {
     });
 
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -1128,7 +1118,6 @@ router.delete("/delete-admin-account", adminAuth, async (req, res) => {
   try {
     const adminId = req.admin.id;
     
-    // Check if the admin exists
     const admin = await Admin.findById(adminId);
     if (!admin) {
       return res.status(404).json({ 
@@ -1137,7 +1126,6 @@ router.delete("/delete-admin-account", adminAuth, async (req, res) => {
       });
     }
 
-    // Check if trying to delete the last super admin
     if (admin.role === 'super_admin') {
       const superAdminCount = await Admin.countDocuments({ role: 'super_admin' });
       if (superAdminCount === 1) {
@@ -1148,7 +1136,6 @@ router.delete("/delete-admin-account", adminAuth, async (req, res) => {
       }
     }
 
-    // Delete the admin account
     await Admin.findByIdAndDelete(adminId);
     
     res.json({
