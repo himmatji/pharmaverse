@@ -318,9 +318,9 @@ const BPharm = () => {
 
   const fetchPremiumPrice = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/admin/course-prices`);
-      const data = res.data;
-      const course = data["B.Pharm"];
+     const res = await axios.get(`${API_BASE}/api/admin/public-price`);
+const data = res.data;
+const course = data["B.Pharm"];
 
       if (course && course.price !== undefined) {
         const discountedPrice = course.price - (course.price * (course.discount || 0)) / 100;
