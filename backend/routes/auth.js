@@ -7,13 +7,16 @@ const { authMiddleware, isSuperAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// ================= USER SIGNUP =================
+// =========================================================
+// USER SIGNUP
+// =========================================================
 router.post('/signup', async (req, res) => {
   try {
     const { name, email, mobile, password } = req.body;
 
     if (!email && !mobile) {
       return res.status(400).json({
+        success: false,
         message: "Email or Mobile is required"
       });
     }
@@ -22,6 +25,7 @@ router.post('/signup', async (req, res) => {
       const existingEmail = await User.findOne({ email });
       if (existingEmail) {
         return res.status(400).json({
+          success: false,
           message: "Email already exists"
         });
       }
@@ -31,6 +35,7 @@ router.post('/signup', async (req, res) => {
       const existingMobile = await User.findOne({ mobile });
       if (existingMobile) {
         return res.status(400).json({
+          success: false,
           message: "Mobile already exists"
         });
       }
@@ -42,7 +47,11 @@ router.post('/signup', async (req, res) => {
       email,
       mobile,
       password,
-      sessionToken
+      sessionToken,
+      isPremium: false,
+      enrolledCourses: [],
+      purchasedItems: [],
+      downloadHistory: []
     });
 
     await user.save();
@@ -69,26 +78,36 @@ router.post('/signup', async (req, res) => {
         mobile: user.mobile,
         role: 'user',
         isPremium: user.isPremium || false,
-        enrolledCourses: user.enrolledCourses,
-        purchasedItems: user.purchasedItems,
-        downloadHistory: user.downloadHistory,
+        enrolledCourses: user.enrolledCourses || [],
+        purchasedItems: user.purchasedItems || [],
+        downloadHistory: user.downloadHistory || [],
         createdAt: user.createdAt,
         lastLogin: user.lastLogin
       }
     });
 
   } catch (error) {
-    console.log(error);
+    console.error("Signup error:", error);
     res.status(500).json({
+      success: false,
       message: 'Server Error'
     });
   }
 });
 
-// ================= USER SIGNIN =================
+// =========================================================
+// USER SIGNIN
+// =========================================================
 router.post('/signin', async (req, res) => {
   try {
     const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Identifier and password are required'
+      });
+    }
 
     const user = await User.findOne({
       $or: [
@@ -99,6 +118,7 @@ router.post('/signin', async (req, res) => {
 
     if (!user) {
       return res.status(401).json({
+        success: false,
         message: 'Invalid credentials'
       });
     }
@@ -107,6 +127,7 @@ router.post('/signin', async (req, res) => {
 
     if (!isMatch) {
       return res.status(401).json({
+        success: false,
         message: 'Invalid credentials'
       });
     }
@@ -136,25 +157,29 @@ router.post('/signin', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        mobile: user.mobile,
         role: 'user',
         isPremium: user.isPremium || false,
-        enrolledCourses: user.enrolledCourses,
-        purchasedItems: user.purchasedItems,
-        downloadHistory: user.downloadHistory,
+        enrolledCourses: user.enrolledCourses || [],
+        purchasedItems: user.purchasedItems || [],
+        downloadHistory: user.downloadHistory || [],
         createdAt: user.createdAt,
         lastLogin: user.lastLogin
       }
     });
 
   } catch (error) {
-    console.log(error);
+    console.error("Signin error:", error);
     res.status(500).json({
+      success: false,
       message: 'Server Error'
     });
   }
 });
 
-// ================= USER PROFILE (FIXED - WITH isPremium) =================
+// =========================================================
+// USER PROFILE - FIXED with isPremium
+// =========================================================
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
     if (req.user.type === 'user') {
@@ -173,9 +198,10 @@ router.get('/profile', authMiddleware, async (req, res) => {
           id: user._id,
           name: user.name,
           email: user.email,
+          mobile: user.mobile,
           role: 'user',
           isPremium: user.isPremium || false,
-          enrolledCourses: user.enrolledCourses,
+          enrolledCourses: user.enrolledCourses || [],
           purchasedItems: user.purchasedItems || [],
           downloadHistory: user.downloadHistory || [],
           createdAt: user.createdAt,
@@ -202,6 +228,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
           email: admin.email,
           role: admin.role,
           permissions: admin.permissions,
+          isActive: admin.isActive,
           createdAt: admin.createdAt,
           lastLogin: admin.lastLogin
         }
@@ -222,7 +249,9 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
-// ================= UPDATE USER PROFILE =================
+// =========================================================
+// UPDATE USER PROFILE
+// =========================================================
 router.put('/update-profile', authMiddleware, async (req, res) => {
   try {
     if (req.user.type === 'user') {
@@ -231,6 +260,7 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
       if (!user) {
         return res.status(404).json({
+          success: false,
           message: 'User not found'
         });
       }
@@ -243,6 +273,7 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
         if (existingUser) {
           return res.status(400).json({
+            success: false,
             message: 'Email already in use'
           });
         }
@@ -256,6 +287,7 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
         if (existingMobile) {
           return res.status(400).json({
+            success: false,
             message: 'Mobile already in use'
           });
         }
@@ -276,9 +308,9 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
           email: user.email,
           mobile: user.mobile,
           isPremium: user.isPremium || false,
-          enrolledCourses: user.enrolledCourses,
-          purchasedItems: user.purchasedItems,
-          downloadHistory: user.downloadHistory
+          enrolledCourses: user.enrolledCourses || [],
+          purchasedItems: user.purchasedItems || [],
+          downloadHistory: user.downloadHistory || []
         }
       });
     }
@@ -289,6 +321,7 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
       if (!admin) {
         return res.status(404).json({
+          success: false,
           message: 'Admin not found'
         });
       }
@@ -301,6 +334,7 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
         if (existingAdmin) {
           return res.status(400).json({
+            success: false,
             message: 'Email already in use'
           });
         }
@@ -314,12 +348,14 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
 
         if (!isMatch) {
           return res.status(401).json({
+            success: false,
             message: 'Current password is incorrect'
           });
         }
 
         if (newPassword.length < 6) {
           return res.status(400).json({
+            success: false,
             message: 'Password must be at least 6 characters'
           });
         }
@@ -332,35 +368,47 @@ router.put('/update-profile', authMiddleware, async (req, res) => {
       return res.json({
         success: true,
         message: 'Admin profile updated successfully',
-        admin
+        admin: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          permissions: admin.permissions
+        }
       });
     }
 
     return res.status(403).json({
+      success: false,
       message: 'Access denied'
     });
 
   } catch (error) {
     console.error("Update profile error:", error);
     res.status(500).json({
+      success: false,
       message: 'Server Error'
     });
   }
 });
 
-// ================= CHANGE PASSWORD =================
+// =========================================================
+// CHANGE PASSWORD
+// =========================================================
 router.put('/change-password', authMiddleware, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
+        success: false,
         message: 'Current password and new password required'
       });
     }
 
     if (newPassword.length < 6) {
       return res.status(400).json({
+        success: false,
         message: 'Password must be at least 6 characters'
       });
     }
@@ -370,6 +418,7 @@ router.put('/change-password', authMiddleware, async (req, res) => {
 
       if (!user) {
         return res.status(404).json({
+          success: false,
           message: 'User not found'
         });
       }
@@ -378,6 +427,7 @@ router.put('/change-password', authMiddleware, async (req, res) => {
 
       if (!isMatch) {
         return res.status(401).json({
+          success: false,
           message: 'Current password is incorrect'
         });
       }
@@ -396,6 +446,7 @@ router.put('/change-password', authMiddleware, async (req, res) => {
 
       if (!admin) {
         return res.status(404).json({
+          success: false,
           message: 'Admin not found'
         });
       }
@@ -404,6 +455,7 @@ router.put('/change-password', authMiddleware, async (req, res) => {
 
       if (!isMatch) {
         return res.status(401).json({
+          success: false,
           message: 'Current password is incorrect'
         });
       }
@@ -418,33 +470,86 @@ router.put('/change-password', authMiddleware, async (req, res) => {
     }
 
     return res.status(403).json({
+      success: false,
       message: 'Access denied'
     });
 
   } catch (error) {
     console.error("Change password error:", error);
     res.status(500).json({
+      success: false,
       message: 'Server Error'
     });
   }
 });
 
-// ================= VERIFY TOKEN =================
+// =========================================================
+// VERIFY TOKEN
+// =========================================================
 router.get('/verify', authMiddleware, async (req, res) => {
   try {
-    return res.json({
-      success: true,
-      user: req.user
+    if (req.user.type === 'user') {
+      const user = await User.findById(req.user.id).select('-password');
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      return res.json({
+        success: true,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: 'user',
+          isPremium: user.isPremium || false,
+          enrolledCourses: user.enrolledCourses || [],
+          purchasedItems: user.purchasedItems || [],
+          downloadHistory: user.downloadHistory || []
+        }
+      });
+    }
+
+    if (req.user.type === 'admin') {
+      const admin = await Admin.findById(req.user.id).select('-password');
+      if (!admin) {
+        return res.status(404).json({
+          success: false,
+          message: 'Admin not found'
+        });
+      }
+
+      return res.json({
+        success: true,
+        admin: {
+          id: admin._id,
+          name: admin.name,
+          email: admin.email,
+          role: admin.role,
+          permissions: admin.permissions
+        }
+      });
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid user type'
     });
+
   } catch (error) {
-    console.error(error);
+    console.error("Verify error:", error);
     res.status(500).json({
+      success: false,
       message: 'Server Error'
     });
   }
 });
 
-// ================= DELETE DOWNLOAD HISTORY =================
+// =========================================================
+// DELETE DOWNLOAD HISTORY
+// =========================================================
 router.delete('/download-history/:downloadId', authMiddleware, async (req, res) => {
   try {
     if (req.user.type !== 'user') {
@@ -458,7 +563,7 @@ router.delete('/download-history/:downloadId', authMiddleware, async (req, res) 
     const userId = req.user.id;
 
     const user = await User.findById(userId);
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -483,8 +588,6 @@ router.delete('/download-history/:downloadId', authMiddleware, async (req, res) 
 
     await user.save();
 
-    console.log(`✅ Deleted download: ${itemToDelete.productTitle} (${downloadId})`);
-
     res.json({
       success: true,
       message: 'Download record deleted successfully',
@@ -500,7 +603,9 @@ router.delete('/download-history/:downloadId', authMiddleware, async (req, res) 
   }
 });
 
-// ================= DELETE USER ACCOUNT =================
+// =========================================================
+// DELETE USER ACCOUNT
+// =========================================================
 router.delete("/delete-account", authMiddleware, async (req, res) => {
   try {
     if (req.user.type !== "user") {
@@ -551,6 +656,204 @@ router.delete("/delete-account", authMiddleware, async (req, res) => {
       message: "Server Error"
     });
   }
+});
+
+// =========================================================
+// GET ALL USERS (Admin Only)
+// =========================================================
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.type !== 'admin' && req.user.type !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin only.'
+      });
+    }
+
+    const users = await User.find({})
+      .select('-password')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      users
+    });
+
+  } catch (error) {
+    console.error("Get users error:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+});
+
+// =========================================================
+// TOGGLE USER PREMIUM STATUS (Admin Only)
+// =========================================================
+router.put('/toggle-premium/:userId', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.type !== 'admin' && req.user.type !== 'super_admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. Admin only.'
+      });
+    }
+
+    const { userId } = req.params;
+    const { isPremium } = req.body;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    user.isPremium = isPremium;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `User premium status updated to ${isPremium}`,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isPremium: user.isPremium
+      }
+    });
+
+  } catch (error) {
+    console.error("Toggle premium error:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+});
+
+// =========================================================
+// ADMIN SIGNIN (Separate from user signin)
+// =========================================================
+router.post('/admin/signin', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    const admin = await Admin.findOne({
+      email,
+      isActive: true
+    });
+
+    if (!admin) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    const isMatch = await admin.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
+    }
+
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    const token = jwt.sign(
+      {
+        adminId: admin._id,
+        email: admin.email,
+        role: admin.role,
+        type: 'admin'
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      admin: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions
+      }
+    });
+
+  } catch (error) {
+    console.error("Admin signin error:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+});
+
+// =========================================================
+// LOGOUT
+// =========================================================
+router.post('/logout', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.type === 'user') {
+      const user = await User.findById(req.user.id);
+      if (user) {
+        user.sessionToken = null;
+        await user.save();
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+});
+
+// =========================================================
+// TEST ROUTE
+// =========================================================
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth router is working',
+    routes: [
+      'POST /signup',
+      'POST /signin',
+      'GET /profile',
+      'PUT /update-profile',
+      'PUT /change-password',
+      'GET /verify',
+      'DELETE /download-history/:downloadId',
+      'DELETE /delete-account',
+      'GET /users',
+      'PUT /toggle-premium/:userId',
+      'POST /admin/signin',
+      'POST /logout'
+    ]
+  });
 });
 
 module.exports = router;

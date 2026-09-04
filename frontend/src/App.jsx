@@ -22,7 +22,7 @@ import PharmD from "./pages/PharmD";
 import PhD from "./pages/PhD";
 import Profile from "./pages/Profile";
 
-
+const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
 /* HOME PAGE */
 const Home = () => {
@@ -38,59 +38,98 @@ const Home = () => {
   );
 };
 
+/* Remove all stale authentication data in one place. */
+const clearAuthStorage = () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("userToken");
+  localStorage.removeItem("user");
+  localStorage.removeItem("isLoggedIn");
+};
+
 function App() {
   const [isLoading, setIsLoading] = useState(true);
 
+  /* Load Razorpay once. Do not block the app forever if it fails. */
   useEffect(() => {
-    // Check if Razorpay script is loaded
-    const checkRazorpay = () => {
-      if (window.Razorpay) {
-        setIsLoading(false);
-      } else {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => setIsLoading(false);
-        script.onerror = () => {
-          console.error('Failed to load Razorpay');
-          setIsLoading(false);
-        };
-        document.body.appendChild(script);
-      }
+    if (window.Razorpay) {
+      setIsLoading(false);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+
+    if (existingScript) {
+      const finish = () => setIsLoading(false);
+      existingScript.addEventListener("load", finish);
+      existingScript.addEventListener("error", finish);
+
+      return () => {
+        existingScript.removeEventListener("load", finish);
+        existingScript.removeEventListener("error", finish);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setIsLoading(false);
+    script.onerror = () => {
+      console.error("Failed to load Razorpay");
+      setIsLoading(false);
     };
-    
-    checkRazorpay();
+
+    document.body.appendChild(script);
+
+    return () => {
+      // Keep the Razorpay script available for the rest of the app.
+    };
   }, []);
 
+  /*
+   * Verify an existing session periodically.
+   * IMPORTANT: a stale/invalid JWT is cleared on ANY 401 so the app
+   * does not keep sending the same bad token every 5 seconds.
+   */
   useEffect(() => {
-  const interval = setInterval(async () => {
-    const token = localStorage.getItem("token");
+    const verifySession = async () => {
+      const token =
+        localStorage.getItem("userToken") || localStorage.getItem("token");
+      const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
-    if (!token) return;
+      if (!token || !isLoggedIn) return;
 
-    try {
-      await axios.get("https://api.pharmaverse.co.in/api/auth/verify", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-    } catch (err) {
-      if (
-        err.response?.status === 401 &&
-        err.response?.data?.message === "Session expired. Please login again."
-      ) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        localStorage.removeItem("isLoggedIn");
+      try {
+        await axios.get(`${API_BASE}/api/auth/verify`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        if (error.response?.status === 401) {
+          clearAuthStorage();
 
-        alert("Your account has been logged in on another device.");
-
-        window.location.reload();
+          // Stop the repeated 401 loop and send the user to Home.
+          if (window.location.pathname !== "/") {
+            window.location.replace("/");
+          } else {
+            window.location.reload();
+          }
+        } else if (import.meta.env.DEV) {
+          console.error("Session verification error:", error);
+        }
       }
-    }
-  }, 5000);
+    };
 
-  return () => clearInterval(interval);
-}, []);
+    // Verify once after the app starts.
+    verifySession();
+
+    // Keep the existing session check behavior, but safely handle 401s.
+    const interval = setInterval(verifySession, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   if (isLoading) {
     return (
@@ -110,67 +149,68 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
         <Navbar />
+
         <Routes>
           {/* HOME - No auth required */}
           <Route path="/" element={<Home />} />
 
-          {/* PROFILE PAGE - Auth protected */}
-          <Route 
-            path="/profile" 
+          {/* PROFILE - Auth protected */}
+          <Route
+            path="/profile"
             element={
               <ProtectedRoute>
                 <Profile />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          
           {/* COURSE PAGES - Auth protected */}
-          <Route 
-            path="/bpharm" 
+          <Route
+            path="/bpharm"
             element={
               <ProtectedRoute>
                 <BPharm />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          <Route 
-            path="/dpharm" 
+          <Route
+            path="/dpharm"
             element={
               <ProtectedRoute>
                 <DPharm />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          <Route 
-            path="/mpharm" 
+          <Route
+            path="/mpharm"
             element={
               <ProtectedRoute>
                 <MPharm />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          <Route 
-            path="/pharmd" 
+          <Route
+            path="/pharmd"
             element={
               <ProtectedRoute>
                 <PharmD />
               </ProtectedRoute>
-            } 
+            }
           />
 
-          <Route 
-            path="/phd" 
+          <Route
+            path="/phd"
             element={
               <ProtectedRoute>
                 <PhD />
               </ProtectedRoute>
-            } 
+            }
           />
         </Routes>
+
         <Footer />
       </div>
     </BrowserRouter>

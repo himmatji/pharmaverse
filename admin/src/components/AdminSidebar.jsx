@@ -12,12 +12,21 @@ import {
   FolderOpen,
   User,
   Menu,
-  X
+  X,
+  GitBranch,
+  ChevronDown,
+  ChevronRight,
+  GraduationCap,
+  Pill,
+  Microscope,
+  FlaskRound,
+  HeartPulse
 } from "lucide-react";
 
 const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isBranchOpen, setIsBranchOpen] = useState(false);
 
   // Check if screen is mobile on mount and resize
   useEffect(() => {
@@ -32,7 +41,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   // Close sidebar when clicking outside on mobile
   useEffect(() => {
     if (!isMobileOpen) return;
-    
+
     const handleClickOutside = (e) => {
       const sidebar = document.getElementById("mobile-sidebar");
       const toggleBtn = document.getElementById("mobile-toggle-btn");
@@ -40,7 +49,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
         setIsMobileOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMobileOpen]);
@@ -52,8 +61,20 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     }
   }, [activeTab]);
 
+  // Branch options
+  const branches = [
+    { id: "bpharm", label: "B.Pharm", icon: <GraduationCap size={18} />, color: "from-blue-500 to-cyan-500" },
+    { id: "dpharm", label: "D.Pharm", icon: <Pill size={18} />, color: "from-emerald-500 to-teal-500" },
+    { id: "mpharm", label: "M.Pharm", icon: <Microscope size={18} />, color: "from-purple-500 to-indigo-500" },
+    { id: "phd", label: "PhD", icon: <FlaskRound size={18} />, color: "from-rose-500 to-pink-500" },
+    { id: "pharmd", label: "Pharm.D", icon: <HeartPulse size={18} />, color: "from-orange-500 to-amber-500" },
+  ];
+
+  // ========== MENU ITEMS - NO UPLOAD OPTION ==========
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={22} /> },
+    { id: "branch", label: "Branch", icon: <GitBranch size={22} />, isDropdown: true },
+    // Upload option REMOVED from here
     { id: "materials", label: "Free Materials", icon: <FolderOpen size={22} /> },
     { id: "paid", label: "Paid PDFs", icon: <CreditCard size={22} /> },
     { id: "videos", label: "Videos", icon: <Video size={22} /> },
@@ -79,36 +100,121 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     setIsMobileOpen(!isMobileOpen);
   };
 
+  const toggleBranch = () => {
+    setIsBranchOpen(!isBranchOpen);
+  };
+
+  const handleBranchClick = (branchId) => {
+    // Set active tab to branch
+    setActiveTab(`branch-${branchId}`);
+    // Close branch dropdown
+    setIsBranchOpen(false);
+  };
+
   // ========== SIDEBAR CONTENT (Reusable) ==========
   const SidebarContent = () => (
     <>
       {/* MENU */}
-      <div className="flex flex-col gap-2 flex-1">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveTab(item.id)}
-            className={`
-              flex items-center gap-4
-              px-5 py-3.5
-              text-[15px]
-              font-semibold
-              w-full
-              transition-all
-              duration-300
-              text-left
-              rounded-xl
-              ${
-                activeTab === item.id
+      <div className="flex flex-col gap-1 flex-1">
+        {menuItems.map((item) => {
+          // If it's a branch item, render dropdown
+          if (item.isDropdown) {
+            return (
+              <div key={item.id} className="mb-1">
+                <button
+                  onClick={toggleBranch}
+                  className={`
+                    flex items-center justify-between gap-4
+                    px-5 py-3.5
+                    text-[15px]
+                    font-semibold
+                    w-full
+                    transition-all
+                    duration-300
+                    text-left
+                    rounded-xl
+                    ${activeTab === item.id || activeTab?.startsWith("branch-")
+                      ? "bg-sky-600 text-white shadow-md"
+                      : "text-sky-900 hover:bg-white hover:text-sky-700"
+                    }
+                  `}
+                >
+                  <div className="flex items-center gap-4">
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </div>
+                  {isBranchOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                </button>
+
+                {/* Branch Submenu */}
+                {isBranchOpen && (
+                  <div className="ml-6 mt-1 space-y-1 border-l-2 border-sky-300 pl-3">
+                    {branches.map((branch) => {
+                      const isActive = activeTab === `branch-${branch.id}`;
+                      return (
+                        <button
+                          key={branch.id}
+                          onClick={() => handleBranchClick(branch.id)}
+                          className={`
+                            flex items-center gap-3
+                            px-4 py-2.5
+                            text-[13px]
+                            font-medium
+                            w-full
+                            transition-all
+                            duration-300
+                            text-left
+                            rounded-lg
+                            ${isActive
+                              ? `bg-gradient-to-r ${branch.color} text-white shadow-md`
+                              : "text-sky-800 hover:bg-white hover:text-sky-700"
+                            }
+                          `}
+                        >
+                          <span className={isActive ? "text-white" : "text-sky-500"}>
+                            {branch.icon}
+                          </span>
+                          <span>{branch.label}</span>
+                          {isActive && (
+                            <span className="ml-auto text-[10px] bg-white/20 px-2 py-0.5 rounded-full text-white">
+                              Active
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          // Normal menu item
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`
+                flex items-center gap-4
+                px-5 py-3.5
+                text-[15px]
+                font-semibold
+                w-full
+                transition-all
+                duration-300
+                text-left
+                rounded-xl
+                ${activeTab === item.id
                   ? "bg-sky-600 text-white shadow-md"
                   : "text-sky-900 hover:bg-white hover:text-sky-700"
-              }
-            `}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        ))}
+                }
+              `}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* LOGOUT BUTTON */}
@@ -166,7 +272,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => setIsMobileOpen(false)}
         ></div>
-        
+
         {/* Sidebar */}
         <div
           id="mobile-sidebar"

@@ -35,7 +35,13 @@ import {
   RefreshCw,
   TrendingUp as TrendingUpIcon,
   Edit,
-  Save
+  Save,
+  Upload,
+  Plus,
+  Trash2,
+  Layers,
+  CheckCircle,
+  ArrowRight
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -106,6 +112,93 @@ const COURSE_CONFIG = {
   }
 };
 
+// ========== B.PHARM SUBJECTS ==========
+const BPHARM_SUBJECTS = {
+  1: [
+    "Basics of Python Programming for Pharmaceutical Sciences",
+    "General Pharmacy",
+    "Healthcare Psychology and Communication Skills",
+    "Human Anatomy, Physiology and Pathophysiology I",
+    "Introduction to Pharmacognosy",
+    "Pharmaceutical Inorganic and Analytical Chemistry"
+  ],
+  2: [
+    "Applied Biostatistics and Data Analytics for Pharmaceutical Sciences",
+    "Biochemistry",
+    "Human Anatomy, Physiology and Pathophysiology II",
+    "Pharmaceutical Organic Chemistry",
+    "Pharmacognosy and Phytochemistry",
+    "Physical Pharmaceutics"
+  ],
+  3: [
+    "Introduction to Machine Learning in Pharmaceutical Sciences",
+    "Environmental Sciences",
+    "Ethics and Universal Human Values",
+    "General Pharmacology",
+    "Heterocyclic Compounds and Stereochemistry",
+    "Pharmaceutical Dosage Forms I",
+    "Pharmaceutical Engineering",
+    "Pharmaceutical Microbiology"
+  ],
+  4: [
+    "Herbal Drug Technology",
+    "Medicinal Chemistry",
+    "Pharmaceutical Biotechnology",
+    "Social Pharmacy and Public Health",
+    "Systemic Pharmacology I"
+  ],
+  5: [
+    "Biomedicinal Chemistry",
+    "Industrial Pharmacognosy",
+    "Innovation and Startup Ecosystem",
+    "Pharmaceutical Dosage Form II",
+    "Pharmaceutical Quality Assurance",
+    "Systemic Pharmacology II"
+  ],
+  6: [
+    "Advanced Pharmacognosy",
+    "Biopharmaceutics and Pharmacokinetics",
+    "Intellectual Property Rights",
+    "AI Applications in Pharmaceutical Sciences",
+    "Pharmaceutical Analysis",
+    "Pharmaceutical Jurisprudence",
+    "Green Chemistry",
+    "Materiovigilance and Hemovigilance",
+    "Scientific Writing",
+    "Drug Store and Business Management",
+    "Career Building in Cultivation of Medicinal Plants",
+    "Active Pharmaceutical Ingredients"
+  ],
+  7: [
+    "Biostatistics Research Methodology",
+    "Cosmetics and Cosmeceuticals",
+    "AI in Clinical Applications",
+    "Modern Analytical Techniques",
+    "Pharmacovigilance",
+    "Pharmacy Practice",
+    "Regulatory Affairs",
+    "Current Good Manufacturing Practices (cGMP)",
+    "Pharmaceutical Automation",
+    "Modern Techniques in Cellular Biology",
+    "Medical Devices",
+    "Transformation of Food Waste into Medicinal Products",
+    "Biosimilars, Vaccines & Macromolecules"
+  ],
+  8: [
+    "Ethical Considerations and Translational Applications of AI in Pharmacy",
+    "Clinical Pharmacotherapeutics",
+    "Industrial Pharmacy and Facility Design",
+    "Pharmaceutical Management",
+    "Sterile Dosage Forms and Novel Drug Delivery System",
+    "Pharmaceutical Packaging",
+    "Supply Chain Management",
+    "Industrial Safety and Waste Management",
+    "Traditional Healing Practices of India",
+    "Futuristic Pharma through AR/VR: Pharma 4.0",
+    "Herbal Cosmetics for Industry Perspective"
+  ]
+};
+
 const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
 };
@@ -160,7 +253,23 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
 
-  // ========== FORMS ==========
+  // ========== UPLOAD FORM STATE ==========
+  const [uploadForm, setUploadForm] = useState({
+    branch: "B.Pharm",
+    category: "",
+    semester: "",
+    subject: "",
+    unit: "",
+    units: [{ id: 1, name: "Unit 1", topics: [""] }],
+    title: "",
+    description: "",
+    file: null,
+    isPremium: false,
+    type: "note"
+  });
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // ========== FORMS (Existing) ==========
   const [noteForm, setNoteForm] = useState({
     title: "", description: "", course: "B.Pharm",
     semester: "", year: "", language: "",
@@ -203,6 +312,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const currentAdmin = JSON.parse(localStorage.getItem("admin") || "{}");
   const isSuperAdmin = currentAdmin.role === "super_admin";
   const allowedCourses = currentAdmin.permissions?.courses || [];
+
+  // ========== CATEGORIES ==========
+  const categories = [
+    { id: "Notes", icon: <BookOpen size={18} />, color: "from-blue-500 to-indigo-500", bg: "from-blue-50 to-indigo-50" },
+    { id: "Exam Crash Course", icon: <Zap size={18} />, color: "from-orange-500 to-amber-500", bg: "from-orange-50 to-amber-50" },
+    { id: "PYQs", icon: <Brain size={18} />, color: "from-rose-500 to-pink-500", bg: "from-rose-50 to-pink-50" }
+  ];
 
   useEffect(() => {
     const admin = localStorage.getItem("admin");
@@ -289,7 +405,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== DISCOUNT FUNCTIONS - FULL DECIMAL SUPPORT ==========
+  // ========== DISCOUNT FUNCTIONS ==========
   const getDiscountedPrice = (price, discount) => {
     if (discount > 0) {
       const discounted = price - (price * discount / 100);
@@ -382,7 +498,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   // ========== SAVE COURSE PRICES ==========
   const handleSaveCoursePrices = async () => {
-    // Validation
     for (const [course, data] of Object.entries(coursePrices)) {
       if (data.price < 0) {
         alert(`${course} price cannot be negative`);
@@ -409,7 +524,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== RESET TO DEFAULT ==========
   const resetToDefault = () => {
     if (window.confirm("Reset all prices to default values?")) {
       const defaultPrices = {
@@ -458,7 +572,178 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     });
   };
 
-  // ========== UPLOAD FUNCTIONS ==========
+  // ========== UPLOAD FORM HANDLERS ==========
+  const handleUploadChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setUploadForm(prev => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    }));
+  };
+
+  const handleUploadFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`File size exceeds 50MB limit.`);
+        e.target.value = '';
+        return;
+      }
+      setUploadForm(prev => ({ ...prev, file }));
+    }
+  };
+
+  const handleUnitChange = (index, field, value) => {
+    const updatedUnits = [...uploadForm.units];
+    updatedUnits[index][field] = value;
+    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+  };
+
+  const handleTopicChange = (unitIndex, topicIndex, value) => {
+    const updatedUnits = [...uploadForm.units];
+    updatedUnits[unitIndex].topics[topicIndex] = value;
+    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+  };
+
+  const addUnit = () => {
+    const newId = uploadForm.units.length + 1;
+    setUploadForm(prev => ({
+      ...prev,
+      units: [...prev.units, { id: newId, name: `Unit ${newId}`, topics: [""] }]
+    }));
+  };
+
+  const removeUnit = (index) => {
+    if (uploadForm.units.length <= 1) {
+      alert("At least one unit is required");
+      return;
+    }
+    const updatedUnits = uploadForm.units.filter((_, i) => i !== index);
+    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+  };
+
+  const addTopic = (unitIndex) => {
+    const updatedUnits = [...uploadForm.units];
+    updatedUnits[unitIndex].topics.push("");
+    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+  };
+
+  const removeTopic = (unitIndex, topicIndex) => {
+    const updatedUnits = [...uploadForm.units];
+    if (updatedUnits[unitIndex].topics.length <= 1) {
+      alert("At least one topic is required");
+      return;
+    }
+    updatedUnits[unitIndex].topics.splice(topicIndex, 1);
+    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+  };
+
+  const getSubjectsForSemester = () => {
+    if (!uploadForm.semester) return [];
+    return BPHARM_SUBJECTS[uploadForm.semester] || [];
+  };
+
+  const getBranchName = () => {
+    if (!activeTab?.startsWith("branch-")) return "B.Pharm";
+    const branchId = activeTab.replace("branch-", "");
+    const branchNames = {
+      bpharm: "B.Pharm",
+      dpharm: "D.Pharm",
+      mpharm: "M.Pharm",
+      phd: "PhD",
+      pharmd: "Pharm.D"
+    };
+    return branchNames[branchId] || "B.Pharm";
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!uploadForm.category) {
+      alert("Please select a category");
+      return;
+    }
+    if (!uploadForm.semester) {
+      alert("Please select a semester");
+      return;
+    }
+    if (!uploadForm.subject) {
+      alert("Please select a subject");
+      return;
+    }
+    if (!uploadForm.file) {
+      alert("Please select a file to upload");
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        alert("Please login first");
+        setUploading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("branch", getBranchName());
+      formData.append("category", uploadForm.category);
+      formData.append("semester", uploadForm.semester);
+      formData.append("subject", uploadForm.subject);
+      formData.append("unit", uploadForm.unit || 1);
+      formData.append("units", JSON.stringify(uploadForm.units));
+      formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
+      formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
+      formData.append("isPremium", uploadForm.isPremium);
+      formData.append("type", uploadForm.type);
+      formData.append("file", uploadForm.file);
+
+      const response = await axios.post(
+        `${API_URL}/upload`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data"
+          },
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(progress);
+          }
+        }
+      );
+
+      if (response.data.success) {
+        alert("✅ Upload successful!");
+        setUploadForm({
+          branch: getBranchName(),
+          category: "",
+          semester: "",
+          subject: "",
+          unit: "",
+          units: [{ id: 1, name: "Unit 1", topics: [""] }],
+          title: "",
+          description: "",
+          file: null,
+          isPremium: false,
+          type: "note"
+        });
+        setUploadProgress(0);
+        document.getElementById("upload-file-input").value = "";
+        fetchAllData();
+      } else {
+        alert("❌ " + (response.data.message || "Upload failed"));
+      }
+    } catch (error) {
+      alert("❌ Upload failed: " + (error.response?.data?.message || error.message));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ========== EXISTING UPLOAD FUNCTIONS ==========
   const handleNoteFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -871,6 +1156,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
+  const isBranchTab = () => {
+    return activeTab?.startsWith("branch-");
+  };
+
   const StatCard = ({ title, value, icon: Icon, color }) => (
     <div className="group relative overflow-hidden bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
       <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${color} rounded-bl-full opacity-10 group-hover:opacity-20 transition-opacity duration-500`}></div>
@@ -901,7 +1190,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
-  // ========== PRICE MANAGEMENT CARD ==========
   const CoursePriceCard = () => (
     <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
       <div className="flex items-center justify-between mb-6">
@@ -944,6 +1232,327 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
+  // ========== RENDER UPLOAD TAB (Branch Click) ==========
+  const renderUploadTab = () => {
+    const subjects = getSubjectsForSemester();
+    const branchName = getBranchName();
+
+    return (
+      <div className="animate-fadeIn">
+        <div className="mb-8">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-3xl sm:text-4xl font-['Space_Grotesk'] font-extrabold text-gray-900">
+              Upload <span className="bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">Content</span>
+            </h2>
+            <span className="px-4 py-1.5 bg-gradient-to-r from-sky-100 to-blue-100 text-sky-700 font-['Inter'] font-bold text-sm rounded-full border border-sky-200">
+              {branchName}
+            </span>
+          </div>
+          <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload notes, crash courses, or PYQs with units & topics for {branchName}</p>
+        </div>
+
+        {uploadProgress > 0 && uploadProgress < 100 && (
+          <div className="mb-6 bg-white rounded-2xl p-4 shadow-lg">
+            <div className="flex justify-between text-sm font-['Inter'] text-gray-600 mb-1">
+              <span>Uploading...</span>
+              <span>{uploadProgress}%</span>
+            </div>
+            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-sky-500 to-blue-600 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleUploadSubmit} className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+          <div className="p-6 sm:p-8 space-y-6">
+
+            {/* Branch - Auto filled */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                Branch <span className="text-red-500">*</span>
+              </label>
+              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl border border-sky-200">
+                <GraduationCap className="text-sky-600" size={20} />
+                <span className="font-['Inter'] font-medium text-gray-800">{branchName}</span>
+                <span className="text-xs text-gray-400 ml-auto">(Selected)</span>
+              </div>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setUploadForm(prev => ({ ...prev, category: cat.id }))}
+                    className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] ${
+                      uploadForm.category === cat.id
+                        ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-105`
+                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                    }`}
+                  >
+                    <span className={uploadForm.category === cat.id ? "text-white" : "text-gray-500"}>
+                      {cat.icon}
+                    </span>
+                    <span className="font-medium text-sm">{cat.id}</span>
+                    {uploadForm.category === cat.id && <CheckCircle size={16} className="ml-auto" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Semester */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                Semester <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                  <button
+                    key={sem}
+                    type="button"
+                    onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "" }))}
+                    className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
+                      uploadForm.semester === sem
+                        ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"
+                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                    }`}
+                  >
+                    {sem}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Subject */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                Subject <span className="text-red-500">*</span>
+              </label>
+              {uploadForm.semester ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+                  {subjects.map((subject) => (
+                    <button
+                      key={subject}
+                      type="button"
+                      onClick={() => setUploadForm(prev => ({ ...prev, subject }))}
+                      className={`p-3 rounded-xl border-2 transition-all duration-300 text-left font-['Inter'] text-sm ${
+                        uploadForm.subject === subject
+                          ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
+                          : "border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <BookOpen size={16} />
+                        <span className="truncate">{subject}</span>
+                        {uploadForm.subject === subject && <CheckCircle size={14} className="ml-auto" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-100 rounded-xl text-gray-500 font-['Inter'] text-sm text-center">
+                  Please select a semester first
+                </div>
+              )}
+            </div>
+
+            {/* Units */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-['Inter'] font-semibold text-gray-700">
+                  Units & Topics <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={addUnit}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] text-sm font-semibold hover:scale-105 transition-all duration-300 shadow-lg"
+                >
+                  <Plus size={16} /> Add Unit
+                </button>
+              </div>
+
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                {uploadForm.units.map((unit, unitIndex) => (
+                  <div key={unitIndex} className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="text"
+                        value={unit.name}
+                        onChange={(e) => handleUnitChange(unitIndex, "name", e.target.value)}
+                        className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
+                        placeholder="Unit name (e.g. Unit 1)"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeUnit(unitIndex)}
+                        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-['Inter'] font-medium text-gray-500">Topics</span>
+                        <button
+                          type="button"
+                          onClick={() => addTopic(unitIndex)}
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-['Inter'] font-semibold flex items-center gap-1"
+                        >
+                          <Plus size={14} /> Add Topic
+                        </button>
+                      </div>
+                      {unit.topics.map((topic, topicIndex) => (
+                        <div key={topicIndex} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={topic}
+                            onChange={(e) => handleTopicChange(unitIndex, topicIndex, e.target.value)}
+                            className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
+                            placeholder={`Topic ${topicIndex + 1}`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeTopic(unitIndex, topicIndex)}
+                            className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Title & Description */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={uploadForm.title}
+                  onChange={handleUploadChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
+                  placeholder="Enter title (optional)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Description</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={uploadForm.description}
+                  onChange={handleUploadChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
+                  placeholder="Enter description (optional)"
+                />
+              </div>
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                Upload File <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="upload-file-input"
+                  type="file"
+                  onChange={handleUploadFileChange}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                />
+                <div className="p-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-sky-400 transition-all duration-300 bg-gray-50/50">
+                  <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                  <p className="font-['Inter'] text-sm text-gray-600">
+                    {uploadForm.file ? (
+                      <span className="text-emerald-600 font-semibold">{uploadForm.file.name}</span>
+                    ) : (
+                      <>
+                        <span className="font-semibold">Click to upload</span> or drag and drop
+                      </>
+                    )}
+                  </p>
+                  <p className="text-xs text-gray-400 font-['Inter'] mt-1">
+                    PDF, DOC, PPT, XLS, TXT (Max 50MB)
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Premium Toggle */}
+            <div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="isPremium"
+                  checked={uploadForm.isPremium}
+                  onChange={handleUploadChange}
+                  className="w-5 h-5 rounded border-gray-300 text-sky-600 focus:ring-sky-400 focus:ring-2 cursor-pointer"
+                />
+                <span className="font-['Inter'] text-sm text-gray-700">
+                  Mark as Premium Content
+                  <span className="text-xs text-gray-400 block">Students will need to purchase to access</span>
+                </span>
+              </label>
+            </div>
+
+            {/* File Type */}
+            <div>
+              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">File Type</label>
+              <div className="grid grid-cols-3 gap-3">
+                {["note", "video", "paper"].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setUploadForm(prev => ({ ...prev, type }))}
+                    className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-medium text-sm capitalize ${
+                      uploadForm.type === type
+                        ? "border-sky-500 bg-sky-500 text-white shadow-lg"
+                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={uploading}
+              className="w-full py-4 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-lg shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {uploading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload size={20} />
+                  Upload Content for {branchName}
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -972,7 +1581,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     );
   }
 
-  // ========== RENDER ==========
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <AdminNavbar />
@@ -996,7 +1604,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               <StatCard title="Active Users" value={stats.totalUsers} icon={Users} color="from-orange-500 to-orange-700" />
             </div>
 
-            {/* Course Price Card */}
             <div className="mb-8">
               <CoursePriceCard />
             </div>
@@ -1134,6 +1741,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             </EnhancedCard>
           </div>
         )}
+
+        {/* ========== BRANCH UPLOAD TAB ========== */}
+        {isBranchTab() && renderUploadTab()}
 
         {/* ========== MATERIALS TAB ========== */}
         {activeTab === "materials" && (
@@ -1367,7 +1977,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         {activeTab === "notice" && <AdminNotice />}
       </div>
 
-      {/* ========== PRICE MANAGEMENT MODAL - FINAL 100% WORKING ========== */}
+      {/* ========== PRICE MANAGEMENT MODAL ========== */}
       {showPriceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1397,7 +2007,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   </div>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    {/* PRICE INPUT - Works on all keyboards */}
                     <div>
                       <label className="text-sm text-gray-600 font-medium block mb-1">Price (₹)</label>
                       <input
@@ -1407,7 +2016,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         value={data.price}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Allow: empty, numbers, and decimal point
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
                             const newPrice = value === '' ? 0 : parseFloat(value);
                             setCoursePrices({
@@ -1419,8 +2027,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         placeholder="0.00"
                       />
                     </div>
-
-                    {/* DISCOUNT INPUT - Works on all keyboards */}
                     <div>
                       <label className="text-sm text-gray-600 font-medium block mb-1">Discount %</label>
                       <input
@@ -1430,7 +2036,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         value={data.discount}
                         onChange={(e) => {
                           const value = e.target.value;
-                          // Allow: empty, numbers, and decimal point
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
                             const newDiscount = value === '' ? 0 : parseFloat(value);
                             const validDiscount = Math.min(Math.max(isNaN(newDiscount) ? 0 : newDiscount, 0), 100);
@@ -1445,7 +2050,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     </div>
                   </div>
 
-                  {/* PREVIEW - Shows proper decimal values */}
                   <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
                     <p className="text-sm text-gray-500 mb-1">Preview:</p>
                     <div className="flex items-center gap-3 flex-wrap">
@@ -1494,7 +2098,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         </div>
       )}
 
-      {/* ========== MODALS ========== */}
+      {/* ========== MODALS (Existing) ========== */}
       {/* FREE PDF MODAL */}
       {showModal.type === "freePdf" && showModal.open && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
