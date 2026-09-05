@@ -36,7 +36,12 @@ import {
   FlaskRound,
   Users,
   Stethoscope,
-  ChevronRight
+  ChevronRight,
+  Code2,
+  MessageSquare,
+  Atom,
+  Leaf,
+  Beaker
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
@@ -78,91 +83,181 @@ const categories = [
   }
 ];
 
-// ========== DATA ==========
+// ========== NEW SEMESTER 1 DATA - ONLY 6 SUBJECTS ==========
 const NOTES_DATA = {
   1: {
-    "Human Anatomy and Physiology-1": {
+    "Basics of Python Programming for Pharmaceutical Sciences": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Human Body", "Cellular Level", "Tissue Level"] },
-        { id: 2, name: "Unit 2", topics: ["Integumentary System", "Skeletal System", "Joints"] },
-        { id: 3, name: "Unit 3", topics: ["Muscular System", "Nervous System"] },
-        { id: 4, name: "Unit 4", topics: ["Cardiovascular System", "Respiratory System"] },
-        { id: 5, name: "Unit 5", topics: ["Digestive System", "Urinary System", "Reproductive System"] }
+        { id: 1, name: "Unit 1", topics: ["Introduction to Python", "Variables & Data Types", "Operators"] },
+        { id: 2, name: "Unit 2", topics: ["Control Structures", "Loops", "Functions"] },
+        { id: 3, name: "Unit 3", topics: ["Data Structures", "Lists", "Tuples", "Dictionaries"] },
+        { id: 4, name: "Unit 4", topics: ["File Handling", "Exception Handling", "Modules"] },
+        { id: 5, name: "Unit 5", topics: ["NumPy Basics", "Pandas Intro", "Data Visualization"] }
       ]
     },
-    "Pharmaceutical Analysis": {
+    "General Pharmacy": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction", "Errors in Analysis"] },
-        { id: 2, name: "Unit 2", topics: ["Acid-Base Titrations", "Non-aqueous Titrations"] },
-        { id: 3, name: "Unit 3", topics: ["Redox Titrations", "Precipitation Titrations"] },
-        { id: 4, name: "Unit 4", topics: ["Complexometric Titrations", "Gravimetric Analysis"] },
-        { id: 5, name: "Unit 5", topics: ["Instrumental Methods"] }
+        { id: 1, name: "Unit 1", topics: ["Introduction to Pharmacy", "History", "Scope"] },
+        { id: 2, name: "Unit 2", topics: ["Pharmaceutical Calculations", "Weights & Measures"] },
+        { id: 3, name: "Unit 3", topics: ["Dosage Forms", "Routes of Administration"] },
+        { id: 4, name: "Unit 4", topics: ["Pharmacopoeias", "Standards", "Quality Control"] },
+        { id: 5, name: "Unit 5", topics: ["Prescription", "Dispensing", "Patient Counseling"] }
       ]
     },
-    "Pharmaceutics-1": {
+    "Healthcare Psychology and Communication Skills": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Pharmaceutics", "Dosage Forms"] },
-        { id: 2, name: "Unit 2", topics: ["Powders", "Liquid Dosage Forms"] },
-        { id: 3, name: "Unit 3", topics: ["Semisolid Dosage Forms", "Suppositories"] },
-        { id: 4, name: "Unit 4", topics: ["Sterile Dosage Forms", "Ophthalmic Preparations"] },
-        { id: 5, name: "Unit 5", topics: ["Tablets", "Capsules"] }
+        { id: 1, name: "Unit 1", topics: ["Introduction to Psychology", "Human Behavior"] },
+        { id: 2, name: "Unit 2", topics: ["Memory", "Learning", "Perception"] },
+        { id: 3, name: "Unit 3", topics: ["Motivation", "Emotions", "Stress"] },
+        { id: 4, name: "Unit 4", topics: ["Communication Skills", "Verbal & Non-Verbal"] },
+        { id: 5, name: "Unit 5", topics: ["Patient Communication", "Healthcare Ethics"] }
       ]
-    }
-  },
-  2: {
-    "Human Anatomy and Physiology-2": {
+    },
+    "Human Anatomy, Physiology and Pathophysiology I": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Nervous System", "Special Senses"] },
-        { id: 2, name: "Unit 2", topics: ["Endocrine System", "Reproductive System"] },
+        { id: 1, name: "Unit 1", topics: ["Introduction to Human Body", "Cell", "Tissues"] },
+        { id: 2, name: "Unit 2", topics: ["Skeletal System", "Muscular System"] },
         { id: 3, name: "Unit 3", topics: ["Cardiovascular System", "Blood"] },
         { id: 4, name: "Unit 4", topics: ["Respiratory System", "Digestive System"] },
-        { id: 5, name: "Unit 5", topics: ["Urinary System", "Fluid Balance"] }
+        { id: 5, name: "Unit 5", topics: ["Pathophysiology Basics", "Disease Mechanisms"] }
+      ]
+    },
+    "Introduction to Pharmacognosy": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["History of Pharmacognosy", "Scope"] },
+        { id: 2, name: "Unit 2", topics: ["Classification of Drugs", "Plant Metabolites"] },
+        { id: 3, name: "Unit 3", topics: ["Alkaloids", "Glycosides", "Terpenoids"] },
+        { id: 4, name: "Unit 4", topics: ["Plant Drugs", "Extraction Methods"] },
+        { id: 5, name: "Unit 5", topics: ["Quality Control", "Herbal Formulations"] }
+      ]
+    },
+    "Pharmaceutical Inorganic and Analytical Chemistry": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["Introduction to Inorganic Chemistry", "Atomic Structure"] },
+        { id: 2, name: "Unit 2", topics: ["Periodic Table", "Chemical Bonding"] },
+        { id: 3, name: "Unit 3", topics: ["Acids, Bases", "Buffer Solutions"] },
+        { id: 4, name: "Unit 4", topics: ["Qualitative Analysis", "Quantitative Analysis"] },
+        { id: 5, name: "Unit 5", topics: ["Instrumental Analysis", "Titrimetric Methods"] }
       ]
     }
   }
 };
 
+// ========== CRASH COURSE DATA - SAME 6 SUBJECTS ==========
 const CRASH_DATA = {
   1: {
-    "Human Anatomy and Physiology-1": {
+    "Basics of Python Programming for Pharmaceutical Sciences": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Introduction", "Cells", "Tissues"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Skin", "Skeleton", "Joints"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Muscles", "Nerves"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Heart", "Lungs"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Digestive", "Urinary", "Reproductive"] }
+        { id: 1, name: "Unit 1", topics: ["Crash - Python Intro", "Variables", "Data Types"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Loops", "Functions", "OOP"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Lists", "Dictionaries", "Sets"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - File I/O", "Error Handling"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - NumPy", "Pandas", "Matplotlib"] }
       ]
     },
-    "Pharmaceutics-1": {
+    "General Pharmacy": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Introduction", "Dosage Forms"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Powders", "Liquids"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Semisolids", "Suppositories"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Sterile", "Ophthalmic"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Tablets", "Capsules"] }
+        { id: 1, name: "Unit 1", topics: ["Crash - Pharmacy Intro", "History", "Scope"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Pharm Calculations", "Dosage Forms"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Routes", "Pharmacopoeias"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - Quality Control", "Standards"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - Prescription", "Dispensing"] }
+      ]
+    },
+    "Healthcare Psychology and Communication Skills": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["Crash - Psychology Intro", "Behavior"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Memory", "Learning", "Perception"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Motivation", "Emotions"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - Communication", "Verbal Skills"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - Patient Communication", "Ethics"] }
+      ]
+    },
+    "Human Anatomy, Physiology and Pathophysiology I": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["Crash - Human Body", "Cells", "Tissues"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Skeletal", "Muscular"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Heart", "Blood"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - Lungs", "Digestive"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - Pathophysiology", "Diseases"] }
+      ]
+    },
+    "Introduction to Pharmacognosy": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["Crash - Pharmacognosy History"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Drug Classification"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Alkaloids", "Glycosides"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - Plant Drugs", "Extraction"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - QC", "Herbal Formulations"] }
+      ]
+    },
+    "Pharmaceutical Inorganic and Analytical Chemistry": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["Crash - Inorganic Chem Intro"] },
+        { id: 2, name: "Unit 2", topics: ["Crash - Periodic Table", "Bonding"] },
+        { id: 3, name: "Unit 3", topics: ["Crash - Acids, Bases, Buffers"] },
+        { id: 4, name: "Unit 4", topics: ["Crash - Qualitative Analysis"] },
+        { id: 5, name: "Unit 5", topics: ["Crash - Instrumental Analysis"] }
       ]
     }
   }
 };
 
+// ========== PYQS DATA - SAME 6 SUBJECTS ==========
 const PYQS_DATA = {
   1: {
-    "Human Anatomy and Physiology-1": {
+    "Basics of Python Programming for Pharmaceutical Sciences": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Introduction", "Cells", "Tissues"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Skin", "Skeleton", "Joints"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Muscles", "Nerves"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Heart", "Lungs"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Digestive", "Urinary", "Reproductive"] }
+        { id: 1, name: "Unit 1", topics: ["PYQ - Python Basics", "Variables", "Data Types"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Control Flow", "Functions"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Data Structures"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - File Handling"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - NumPy", "Pandas"] }
       ]
     },
-    "Pharmaceutics-1": {
+    "General Pharmacy": {
       units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Introduction", "Dosage Forms"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Powders", "Liquids"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Semisolids", "Suppositories"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Sterile", "Ophthalmic"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Tablets", "Capsules"] }
+        { id: 1, name: "Unit 1", topics: ["PYQ - Pharmacy Intro"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Calculations"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Dosage Forms"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - Pharmacopoeias"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - Prescription"] }
+      ]
+    },
+    "Healthcare Psychology and Communication Skills": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["PYQ - Psychology Intro"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Memory & Learning"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Motivation"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - Communication"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - Patient Ethics"] }
+      ]
+    },
+    "Human Anatomy, Physiology and Pathophysiology I": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["PYQ - Human Body"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Skeletal System"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Cardiovascular"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - Respiratory"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - Pathophysiology"] }
+      ]
+    },
+    "Introduction to Pharmacognosy": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["PYQ - Pharmacognosy History"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Drug Classification"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Alkaloids"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - Plant Drugs"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - QC"] }
+      ]
+    },
+    "Pharmaceutical Inorganic and Analytical Chemistry": {
+      units: [
+        { id: 1, name: "Unit 1", topics: ["PYQ - Inorganic Chem"] },
+        { id: 2, name: "Unit 2", topics: ["PYQ - Periodic Table"] },
+        { id: 3, name: "Unit 3", topics: ["PYQ - Acids & Bases"] },
+        { id: 4, name: "Unit 4", topics: ["PYQ - Qualitative Analysis"] },
+        { id: 5, name: "Unit 5", topics: ["PYQ - Instrumental"] }
       ]
     }
   }
@@ -182,22 +277,22 @@ const semesterColors = [
 
 // ========== SUBJECT COLORS ==========
 const subjectColors = [
-  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.2)", bg: "from-rose-50 to-pink-50" },
+  { gradient: "from-violet-500 to-purple-500", glow: "rgba(139,92,246,0.2)", bg: "from-violet-50 to-purple-50" },
   { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.2)", bg: "from-blue-50 to-cyan-50" },
   { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16,185,129,0.2)", bg: "from-emerald-50 to-teal-50" },
-  { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139,92,246,0.2)", bg: "from-purple-50 to-indigo-50" },
-  { gradient: "from-orange-500 to-amber-500", glow: "rgba(251,146,60,0.2)", bg: "from-orange-50 to-amber-50" },
-  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.2)", bg: "from-pink-50 to-rose-50" },
+  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.2)", bg: "from-rose-50 to-pink-50" },
+  { gradient: "from-amber-500 to-orange-500", glow: "rgba(251,146,60,0.2)", bg: "from-amber-50 to-orange-50" },
+  { gradient: "from-cyan-500 to-sky-500", glow: "rgba(6,182,212,0.2)", bg: "from-cyan-50 to-sky-50" },
 ];
 
 // ========== SUBJECT ICONS ==========
 const subjectIcons = [
+  { icon: Code2, color: "from-violet-100 to-purple-100", textColor: "text-violet-600" },
+  { icon: Pill, color: "from-blue-100 to-cyan-100", textColor: "text-blue-600" },
+  { icon: MessageSquare, color: "from-emerald-100 to-teal-100", textColor: "text-emerald-600" },
   { icon: HeartPulse, color: "from-rose-100 to-pink-100", textColor: "text-rose-600" },
-  { icon: Microscope, color: "from-blue-100 to-cyan-100", textColor: "text-blue-600" },
-  { icon: Pill, color: "from-emerald-100 to-teal-100", textColor: "text-emerald-600" },
-  { icon: FlaskRound, color: "from-purple-100 to-indigo-100", textColor: "text-purple-600" },
-  { icon: Brain, color: "from-amber-100 to-orange-100", textColor: "text-amber-600" },
-  { icon: Users, color: "from-pink-100 to-rose-100", textColor: "text-pink-600" },
+  { icon: Leaf, color: "from-amber-100 to-orange-100", textColor: "text-amber-600" },
+  { icon: Beaker, color: "from-cyan-100 to-sky-100", textColor: "text-cyan-600" },
 ];
 
 // ========== UNIT COLORS ==========
@@ -319,8 +414,6 @@ const BPharm = () => {
 
   const handleUnitClick = (unit) => {
     setSelectedUnit(unit);
-    // Unit click par content fetch karo, page change mat karo
-    // Step 4 hi rahega, bas unit select ho jayega
     toast.success(`📚 ${unit.name} selected!`);
   };
 
@@ -428,6 +521,7 @@ const BPharm = () => {
       .subject-card-3 { animation-delay: 0.18s; }
       .subject-card-4 { animation-delay: 0.24s; }
       .subject-card-5 { animation-delay: 0.3s; }
+      .subject-card-6 { animation-delay: 0.36s; }
       
       .unit-card-1 { animation-delay: 0.05s; }
       .unit-card-2 { animation-delay: 0.1s; }
@@ -874,7 +968,7 @@ const BPharm = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5 sm:gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
           {subjects.map((subject, index) => {
             const colors = subjectColors[index % subjectColors.length];
             const iconData = subjectIcons[index % subjectIcons.length];
@@ -915,7 +1009,7 @@ const BPharm = () => {
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${iconData.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-md`}>
                           <Icon className={`${iconData.textColor}`} size={22} />
                         </div>
-                        <div className={`text-xl sm:text-2xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                        <div className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
                           {subject}
                         </div>
                       </div>
@@ -972,8 +1066,6 @@ const BPharm = () => {
     const units = getUnits();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
-    // Content comes only from the backend for the currently selected unit.
-    // Never create fake/demo IDs because Preview/Download require a real MongoDB _id.
     const getUnitContent = (unit) => {
       if (!isSelectedUnit(unit)) return [];
       return Array.isArray(unitContent) ? unitContent : [];
@@ -1096,7 +1188,6 @@ const BPharm = () => {
                       </div>
                     )}
 
-                    {/* ========== PREVIEW & DOWNLOAD BUTTONS ========== */}
                     {isSelected && content.length > 0 && (
                       <div className="mt-5 pt-4 border-t border-gray-200/50">
                         <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">📄 Content Available</p>
