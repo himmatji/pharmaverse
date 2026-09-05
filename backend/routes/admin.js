@@ -33,7 +33,7 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB (increased from 10MB)
+    fileSize: 50 * 1024 * 1024 // 50MB
   }
 });
 
@@ -1319,9 +1319,8 @@ router.delete(
 );
 
 /* =========================================================
-   PUBLIC ROUTES
+   PUBLIC ROUTES - NOTES
 ========================================================= */
-
 router.get("/public/notes", async (req, res) => {
   try {
     const {
@@ -1360,12 +1359,16 @@ router.get("/public/notes", async (req, res) => {
       filter.unit = Number(unit);
     }
 
+    console.log("📤 Public notes query:", filter);
+
     const notes =
       await Note.find(filter)
         .select("-fileData")
         .sort({
           createdAt: -1
         });
+
+    console.log(`✅ Found ${notes.length} notes`);
 
     res.json(notes);
 
@@ -1384,10 +1387,63 @@ router.get("/public/notes", async (req, res) => {
 });
 
 /* =========================================================
-   PUBLIC CONTENT
-   Compatibility route for frontend
+   PUBLIC UNITS - DYNAMIC
 ========================================================= */
+router.get("/public/units", async (req, res) => {
+  try {
+    const { category, semester, subject, branch } = req.query;
 
+    const query = {
+      category: category,
+      semester: parseInt(semester),
+      subject: subject,
+      course: branch || "B.Pharm"
+    };
+
+    console.log("📤 Fetching units with query:", query);
+
+    const notes = await Note.find(query).sort({ createdAt: -1 });
+
+    console.log(`✅ Found ${notes.length} notes for units`);
+
+    // Extract unique units from all notes
+    const unitsMap = new Map();
+    notes.forEach(note => {
+      if (note.units && Array.isArray(note.units) && note.units.length > 0) {
+        note.units.forEach(unit => {
+          if (!unitsMap.has(unit.id)) {
+            unitsMap.set(unit.id, {
+              id: unit.id,
+              name: unit.name || `Unit ${unit.id}`,
+              topics: unit.topics || []
+            });
+          }
+        });
+      }
+    });
+
+    const units = Array.from(unitsMap.values()).sort((a, b) => a.id - b.id);
+
+    console.log(`✅ Returning ${units.length} units`);
+
+    res.status(200).json({
+      success: true,
+      data: units,
+      count: units.length
+    });
+
+  } catch (error) {
+    console.error("Get units error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch units"
+    });
+  }
+});
+
+/* =========================================================
+   PUBLIC CONTENT - Compatibility route
+========================================================= */
 router.get(
   "/public/content",
   async (req, res) => {
@@ -1430,12 +1486,16 @@ router.get(
           Number(unit);
       }
 
+      console.log("📤 Public content query:", filter);
+
       const notes =
         await Note.find(filter)
           .select("-fileData")
           .sort({
             createdAt: -1
           });
+
+      console.log(`✅ Found ${notes.length} content items`);
 
       res.json({
         success: true,
@@ -1461,7 +1521,6 @@ router.get(
 /* =========================================================
    PUBLIC VIDEOS
 ========================================================= */
-
 router.get(
   "/public/videos",
   async (req, res) => {
@@ -1503,7 +1562,6 @@ router.get(
 /* =========================================================
    PUBLIC FREE VIDEOS
 ========================================================= */
-
 router.get(
   "/public/free-videos",
   async (req, res) => {
@@ -1545,7 +1603,6 @@ router.get(
 /* =========================================================
    PUBLIC PAID PDFS
 ========================================================= */
-
 router.get(
   "/public/paid-pdfs",
   async (req, res) => {
@@ -1585,7 +1642,6 @@ router.get(
 /* =========================================================
    PUBLIC PAPERS
 ========================================================= */
-
 router.get(
   "/public/papers",
   async (req, res) => {
@@ -1623,9 +1679,8 @@ router.get(
 );
 
 /* =========================================================
-   PUBLIC FILE MODEL
+   PUBLIC FILE MODEL HELPER
 ========================================================= */
-
 const getContentModel = (
   type
 ) => {
@@ -1658,9 +1713,8 @@ const getContentModel = (
 };
 
 /* =========================================================
-   SEND STORED FILE
+   SEND STORED FILE - SHARED FUNCTION
 ========================================================= */
-
 const sendStoredFile = async (
   req,
   res,
@@ -1672,9 +1726,7 @@ const sendStoredFile = async (
       id
     } = req.params;
 
-    /* -------------------------
-       VALID OBJECT ID
-    ------------------------- */
+    // Validate Object ID
     if (
       !mongoose.Types.ObjectId.isValid(
         id
@@ -1687,9 +1739,7 @@ const sendStoredFile = async (
       });
     }
 
-    /* -------------------------
-       MODEL
-    ------------------------- */
+    // Get Model
     const Model =
       getContentModel(type);
 
@@ -1701,9 +1751,7 @@ const sendStoredFile = async (
       });
     }
 
-    /* -------------------------
-       FIND DOCUMENT
-    ------------------------- */
+    // Find document
     const item =
       await Model.findById(id);
 
@@ -1718,9 +1766,7 @@ const sendStoredFile = async (
       });
     }
 
-    /* -------------------------
-       BASE64 DATA
-    ------------------------- */
+    // Parse Base64 data
     const rawData =
       String(item.fileData);
 
@@ -1737,26 +1783,17 @@ const sendStoredFile = async (
       });
     }
 
-    /* -------------------------
-       MIME TYPE
-    ------------------------- */
     const mimeType =
       match[1] ||
       item.fileType ||
       "application/pdf";
 
-    /* -------------------------
-       BUFFER
-    ------------------------- */
     const buffer =
       Buffer.from(
         match[2],
         "base64"
       );
 
-    /* -------------------------
-       SAFE FILE NAME
-    ------------------------- */
     const safeFileName =
       String(
         item.fileName ||
@@ -1769,9 +1806,7 @@ const sendStoredFile = async (
         .trim() ||
       "document.pdf";
 
-    /* -------------------------
-       HEADERS
-    ------------------------- */
+    // Set headers
     res.setHeader(
       "Content-Type",
       mimeType
@@ -1787,9 +1822,7 @@ const sendStoredFile = async (
       `${disposition}; filename="${safeFileName}"`
     );
 
-    /* -------------------------
-       DOWNLOAD COUNT
-    ------------------------- */
+    // Increment download count for attachment
     if (
       disposition === "attachment" &&
       typeof item.incrementDownloads ===
@@ -1800,9 +1833,7 @@ const sendStoredFile = async (
         .catch(() => {});
     }
 
-    /* -------------------------
-       SEND FILE
-    ------------------------- */
+    // Send file
     return res.end(
       buffer
     );
@@ -1824,7 +1855,6 @@ const sendStoredFile = async (
 /* =========================================================
    PUBLIC PREVIEW
 ========================================================= */
-
 router.get(
   "/public/preview/:type/:id",
   async (req, res) => {
@@ -1839,7 +1869,6 @@ router.get(
 /* =========================================================
    PUBLIC DOWNLOAD
 ========================================================= */
-
 router.get(
   "/public/download/:type/:id",
   async (req, res) => {
@@ -1854,7 +1883,6 @@ router.get(
 /* =========================================================
    PUBLIC PRICE
 ========================================================= */
-
 router.get(
   "/public-price",
   async (req, res) => {
@@ -1934,7 +1962,6 @@ router.get(
 /* =========================================================
    USERS
 ========================================================= */
-
 router.get(
   "/users",
   adminAuth,
@@ -1969,7 +1996,6 @@ router.get(
 /* =========================================================
    DELETE USER
 ========================================================= */
-
 router.delete(
   "/users/:id",
   adminAuth,
@@ -2027,7 +2053,6 @@ router.delete(
 /* =========================================================
    ADMIN PROFILE
 ========================================================= */
-
 router.get(
   "/profile",
   adminAuth,
@@ -2066,6 +2091,9 @@ router.get(
   }
 );
 
+/* =========================================================
+   UPDATE ADMIN PROFILE
+========================================================= */
 router.put(
   "/update-profile",
   adminAuth,
@@ -2156,7 +2184,6 @@ router.put(
 /* =========================================================
    TEST ROUTE
 ========================================================= */
-
 router.get(
   "/test",
   (req, res) => {
@@ -2168,6 +2195,8 @@ router.get(
         "/api/admin/upload",
       publicNotesRoute:
         "/api/admin/public/notes",
+      publicUnitsRoute:
+        "/api/admin/public/units",
       publicContentRoute:
         "/api/admin/public/content",
       publicPreviewRoute:
@@ -2197,6 +2226,7 @@ router.get(
         "GET /profile",
         "PUT /update-profile",
         "GET /public/notes",
+        "GET /public/units",
         "GET /public/content",
         "GET /public/videos",
         "GET /public/free-videos",
@@ -2213,54 +2243,4 @@ router.get(
 /* =========================================================
    FINAL EXPORT
 ========================================================= */
-
-// =========================================================
-// GET UNITS FOR A SPECIFIC SUBJECT (DYNAMIC)
-// =========================================================
-router.get("/public/units", async (req, res) => {
-  try {
-    const { category, semester, subject, branch } = req.query;
-
-    const query = {
-      category: category,
-      semester: parseInt(semester),
-      subject: subject,
-      course: branch || "B.Pharm"
-    };
-
-    const db = req.app.locals.db;
-    const notes = await db.collection('notes').find(query).toArray();
-
-    // Extract unique units from all notes
-    const unitsMap = new Map();
-    notes.forEach(note => {
-      if (note.units && Array.isArray(note.units)) {
-        note.units.forEach(unit => {
-          if (!unitsMap.has(unit.id)) {
-            unitsMap.set(unit.id, {
-              id: unit.id,
-              name: unit.name || `Unit ${unit.id}`,
-              topics: unit.topics || []
-            });
-          }
-        });
-      }
-    });
-
-    const units = Array.from(unitsMap.values()).sort((a, b) => a.id - b.id);
-
-    res.status(200).json({
-      success: true,
-      data: units,
-      count: units.length
-    });
-
-  } catch (error) {
-    console.error("Get units error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch units"
-    });
-  }
-});
 module.exports = router;
