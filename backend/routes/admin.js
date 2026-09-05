@@ -1319,7 +1319,7 @@ router.delete(
 );
 
 /* =========================================================
-   PUBLIC ROUTES - NOTES (FIXED)
+   PUBLIC ROUTES - NOTES
 ========================================================= */
 router.get("/public/notes", async (req, res) => {
   try {
@@ -1387,7 +1387,7 @@ router.get("/public/notes", async (req, res) => {
 });
 
 /* =========================================================
-   PUBLIC UNITS - DYNAMIC (FIXED)
+   PUBLIC UNITS - DYNAMIC (FIXED - 500 ERROR)
 ========================================================= */
 router.get("/public/units", async (req, res) => {
   try {
@@ -1402,38 +1402,73 @@ router.get("/public/units", async (req, res) => {
     if (subject) query.subject = subject;
     if (branch) query.course = branch;
 
-    console.log("📤 Query:", query);
+    console.log("📤 Query:", JSON.stringify(query));
 
-    // Use Mongoose model
-    const notes = await Note.find(query).sort({ createdAt: -1 });
+    // Check if Note model exists
+    if (!Note) {
+      console.error("❌ Note model not found!");
+      return res.status(500).json({
+        success: false,
+        message: "Note model not loaded"
+      });
+    }
+
+    // Find notes with lean() for better performance
+    const notes = await Note.find(query)
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
     console.log(`✅ Found ${notes.length} notes`);
 
     // Extract unique units from all notes
     const unitsMap = new Map();
 
-    notes.forEach(note => {
-      console.log(`📄 Note: ${note.title}, units:`, note.units);
+    if (notes.length === 0) {
+      console.log("⚠️ No notes found for this query");
+      return res.status(200).json({
+        success: true,
+        data: [],
+        count: 0,
+        message: "No units available for this subject"
+      });
+    }
+
+    notes.forEach((note, index) => {
+      console.log(`📄 Note ${index + 1}: ${note.title || "Untitled"}`);
       
-      // Case 1: units array exists
+      // Case 1: units array exists and is not empty
       if (note.units && Array.isArray(note.units) && note.units.length > 0) {
+        console.log(`   ✅ Has units array with ${note.units.length} units`);
         note.units.forEach(unit => {
-          if (!unitsMap.has(unit.id)) {
-            unitsMap.set(unit.id, {
-              id: unit.id,
-              name: unit.name || `Unit ${unit.id}`,
+          const unitId = Number(unit.id) || 1;
+          if (!unitsMap.has(unitId)) {
+            unitsMap.set(unitId, {
+              id: unitId,
+              name: unit.name || `Unit ${unitId}`,
               topics: unit.topics || []
             });
           }
         });
       } 
-      // Case 2: No units array, use unit field
-      else if (note.unit) {
-        const unitId = parseInt(note.unit);
+      // Case 2: unit field exists
+      else if (note.unit !== undefined && note.unit !== null && note.unit !== "") {
+        const unitId = Number(note.unit) || 1;
+        console.log(`   ✅ Has unit field: ${unitId}`);
         if (!unitsMap.has(unitId)) {
           unitsMap.set(unitId, {
             id: unitId,
             name: `Unit ${unitId}`,
+            topics: []
+          });
+        }
+      } else {
+        console.log(`   ⚠️ No units found in this note`);
+        // Fallback: create unit 1
+        if (!unitsMap.has(1)) {
+          unitsMap.set(1, {
+            id: 1,
+            name: "Unit 1",
             topics: []
           });
         }
@@ -1452,6 +1487,7 @@ router.get("/public/units", async (req, res) => {
 
   } catch (error) {
     console.error("❌ Get units error:", error);
+    console.error("❌ Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Failed to fetch units: " + error.message
