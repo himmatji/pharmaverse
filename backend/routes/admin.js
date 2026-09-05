@@ -2214,4 +2214,53 @@ router.get(
    FINAL EXPORT
 ========================================================= */
 
+// =========================================================
+// GET UNITS FOR A SPECIFIC SUBJECT (DYNAMIC)
+// =========================================================
+router.get("/public/units", async (req, res) => {
+  try {
+    const { category, semester, subject, branch } = req.query;
+
+    const query = {
+      category: category,
+      semester: parseInt(semester),
+      subject: subject,
+      course: branch || "B.Pharm"
+    };
+
+    const db = req.app.locals.db;
+    const notes = await db.collection('notes').find(query).toArray();
+
+    // Extract unique units from all notes
+    const unitsMap = new Map();
+    notes.forEach(note => {
+      if (note.units && Array.isArray(note.units)) {
+        note.units.forEach(unit => {
+          if (!unitsMap.has(unit.id)) {
+            unitsMap.set(unit.id, {
+              id: unit.id,
+              name: unit.name || `Unit ${unit.id}`,
+              topics: unit.topics || []
+            });
+          }
+        });
+      }
+    });
+
+    const units = Array.from(unitsMap.values()).sort((a, b) => a.id - b.id);
+
+    res.status(200).json({
+      success: true,
+      data: units,
+      count: units.length
+    });
+
+  } catch (error) {
+    console.error("Get units error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch units"
+    });
+  }
+});
 module.exports = router;

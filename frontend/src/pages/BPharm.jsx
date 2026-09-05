@@ -83,186 +83,6 @@ const categories = [
   }
 ];
 
-// ========== NEW SEMESTER 1 DATA - ONLY 6 SUBJECTS ==========
-const NOTES_DATA = {
-  1: {
-    "Basics of Python Programming for Pharmaceutical Sciences": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Python", "Variables & Data Types", "Operators"] },
-        { id: 2, name: "Unit 2", topics: ["Control Structures", "Loops", "Functions"] },
-        { id: 3, name: "Unit 3", topics: ["Data Structures", "Lists", "Tuples", "Dictionaries"] },
-        { id: 4, name: "Unit 4", topics: ["File Handling", "Exception Handling", "Modules"] },
-        { id: 5, name: "Unit 5", topics: ["NumPy Basics", "Pandas Intro", "Data Visualization"] }
-      ]
-    },
-    "General Pharmacy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Pharmacy", "History", "Scope"] },
-        { id: 2, name: "Unit 2", topics: ["Pharmaceutical Calculations", "Weights & Measures"] },
-        { id: 3, name: "Unit 3", topics: ["Dosage Forms", "Routes of Administration"] },
-        { id: 4, name: "Unit 4", topics: ["Pharmacopoeias", "Standards", "Quality Control"] },
-        { id: 5, name: "Unit 5", topics: ["Prescription", "Dispensing", "Patient Counseling"] }
-      ]
-    },
-    "Healthcare Psychology and Communication Skills": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Psychology", "Human Behavior"] },
-        { id: 2, name: "Unit 2", topics: ["Memory", "Learning", "Perception"] },
-        { id: 3, name: "Unit 3", topics: ["Motivation", "Emotions", "Stress"] },
-        { id: 4, name: "Unit 4", topics: ["Communication Skills", "Verbal & Non-Verbal"] },
-        { id: 5, name: "Unit 5", topics: ["Patient Communication", "Healthcare Ethics"] }
-      ]
-    },
-    "Human Anatomy, Physiology and Pathophysiology I": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Human Body", "Cell", "Tissues"] },
-        { id: 2, name: "Unit 2", topics: ["Skeletal System", "Muscular System"] },
-        { id: 3, name: "Unit 3", topics: ["Cardiovascular System", "Blood"] },
-        { id: 4, name: "Unit 4", topics: ["Respiratory System", "Digestive System"] },
-        { id: 5, name: "Unit 5", topics: ["Pathophysiology Basics", "Disease Mechanisms"] }
-      ]
-    },
-    "Introduction to Pharmacognosy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["History of Pharmacognosy", "Scope"] },
-        { id: 2, name: "Unit 2", topics: ["Classification of Drugs", "Plant Metabolites"] },
-        { id: 3, name: "Unit 3", topics: ["Alkaloids", "Glycosides", "Terpenoids"] },
-        { id: 4, name: "Unit 4", topics: ["Plant Drugs", "Extraction Methods"] },
-        { id: 5, name: "Unit 5", topics: ["Quality Control", "Herbal Formulations"] }
-      ]
-    },
-    "Pharmaceutical Inorganic and Analytical Chemistry": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Introduction to Inorganic Chemistry", "Atomic Structure"] },
-        { id: 2, name: "Unit 2", topics: ["Periodic Table", "Chemical Bonding"] },
-        { id: 3, name: "Unit 3", topics: ["Acids, Bases", "Buffer Solutions"] },
-        { id: 4, name: "Unit 4", topics: ["Qualitative Analysis", "Quantitative Analysis"] },
-        { id: 5, name: "Unit 5", topics: ["Instrumental Analysis", "Titrimetric Methods"] }
-      ]
-    }
-  }
-};
-
-// ========== CRASH COURSE DATA - SAME 6 SUBJECTS ==========
-const CRASH_DATA = {
-  1: {
-    "Basics of Python Programming for Pharmaceutical Sciences": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Python Intro", "Variables", "Data Types"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Loops", "Functions", "OOP"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Lists", "Dictionaries", "Sets"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - File I/O", "Error Handling"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - NumPy", "Pandas", "Matplotlib"] }
-      ]
-    },
-    "General Pharmacy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Pharmacy Intro", "History", "Scope"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Pharm Calculations", "Dosage Forms"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Routes", "Pharmacopoeias"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Quality Control", "Standards"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Prescription", "Dispensing"] }
-      ]
-    },
-    "Healthcare Psychology and Communication Skills": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Psychology Intro", "Behavior"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Memory", "Learning", "Perception"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Motivation", "Emotions"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Communication", "Verbal Skills"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Patient Communication", "Ethics"] }
-      ]
-    },
-    "Human Anatomy, Physiology and Pathophysiology I": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Human Body", "Cells", "Tissues"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Skeletal", "Muscular"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Heart", "Blood"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Lungs", "Digestive"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Pathophysiology", "Diseases"] }
-      ]
-    },
-    "Introduction to Pharmacognosy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Pharmacognosy History"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Drug Classification"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Alkaloids", "Glycosides"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Plant Drugs", "Extraction"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - QC", "Herbal Formulations"] }
-      ]
-    },
-    "Pharmaceutical Inorganic and Analytical Chemistry": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["Crash - Inorganic Chem Intro"] },
-        { id: 2, name: "Unit 2", topics: ["Crash - Periodic Table", "Bonding"] },
-        { id: 3, name: "Unit 3", topics: ["Crash - Acids, Bases, Buffers"] },
-        { id: 4, name: "Unit 4", topics: ["Crash - Qualitative Analysis"] },
-        { id: 5, name: "Unit 5", topics: ["Crash - Instrumental Analysis"] }
-      ]
-    }
-  }
-};
-
-// ========== PYQS DATA - SAME 6 SUBJECTS ==========
-const PYQS_DATA = {
-  1: {
-    "Basics of Python Programming for Pharmaceutical Sciences": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Python Basics", "Variables", "Data Types"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Control Flow", "Functions"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Data Structures"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - File Handling"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - NumPy", "Pandas"] }
-      ]
-    },
-    "General Pharmacy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Pharmacy Intro"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Calculations"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Dosage Forms"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Pharmacopoeias"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Prescription"] }
-      ]
-    },
-    "Healthcare Psychology and Communication Skills": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Psychology Intro"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Memory & Learning"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Motivation"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Communication"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Patient Ethics"] }
-      ]
-    },
-    "Human Anatomy, Physiology and Pathophysiology I": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Human Body"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Skeletal System"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Cardiovascular"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Respiratory"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Pathophysiology"] }
-      ]
-    },
-    "Introduction to Pharmacognosy": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Pharmacognosy History"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Drug Classification"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Alkaloids"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Plant Drugs"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - QC"] }
-      ]
-    },
-    "Pharmaceutical Inorganic and Analytical Chemistry": {
-      units: [
-        { id: 1, name: "Unit 1", topics: ["PYQ - Inorganic Chem"] },
-        { id: 2, name: "Unit 2", topics: ["PYQ - Periodic Table"] },
-        { id: 3, name: "Unit 3", topics: ["PYQ - Acids & Bases"] },
-        { id: 4, name: "Unit 4", topics: ["PYQ - Qualitative Analysis"] },
-        { id: 5, name: "Unit 5", topics: ["PYQ - Instrumental"] }
-      ]
-    }
-  }
-};
-
 // ========== SEMESTER COLORS ==========
 const semesterColors = [
   { gradient: "from-rose-500 to-pink-500", glow: "rgba(244, 63, 94, 0.3)", bg: "from-rose-50 to-pink-50" },
@@ -305,6 +125,16 @@ const unitColors = [
   { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" },
 ];
 
+// ========== STATIC SUBJECTS FOR SEMESTER 1 ==========
+const SEMESTER_1_SUBJECTS = [
+  "Basics of Python Programming for Pharmaceutical Sciences",
+  "General Pharmacy",
+  "Healthcare Psychology and Communication Skills",
+  "Human Anatomy, Physiology and Pathophysiology I",
+  "Introduction to Pharmacognosy",
+  "Pharmaceutical Inorganic and Analytical Chemistry"
+];
+
 const BPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -322,50 +152,62 @@ const BPharm = () => {
   const [mousePositions, setMousePositions] = useState({});
   
   // ========== API STATES ==========
+  const [units, setUnits] = useState([]); // DYNAMIC UNITS from admin
   const [unitContent, setUnitContent] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
-
-  // =========================================================
-  // UNIT CONTENT REQUEST CONTROL
-  // Prevents stale Unit 1/2/3 responses from appearing after
-  // the user switches to another unit.
-  // =========================================================
-  const contentRequestIdRef = useRef(0);
-  const contentAbortControllerRef = useRef(null);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ========== GET DATA BASED ON SELECTED CATEGORY ==========
-  const getCategoryData = () => {
-    if (selectedCategory === "Notes") return NOTES_DATA;
-    if (selectedCategory === "Exam Crash Course") return CRASH_DATA;
-    if (selectedCategory === "PYQs") return PYQS_DATA;
-    return NOTES_DATA;
-  };
+  // ========== REQUEST CONTROL ==========
+  const contentRequestIdRef = useRef(0);
+  const contentAbortControllerRef = useRef(null);
 
-  const getAvailableSemesters = () => {
-    const data = getCategoryData();
-    return Object.keys(data).map(Number).sort((a, b) => a - b);
-  };
-
+  // ========== GET SUBJECTS FOR SELECTED SEMESTER ==========
   const getAvailableSubjects = () => {
-    const data = getCategoryData();
-    if (!selectedSemester) return [];
-    if (!data[selectedSemester]) return [];
-    return Object.keys(data[selectedSemester]);
+    // Only semester 1 has subjects for now
+    if (selectedSemester === 1) {
+      return SEMESTER_1_SUBJECTS;
+    }
+    return [];
   };
 
-  const getUnits = () => {
-    const data = getCategoryData();
-    if (!selectedCategory || !selectedSemester || !selectedSubject) return [];
-    if (!data[selectedSemester]) return [];
-    if (!data[selectedSemester][selectedSubject]) return [];
-    return data[selectedSemester][selectedSubject].units || [];
+  // ========== FETCH UNITS FROM ADMIN ==========
+  const fetchUnits = async () => {
+    if (!selectedCategory || !selectedSemester || !selectedSubject) {
+      setUnits([]);
+      return;
+    }
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/public/units`, {
+        params: {
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject,
+          branch: "B.Pharm"
+        }
+      });
+
+      const fetchedUnits = res.data?.data || [];
+      setUnits(fetchedUnits);
+      
+      // If units exist and no unit selected, select first one
+      if (fetchedUnits.length > 0 && !selectedUnit) {
+        setSelectedUnit(fetchedUnits[0]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch units:", error);
+      setUnits([]);
+    }
   };
 
-  // ========== FETCH UNIT CONTENT - STRICT UNIT ISOLATION ==========
-  useEffect(() => {
-    // Every selection change invalidates the previous request immediately.
+  // ========== FETCH UNIT CONTENT ==========
+  const fetchUnitContent = async () => {
+    if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit?.id) {
+      setUnitContent([]);
+      return;
+    }
+
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -373,95 +215,67 @@ const BPharm = () => {
       contentAbortControllerRef.current = null;
     }
 
-    // Never keep old unit content while another unit is being selected/loaded.
     setUnitContent([]);
 
-    if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit?.id) {
-      return;
-    }
-
-    const categoryAtRequest = selectedCategory;
-    const semesterAtRequest = Number(selectedSemester);
-    const subjectAtRequest = selectedSubject;
-    const unitAtRequest = Number(selectedUnit.id);
     const controller = new AbortController();
     contentAbortControllerRef.current = controller;
 
-    const loadUnitContent = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-          params: {
-            course: "B.Pharm",
-            category: categoryAtRequest,
-            semester: semesterAtRequest,
-            subject: subjectAtRequest,
-            unit: unitAtRequest
-          },
-          signal: controller.signal
-        });
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+        params: {
+          course: "B.Pharm",
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject,
+          unit: selectedUnit.id
+        },
+        signal: controller.signal
+      });
 
-        // Ignore a response if another unit/category/semester/subject was
-        // selected while this request was in flight.
-        if (requestId !== contentRequestIdRef.current) return;
+      if (requestId !== contentRequestIdRef.current) return;
 
-        const rawContent = Array.isArray(res.data)
-          ? res.data
-          : Array.isArray(res.data?.content)
-            ? res.data.content
-            : Array.isArray(res.data?.notes)
-              ? res.data.notes
-              : [];
-
-        // Final client-side safety filter. Even if an old/misconfigured API
-        // response contains another unit, it can never be rendered here.
-        const exactContent = rawContent.filter((item) => {
-          const itemCourse = String(item?.course || "").trim();
-          const itemCategory = String(item?.category || "").trim();
-          const itemSemester = Number(item?.semester);
-          const itemSubject = String(item?.subject || "").trim();
-          const itemUnit = Number(item?.unit);
-
-          return (
-            (!itemCourse || itemCourse === "B.Pharm") &&
-            itemCategory === categoryAtRequest &&
-            itemSemester === semesterAtRequest &&
-            itemSubject === subjectAtRequest &&
-            itemUnit === unitAtRequest
-          );
-        });
-
-        setUnitContent(exactContent);
-      } catch (error) {
-        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
-          return;
-        }
-
-        // Ignore errors from an old request.
-        if (requestId !== contentRequestIdRef.current) return;
-
-        console.error("❌ Failed to fetch unit content:", error);
-        setUnitContent([]);
-        toast.error("Unable to load content for this unit");
-      } finally {
-        if (requestId === contentRequestIdRef.current) {
-          contentAbortControllerRef.current = null;
-        }
+      const rawContent = Array.isArray(res.data) ? res.data : [];
+      setUnitContent(rawContent);
+    } catch (error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+      if (requestId !== contentRequestIdRef.current) return;
+      console.error("Failed to fetch unit content:", error);
+      setUnitContent([]);
+    } finally {
+      if (requestId === contentRequestIdRef.current) {
+        contentAbortControllerRef.current = null;
       }
-    };
+    }
+  };
 
-    loadUnitContent();
+  // ========== EFFECT: Fetch units when subject changes ==========
+  useEffect(() => {
+    if (selectedCategory && selectedSemester && selectedSubject) {
+      fetchUnits();
+    } else {
+      setUnits([]);
+      setSelectedUnit(null);
+      setUnitContent([]);
+    }
+  }, [selectedCategory, selectedSemester, selectedSubject]);
 
-    return () => {
-      controller.abort();
-    };
+  // ========== EFFECT: Fetch content when unit changes ==========
+  useEffect(() => {
+    if (selectedCategory && selectedSemester && selectedSubject && selectedUnit?.id) {
+      fetchUnitContent();
+    } else {
+      setUnitContent([]);
+    }
   }, [selectedCategory, selectedSemester, selectedSubject, selectedUnit?.id]);
 
+  // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
     setCurrentStep(2);
     setSelectedSemester(null);
     setSelectedSubject(null);
     setSelectedUnit(null);
+    setUnits([]);
     setUnitContent([]);
   };
 
@@ -470,6 +284,7 @@ const BPharm = () => {
     setCurrentStep(3);
     setSelectedSubject(null);
     setSelectedUnit(null);
+    setUnits([]);
     setUnitContent([]);
   };
 
@@ -477,23 +292,14 @@ const BPharm = () => {
     setSelectedSubject(subject);
     setCurrentStep(4);
     setSelectedUnit(null);
+    setUnits([]);
     setUnitContent([]);
   };
 
   const handleUnitClick = (unit) => {
     if (!unit?.id) return;
-
-    // Clear immediately BEFORE changing the selected unit.
-    // This guarantees that old Unit content cannot flash inside the new Unit.
-    contentRequestIdRef.current += 1;
-
-    if (contentAbortControllerRef.current) {
-      contentAbortControllerRef.current.abort();
-      contentAbortControllerRef.current = null;
-    }
-
+    setSelectedUnit(unit);
     setUnitContent([]);
-    setSelectedUnit({ ...unit, id: Number(unit.id) });
     toast.success(`📚 ${unit.name} selected!`);
   };
 
@@ -508,6 +314,7 @@ const BPharm = () => {
       setCurrentStep(3);
       setSelectedSubject(null);
       setSelectedUnit(null);
+      setUnits([]);
       setUnitContent([]);
     }
   };
@@ -518,6 +325,7 @@ const BPharm = () => {
     setSelectedSemester(null);
     setSelectedSubject(null);
     setSelectedUnit(null);
+    setUnits([]);
     setUnitContent([]);
   };
 
@@ -674,9 +482,7 @@ const BPharm = () => {
       return;
     }
 
-    const previewUrl =
-      `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-
+    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
     const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
 
     if (!win) {
@@ -690,9 +496,7 @@ const BPharm = () => {
       return;
     }
 
-    const downloadUrl =
-      `${API_BASE}/api/admin/public/download/note/${item._id}`;
-
+    const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
     const link = document.createElement("a");
     link.href = downloadUrl;
     link.target = "_blank";
@@ -705,10 +509,10 @@ const BPharm = () => {
   };
 
   const handlePremiumPurchase = async () => {
-    toast("💎 Premium purchase flow - Coming soon!");
+    toast.info("💎 Premium purchase flow - Coming soon!");
   };
 
-  // ========== CATEGORY STEP ==========
+  // ========== RENDER FUNCTIONS ==========
   const renderCategoryStep = () => {
     return (
       <div className="animate-slide-up">
@@ -797,18 +601,12 @@ const BPharm = () => {
 
   // ========== SEMESTER STEP ==========
   const renderSemesterStep = () => {
-    const availableSemesters = getAvailableSemesters();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
     const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
     const allSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
-    const hasData = (sem) => availableSemesters.includes(sem);
-
-    const subjectCount = (sem) => {
-      const data = getCategoryData();
-      if (!data[sem]) return 0;
-      return Object.keys(data[sem]).length;
-    };
+    // Only semester 1 has data for now
+    const hasData = (sem) => sem === 1;
 
     return (
       <div className="animate-scale-in">
@@ -849,7 +647,6 @@ const BPharm = () => {
             const isAvailable = hasData(sem);
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
-            const count = subjectCount(sem);
             
             return (
               <div
@@ -914,7 +711,7 @@ const BPharm = () => {
 
                     {isAvailable && (
                       <div className="mt-3 text-xs font-['Inter'] font-medium text-gray-400">
-                        {count} {count === 1 ? 'Subject' : 'Subjects'}
+                        6 Subjects
                       </div>
                     )}
                   </div>
@@ -928,13 +725,13 @@ const BPharm = () => {
           <div className="flex items-center gap-3 glass-effect px-5 py-3 rounded-2xl shadow-lg border border-white/50">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 animate-pulse"></div>
-              <span className="font-['Inter'] font-bold text-gray-700">{availableSemesters.length}</span>
-              <span className="font-['Inter'] text-gray-500">Semesters Available</span>
+              <span className="font-['Inter'] font-bold text-gray-700">1</span>
+              <span className="font-['Inter'] text-gray-500">Semester Available</span>
             </div>
           </div>
           <div className="flex items-center gap-3 glass-effect px-5 py-3 rounded-2xl shadow-lg border border-white/50">
             <Sparkles size={18} className="text-emerald-500" />
-            <span className="font-['Inter'] font-bold text-emerald-600">All Content Unlocked</span>
+            <span className="font-['Inter'] font-bold text-emerald-600">Content Unlocked</span>
             <Sparkles size={18} className="text-emerald-500" />
           </div>
         </div>
@@ -1077,31 +874,9 @@ const BPharm = () => {
     );
   };
 
-  // ========== UNIT STEP - WITH PREVIEW + DOWNLOAD BUTTONS ==========
+  // ========== UNIT STEP - DYNAMIC UNITS FROM ADMIN ==========
   const renderUnitStep = () => {
-    const units = getUnits();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
-
-    const getUnitContent = (unit) => {
-      if (!isSelectedUnit(unit)) return [];
-
-      const selectedUnitId = Number(selectedUnit?.id);
-      const selectedSemesterId = Number(selectedSemester);
-
-      return (Array.isArray(unitContent) ? unitContent : []).filter((item) => {
-        return (
-          Number(item?.unit) === selectedUnitId &&
-          Number(item?.semester) === selectedSemesterId &&
-          String(item?.category || "") === String(selectedCategory || "") &&
-          String(item?.subject || "") === String(selectedSubject || "") &&
-          (!item?.course || String(item.course).trim() === "B.Pharm")
-        );
-      });
-    };
-
-    const isSelectedUnit = (unit) => {
-      return selectedUnit?.id === unit?.id;
-    };
 
     return (
       <div className="animate-slide-up">
@@ -1137,169 +912,173 @@ const BPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Choose a unit to access content
+            {units.length > 0 ? `${units.length} Units Available` : "No units available yet"}
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
-          {units.map((unit, index) => {
-            const colors = unitColors[index % unitColors.length];
-            const cardId = `unit-${unit.id}`;
-            const isSelected = selectedUnit?.id === unit.id;
-            const content = getUnitContent(unit);
-            
-            return (
-              <div
-                key={unit.id}
-                onClick={() => handleUnitClick(unit)}
-                className={`group relative cursor-pointer animate-pop`}
-                style={{ animationDelay: `${index * 0.06}s` }}
-                onMouseEnter={() => setHoveredCard(cardId)}
-                onMouseLeave={() => setHoveredCard(null)}
-                onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-              >
-                <div 
-                  className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
-                  style={{
-                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
-                  }}
-                ></div>
-
-                <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 ${isSelected ? 'border-emerald-500 shadow-2xl scale-105' : 'border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3'} overflow-hidden group`}>
-                  
-                  <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                    <div className="absolute inset-0 rounded-2xl" style={{
-                      background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                      animation: 'rotateGlow 4s linear infinite'
-                    }}></div>
-                  </div>
-
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
-                        {unit.name}
-                      </div>
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg`}>
-                        {unit.id || index + 1}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                        {unit.topics?.length || 0} {unit.topics?.length === 1 ? 'Topic' : 'Topics'}
-                      </span>
-                      <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                    </div>
-
-                    {unit.topics && unit.topics.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {unit.topics.slice(0, 3).map((topic, i) => (
-                          <span 
-                            key={i} 
-                            className={`text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50 group-hover:shadow-md transition-all duration-300`}
-                            style={{
-                              animation: `pop 0.3s ease ${i * 0.05}s both`
-                            }}
-                          >
-                            {topic}
-                          </span>
-                        ))}
-                        {unit.topics.length > 3 && (
-                          <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
-                            +{unit.topics.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {isSelected && content.length > 0 && (
-                      <div className="mt-5 pt-4 border-t border-gray-200/50">
-                        <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
-                          📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
-                        </p>
-
-                        <div className="space-y-3">
-                          {content.map((item) => (
-                            <div
-                              key={item._id}
-                              className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm"
-                            >
-                              <div className="flex items-center gap-2 mb-2">
-                                <FileText size={16} className="text-blue-600 shrink-0" />
-                                <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
-                                  {item.title || item.fileName || "Document"}
-                                </span>
-                              </div>
-
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleView(item);
-                                  }}
-                                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
-                                >
-                                  <Eye size={14} />
-                                  Preview
-                                </button>
-
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDownload(item);
-                                  }}
-                                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
-                                >
-                                  <Download size={14} />
-                                  Download
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {isSelected && content.length === 0 && (
-                      <div className="mt-5 pt-4 border-t border-gray-200/50">
-                        <p className="text-xs font-['Inter'] text-gray-400">No content available yet</p>
-                      </div>
-                    )}
-
-                    {!isSelected && (
-                      <div className="mt-5 flex items-center justify-between">
-                        <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-emerald-600 transition-colors duration-300 flex items-center gap-1">
-                          Click to select
-                          <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
-                        </span>
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
-                          <ArrowRight className="text-white" size={16} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform ${isSelected ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} transition-transform duration-500 rounded-b-2xl`}></div>
-
-                  <div className="absolute top-4 right-4">
-                    <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-gray-300 group-hover:bg-gradient-to-r group-hover:bg-emerald-500'} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {units.length === 0 && (
+        {units.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Units Available</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">Units for this subject are coming soon!</p>
+            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any content for this subject yet.</p>
+            <p className="font-['Inter'] text-gray-400 text-sm mt-1">Units will appear here once content is uploaded.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            {units.map((unit, index) => {
+              const colors = unitColors[index % unitColors.length];
+              const cardId = `unit-${unit.id}`;
+              const isSelected = selectedUnit?.id === unit.id;
+              
+              // Get content for this unit
+              const content = unitContent.filter(item => Number(item.unit) === Number(unit.id));
+              
+              return (
+                <div
+                  key={unit.id}
+                  onClick={() => handleUnitClick(unit)}
+                  className={`group relative cursor-pointer animate-pop`}
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                >
+                  <div 
+                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    style={{
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                    }}
+                  ></div>
+
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 ${isSelected ? 'border-emerald-500 shadow-2xl scale-105' : 'border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3'} overflow-hidden group`}>
+                    
+                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 rounded-2xl" style={{
+                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                        animation: 'rotateGlow 4s linear infinite'
+                      }}></div>
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                          {unit.name}
+                        </div>
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg`}>
+                          {unit.id || index + 1}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                        <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? 'Topic' : 'Topics'} • {content.length} {content.length === 1 ? 'Document' : 'Documents'}
+                        </span>
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                      </div>
+
+                      {unit.topics && unit.topics.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {unit.topics.slice(0, 3).map((topic, i) => (
+                            <span 
+                              key={i} 
+                              className={`text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50 group-hover:shadow-md transition-all duration-300`}
+                              style={{
+                                animation: `pop 0.3s ease ${i * 0.05}s both`
+                              }}
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                          {unit.topics.length > 3 && (
+                            <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
+                              +{unit.topics.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {isSelected && content.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
+                            📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                          </p>
+
+                          <div className="space-y-3">
+                            {content.map((item) => (
+                              <div
+                                key={item._id}
+                                className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <FileText size={16} className="text-blue-600 shrink-0" />
+                                  <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
+                                    {item.title || item.fileName || "Document"}
+                                  </span>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleView(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                  >
+                                    <Eye size={14} />
+                                    Preview
+                                  </button>
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                  >
+                                    <Download size={14} />
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {isSelected && content.length === 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
+                        </div>
+                      )}
+
+                      {!isSelected && (
+                        <div className="mt-5 flex items-center justify-between">
+                          <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-emerald-600 transition-colors duration-300 flex items-center gap-1">
+                            Click to select
+                            <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
+                          </span>
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
+                            <ArrowRight className="text-white" size={16} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform ${isSelected ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} transition-transform duration-500 rounded-b-2xl`}></div>
+
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-gray-300 group-hover:bg-gradient-to-r group-hover:bg-emerald-500'} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -1325,29 +1104,15 @@ const BPharm = () => {
           return (
             <div key={step.number} className="flex items-center">
               <div className="flex items-center gap-2">
-                <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${
-                  isCompleted 
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' 
-                    : isActive 
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow' 
-                      : 'bg-gray-200 text-gray-500'
-                }`}>
+                <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' : isActive ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow' : 'bg-gray-200 text-gray-500'}`}>
                   {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
-                  {isActive && (
-                    <div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>
-                  )}
+                  {isActive && (<div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>)}
                 </div>
-                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${
-                  isActive ? 'text-blue-600 font-bold' : isCompleted ? 'text-emerald-600' : 'text-gray-400'
-                }`}>
+                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? 'text-blue-600 font-bold' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
                   {step.label}
                 </span>
               </div>
-              {index < steps.length - 1 && (
-                <div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${
-                  isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : 'bg-gray-200'
-                }`}></div>
-              )}
+              {index < steps.length - 1 && (<div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : 'bg-gray-200'}`}></div>)}
             </div>
           );
         })}
@@ -1381,10 +1146,7 @@ const BPharm = () => {
 
       {!isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button
-            onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
-          >
+          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center">
             <Crown size={20} className="text-yellow-300" />
             <span>Get Premium - ₹{premiumPrice}</span>
             <Rocket size={20} className="text-yellow-300" />
@@ -1404,13 +1166,7 @@ const BPharm = () => {
 
       <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <div className="relative h-[260px] sm:h-[320px] md:h-[450px] w-full">
-          <div 
-            className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center"
-            style={{ 
-              backgroundImage: `url(${bannerImg})`,
-              backgroundPosition: 'center 40%'
-            }}
-          >
+          <div className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center" style={{ backgroundImage: `url(${bannerImg})`, backgroundPosition: 'center 40%' }}>
             <div className="absolute inset-0 bg-black/35"></div>
           </div>
           <div className="absolute left-0 top-0 h-full w-[62%] bg-[#04172c]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
@@ -1441,10 +1197,7 @@ const BPharm = () => {
 
         {currentStep > 1 && (
           <div className="text-center mt-10">
-            <button
-              onClick={resetNavigation}
-              className="text-gray-400 hover:text-gray-600 text-sm font-['Inter'] transition-colors duration-300 group flex items-center gap-2 mx-auto"
-            >
+            <button onClick={resetNavigation} className="text-gray-400 hover:text-gray-600 text-sm font-['Inter'] transition-colors duration-300 group flex items-center gap-2 mx-auto">
               <span className="w-6 h-0.5 bg-gray-300 group-hover:bg-gray-500 transition-colors"></span>
               Start Over
               <span className="w-6 h-0.5 bg-gray-300 group-hover:bg-gray-500 transition-colors"></span>
