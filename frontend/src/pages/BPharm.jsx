@@ -1190,30 +1190,57 @@ const BPharm = () => {
 
                     {isSelected && content.length > 0 && (
                       <div className="mt-5 pt-4 border-t border-gray-200/50">
-                        <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">📄 Content Available</p>
-                        <div className="flex gap-2.5">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleView(content[0]);
-                            }}
-                            disabled={loadingItemId === content[0]?._id}
-                            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2.5 rounded-xl font-['Inter'] font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50"
-                          >
-                            <Eye size={16} />
-                            {loadingItemId === content[0]?._id ? 'Loading...' : 'Preview'}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(content[0]);
-                            }}
-                            disabled={loadingItemId === content[0]?._id}
-                            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2.5 rounded-xl font-['Inter'] font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50"
-                          >
-                            <Download size={16} />
-                            {loadingItemId === content[0]?._id ? 'Downloading...' : 'Download'}
-                          </button>
+                        <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
+                          📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                        </p>
+
+                        <div className="space-y-3">
+                          {content.map((item) => (
+                            <div
+                              key={item._id}
+                              className="rounded-xl bg-white/80 border border-white/80 shadow-sm p-3"
+                            >
+                              <div className="flex items-start gap-2 mb-2">
+                                <FileText className="text-blue-600 flex-shrink-0 mt-0.5" size={16} />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-['Inter'] font-semibold text-gray-800 break-words">
+                                    {item.title || item.fileName || "Document"}
+                                  </p>
+                                  {item.fileName && item.title !== item.fileName && (
+                                    <p className="text-[11px] text-gray-400 mt-0.5 break-all">
+                                      {item.fileName}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleView(item);
+                                  }}
+                                  disabled={loadingItemId === item._id}
+                                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-2.5 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50"
+                                >
+                                  <Eye size={14} />
+                                  {loadingItemId === item._id ? "Loading..." : "Preview"}
+                                </button>
+
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(item);
+                                  }}
+                                  disabled={loadingItemId === item._id}
+                                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-2.5 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50"
+                                >
+                                  <Download size={14} />
+                                  {loadingItemId === item._id ? "Working..." : "Download"}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
