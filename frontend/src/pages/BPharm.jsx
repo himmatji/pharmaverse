@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
@@ -324,6 +324,14 @@ const BPharm = () => {
   // ========== API STATES ==========
   const [unitContent, setUnitContent] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
+
+  // =========================================================
+  // UNIT CONTENT REQUEST CONTROL
+  // Prevents stale Unit 1/2/3 responses from appearing after
+  // the user switches to another unit.
+  // =========================================================
+  const contentRequestIdRef = useRef(0);
+  const contentAbortControllerRef = useRef(null);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
@@ -355,39 +363,98 @@ const BPharm = () => {
     return data[selectedSemester][selectedSubject].units || [];
   };
 
-  // ========== FETCH UNIT CONTENT ==========
-  const fetchUnitContent = async () => {
-    if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit) return;
-    
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-        params: {
-          course: "B.Pharm",
-          category: selectedCategory,
-          semester: selectedSemester,
-          subject: selectedSubject,
-          unit: selectedUnit?.id
-        }
-      });
-      const content = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.content)
-          ? res.data.content
-          : [];
-
-      setUnitContent(content);
-    } catch (error) {
-      console.error("❌ Failed to fetch unit content:", error);
-      setUnitContent([]);
-      toast.error("Unable to load content for this unit");
-    }
-  };
-
+  // ========== FETCH UNIT CONTENT - STRICT UNIT ISOLATION ==========
   useEffect(() => {
-    if (selectedCategory && selectedSemester && selectedSubject && selectedUnit) {
-      fetchUnitContent();
+    // Every selection change invalidates the previous request immediately.
+    const requestId = ++contentRequestIdRef.current;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
     }
-  }, [selectedCategory, selectedSemester, selectedSubject, selectedUnit]);
+
+    // Never keep old unit content while another unit is being selected/loaded.
+    setUnitContent([]);
+
+    if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit?.id) {
+      return;
+    }
+
+    const categoryAtRequest = selectedCategory;
+    const semesterAtRequest = Number(selectedSemester);
+    const subjectAtRequest = selectedSubject;
+    const unitAtRequest = Number(selectedUnit.id);
+    const controller = new AbortController();
+    contentAbortControllerRef.current = controller;
+
+    const loadUnitContent = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+          params: {
+            course: "B.Pharm",
+            category: categoryAtRequest,
+            semester: semesterAtRequest,
+            subject: subjectAtRequest,
+            unit: unitAtRequest
+          },
+          signal: controller.signal
+        });
+
+        // Ignore a response if another unit/category/semester/subject was
+        // selected while this request was in flight.
+        if (requestId !== contentRequestIdRef.current) return;
+
+        const rawContent = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.content)
+            ? res.data.content
+            : Array.isArray(res.data?.notes)
+              ? res.data.notes
+              : [];
+
+        // Final client-side safety filter. Even if an old/misconfigured API
+        // response contains another unit, it can never be rendered here.
+        const exactContent = rawContent.filter((item) => {
+          const itemCourse = String(item?.course || "").trim();
+          const itemCategory = String(item?.category || "").trim();
+          const itemSemester = Number(item?.semester);
+          const itemSubject = String(item?.subject || "").trim();
+          const itemUnit = Number(item?.unit);
+
+          return (
+            (!itemCourse || itemCourse === "B.Pharm") &&
+            itemCategory === categoryAtRequest &&
+            itemSemester === semesterAtRequest &&
+            itemSubject === subjectAtRequest &&
+            itemUnit === unitAtRequest
+          );
+        });
+
+        setUnitContent(exactContent);
+      } catch (error) {
+        if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") {
+          return;
+        }
+
+        // Ignore errors from an old request.
+        if (requestId !== contentRequestIdRef.current) return;
+
+        console.error("❌ Failed to fetch unit content:", error);
+        setUnitContent([]);
+        toast.error("Unable to load content for this unit");
+      } finally {
+        if (requestId === contentRequestIdRef.current) {
+          contentAbortControllerRef.current = null;
+        }
+      }
+    };
+
+    loadUnitContent();
+
+    return () => {
+      controller.abort();
+    };
+  }, [selectedCategory, selectedSemester, selectedSubject, selectedUnit?.id]);
 
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
@@ -414,7 +481,19 @@ const BPharm = () => {
   };
 
   const handleUnitClick = (unit) => {
-    setSelectedUnit(unit);
+    if (!unit?.id) return;
+
+    // Clear immediately BEFORE changing the selected unit.
+    // This guarantees that old Unit content cannot flash inside the new Unit.
+    contentRequestIdRef.current += 1;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
+    }
+
+    setUnitContent([]);
+    setSelectedUnit({ ...unit, id: Number(unit.id) });
     toast.success(`📚 ${unit.name} selected!`);
   };
 
@@ -556,6 +635,16 @@ const BPharm = () => {
   useEffect(() => {
     window.history.scrollRestoration = "manual";
     window.scrollTo(0, 0);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      contentRequestIdRef.current += 1;
+      if (contentAbortControllerRef.current) {
+        contentAbortControllerRef.current.abort();
+        contentAbortControllerRef.current = null;
+      }
+    };
   }, []);
 
   const handleCardMouseMove = (cardId, e) => {
@@ -995,7 +1084,19 @@ const BPharm = () => {
 
     const getUnitContent = (unit) => {
       if (!isSelectedUnit(unit)) return [];
-      return Array.isArray(unitContent) ? unitContent : [];
+
+      const selectedUnitId = Number(selectedUnit?.id);
+      const selectedSemesterId = Number(selectedSemester);
+
+      return (Array.isArray(unitContent) ? unitContent : []).filter((item) => {
+        return (
+          Number(item?.unit) === selectedUnitId &&
+          Number(item?.semester) === selectedSemesterId &&
+          String(item?.category || "") === String(selectedCategory || "") &&
+          String(item?.subject || "") === String(selectedSubject || "") &&
+          (!item?.course || String(item.course).trim() === "B.Pharm")
+        );
+      });
     };
 
     const isSelectedUnit = (unit) => {
