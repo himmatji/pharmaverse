@@ -203,7 +203,7 @@ const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
 };
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -585,7 +585,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
+        alert(`File size exceeds 10MB limit.`);
         e.target.value = '';
         return;
       }
@@ -692,7 +692,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       formData.append("category", uploadForm.category);
       formData.append("semester", uploadForm.semester);
       formData.append("subject", uploadForm.subject);
-      formData.append("unit", uploadForm.unit || 1);
+      formData.append("unit", String(Number(uploadForm.unit)));
       formData.append("units", JSON.stringify(uploadForm.units));
       formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
       formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
@@ -748,7 +748,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
+        alert(`File size exceeds 10MB limit.`);
         e.target.value = '';
         return;
       }
@@ -809,7 +809,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
+        alert(`File size exceeds 10MB limit.`);
         e.target.value = '';
         return;
       }
@@ -870,7 +870,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
+        alert(`File size exceeds 10MB limit.`);
         e.target.value = '';
         return;
       }
@@ -931,7 +931,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
+        alert(`File size exceeds 10MB limit.`);
         e.target.value = '';
         return;
       }
@@ -1318,7 +1318,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   <button
                     key={sem}
                     type="button"
-                    onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "" }))}
+                    onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "", unit: 1 }))}
                     className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
                       uploadForm.semester === sem
                         ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"
@@ -1342,7 +1342,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <button
                       key={subject}
                       type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, subject }))}
+                      onClick={() => setUploadForm(prev => ({ ...prev, subject, unit: 1 }))}
                       className={`p-3 rounded-xl border-2 transition-all duration-300 text-left font-['Inter'] text-sm ${
                         uploadForm.subject === subject
                           ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
@@ -1379,9 +1379,43 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </button>
               </div>
 
+              {/* IMPORTANT: This decides which Unit receives the uploaded file. */}
+              <div className="mb-4 p-4 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-200">
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Upload File To Unit <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={uploadForm.unit || 1}
+                  onChange={(e) =>
+                    setUploadForm(prev => ({
+                      ...prev,
+                      unit: Number(e.target.value)
+                    }))
+                  }
+                  className="w-full px-4 py-3 rounded-xl border-2 border-sky-200 bg-white focus:border-sky-500 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] font-semibold text-gray-800"
+                  required
+                >
+                  {uploadForm.units.map((unit) => (
+                    <option key={unit.id} value={unit.id}>
+                      {unit.name || `Unit ${unit.id}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-sky-700 mt-2 font-['Inter']">
+                  The uploaded file will appear only inside this selected unit for the selected semester and subject.
+                </p>
+              </div>
+
               <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 {uploadForm.units.map((unit, unitIndex) => (
-                  <div key={unitIndex} className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200">
+                  <div
+                    key={unitIndex}
+                    className={`p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border-2 transition-all ${
+                      Number(uploadForm.unit) === Number(unit.id)
+                        ? "border-emerald-400 shadow-md"
+                        : "border-gray-200"
+                    }`}
+                  >
                     <div className="flex items-center gap-3 mb-3">
                       <input
                         type="text"
@@ -1392,10 +1426,37 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                       />
                       <button
                         type="button"
-                        onClick={() => removeUnit(unitIndex)}
+                        onClick={() => {
+                          const removedId = uploadForm.units[unitIndex]?.id;
+                          removeUnit(unitIndex);
+                          if (Number(uploadForm.unit) === Number(removedId)) {
+                            const fallback = uploadForm.units.find((u, i) => i !== unitIndex);
+                            if (fallback) {
+                              setUploadForm(prev => ({ ...prev, unit: fallback.id }));
+                            }
+                          }
+                        }}
                         className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                        title="Remove unit"
                       >
                         <Trash2 size={18} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                        {Number(uploadForm.unit) === Number(unit.id) ? "Selected upload unit" : "Unit"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setUploadForm(prev => ({ ...prev, unit: unit.id }))}
+                        className={`text-xs px-3 py-1.5 rounded-lg font-['Inter'] font-semibold transition-colors ${
+                          Number(uploadForm.unit) === Number(unit.id)
+                            ? "bg-emerald-500 text-white"
+                            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                        }`}
+                      >
+                        {Number(uploadForm.unit) === Number(unit.id) ? "Selected" : "Use this unit"}
                       </button>
                     </div>
 
@@ -1423,6 +1484,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                             type="button"
                             onClick={() => removeTopic(unitIndex, topicIndex)}
                             className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                            title="Remove topic"
                           >
                             <X size={16} />
                           </button>
