@@ -1319,7 +1319,7 @@ router.delete(
 );
 
 /* =========================================================
-   PUBLIC ROUTES - NOTES
+   PUBLIC ROUTES - NOTES (FIXED)
 ========================================================= */
 router.get("/public/notes", async (req, res) => {
   try {
@@ -1387,28 +1387,35 @@ router.get("/public/notes", async (req, res) => {
 });
 
 /* =========================================================
-   PUBLIC UNITS - DYNAMIC
+   PUBLIC UNITS - DYNAMIC (FIXED)
 ========================================================= */
 router.get("/public/units", async (req, res) => {
   try {
     const { category, semester, subject, branch } = req.query;
 
-    const query = {
-      category: category,
-      semester: parseInt(semester),
-      subject: subject,
-      course: branch || "B.Pharm"
-    };
+    console.log("📤 Units API called with:", { category, semester, subject, branch });
 
-    console.log("📤 Fetching units with query:", query);
+    // Build query
+    const query = {};
+    if (category) query.category = category;
+    if (semester) query.semester = parseInt(semester);
+    if (subject) query.subject = subject;
+    if (branch) query.course = branch;
 
+    console.log("📤 Query:", query);
+
+    // Use Mongoose model
     const notes = await Note.find(query).sort({ createdAt: -1 });
 
-    console.log(`✅ Found ${notes.length} notes for units`);
+    console.log(`✅ Found ${notes.length} notes`);
 
     // Extract unique units from all notes
     const unitsMap = new Map();
+
     notes.forEach(note => {
+      console.log(`📄 Note: ${note.title}, units:`, note.units);
+      
+      // Case 1: units array exists
       if (note.units && Array.isArray(note.units) && note.units.length > 0) {
         note.units.forEach(unit => {
           if (!unitsMap.has(unit.id)) {
@@ -1419,6 +1426,17 @@ router.get("/public/units", async (req, res) => {
             });
           }
         });
+      } 
+      // Case 2: No units array, use unit field
+      else if (note.unit) {
+        const unitId = parseInt(note.unit);
+        if (!unitsMap.has(unitId)) {
+          unitsMap.set(unitId, {
+            id: unitId,
+            name: `Unit ${unitId}`,
+            topics: []
+          });
+        }
       }
     });
 
@@ -1433,10 +1451,10 @@ router.get("/public/units", async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Get units error:", error);
+    console.error("❌ Get units error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to fetch units"
+      message: "Failed to fetch units: " + error.message
     });
   }
 });
