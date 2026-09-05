@@ -26,20 +26,22 @@ const JWT_SECRET =
   process.env.JWT_SECRET || "your_super_secret_key";
 
 /* =========================================================
-   MULTER - memoryStorage (NO uploads folder)
+   MULTER - MEMORY STORAGE
 ========================================================= */
+
 const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB
+    fileSize: 50 * 1024 * 1024
   }
 });
 
 /* =========================================================
    ADMIN AUTH MIDDLEWARE
 ========================================================= */
+
 const adminAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -63,9 +65,9 @@ const adminAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (decoded.type === "admin") {
-      const admin = await Admin.findById(decoded.adminId).select(
-        "-password"
-      );
+      const admin = await Admin.findById(
+        decoded.adminId
+      ).select("-password");
 
       if (!admin) {
         return res.status(401).json({
@@ -165,7 +167,10 @@ const adminAuth = async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error("❌ Admin Auth Error:", error.message);
+    console.error(
+      "❌ Admin Auth Error:",
+      error.message
+    );
 
     return res.status(401).json({
       success: false,
@@ -177,7 +182,10 @@ const adminAuth = async (req, res, next) => {
 /* =========================================================
    COURSE PERMISSION
 ========================================================= */
-const checkPermission = (courseField = "course") => {
+
+const checkPermission = (
+  courseField = "course"
+) => {
   return async (req, res, next) => {
     try {
       if (!req.admin) {
@@ -196,18 +204,22 @@ const checkPermission = (courseField = "course") => {
         req.method === "PUT" ||
         req.method === "PATCH"
       ) {
-        const course = req.body?.[courseField];
+        const course =
+          req.body?.[courseField];
 
         const allowedCourses =
           req.admin.permissions?.courses || [];
 
-        if (allowedCourses.includes(course)) {
+        if (
+          allowedCourses.includes(course)
+        ) {
           return next();
         }
 
         return res.status(403).json({
           success: false,
-          message: `No permission for ${course}`,
+          message:
+            `No permission for ${course}`,
           allowedCourses
         });
       }
@@ -215,11 +227,15 @@ const checkPermission = (courseField = "course") => {
       next();
 
     } catch (error) {
-      console.error("Permission error:", error);
+      console.error(
+        "Permission error:",
+        error
+      );
 
       return res.status(500).json({
         success: false,
-        message: "Permission check failed"
+        message:
+          "Permission check failed"
       });
     }
   };
@@ -228,15 +244,22 @@ const checkPermission = (courseField = "course") => {
 /* =========================================================
    UPLOAD ROUTE
 ========================================================= */
+
 router.post(
   "/upload",
   adminAuth,
   upload.single("file"),
   async (req, res) => {
     try {
-      console.log("\n=================================");
-      console.log("📤 ADMIN UPLOAD REQUEST");
-      console.log("=================================");
+      console.log(
+        "\n================================="
+      );
+      console.log(
+        "📤 ADMIN UPLOAD REQUEST"
+      );
+      console.log(
+        "================================="
+      );
 
       const file = req.file;
 
@@ -260,13 +283,40 @@ router.post(
         type
       } = req.body;
 
-      console.log("📄 File Name:", file.originalname);
-      console.log("📦 File Size:", file.size);
-      console.log("📁 Mime Type:", file.mimetype);
-      console.log("📂 Category:", category);
-      console.log("📚 Semester:", semester);
-      console.log("📖 Subject:", subject);
-      console.log("📌 Unit:", unit);
+      console.log(
+        "📄 File Name:",
+        file.originalname
+      );
+
+      console.log(
+        "📦 File Size:",
+        file.size
+      );
+
+      console.log(
+        "📁 Mime Type:",
+        file.mimetype
+      );
+
+      console.log(
+        "📂 Category:",
+        category
+      );
+
+      console.log(
+        "📚 Semester:",
+        semester
+      );
+
+      console.log(
+        "📖 Subject:",
+        subject
+      );
+
+      console.log(
+        "📌 Unit:",
+        unit
+      );
 
       const base64Data =
         file.buffer.toString("base64");
@@ -339,7 +389,8 @@ router.post(
           file.mimetype,
 
         fileSize:
-          (file.size / 1024 / 1024).toFixed(2) +
+          (file.size / 1024 / 1024)
+            .toFixed(2) +
           " MB",
 
         fileData,
@@ -387,6 +438,7 @@ router.post(
 
       return res.status(201).json({
         success: true,
+
         message:
           "File uploaded successfully",
 
@@ -399,7 +451,8 @@ router.post(
           unit: newContent.unit,
           fileName: newContent.fileName,
           fileSize: newContent.fileSize,
-          isPremium: newContent.isPremium
+          isPremium:
+            newContent.isPremium
         }
       });
 
@@ -422,404 +475,532 @@ router.post(
 /* =========================================================
    MULTER ERROR HANDLER
 ========================================================= */
-router.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) {
-    console.error("❌ Multer Error:", err);
 
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({
+router.use(
+  (err, req, res, next) => {
+    if (
+      err instanceof multer.MulterError
+    ) {
+      console.error(
+        "❌ Multer Error:",
+        err
+      );
+
+      if (
+        err.code ===
+        "LIMIT_FILE_SIZE"
+      ) {
+        return res.status(413).json({
+          success: false,
+          message:
+            "File too large. Maximum allowed size is 50MB."
+        });
+      }
+
+      return res.status(400).json({
         success: false,
-        message: "File too large. Maximum allowed size is 50MB."
+        message: err.message
       });
     }
 
-    return res.status(400).json({
-      success: false,
-      message: err.message
-    });
+    next(err);
   }
-
-  next(err);
-});
+);
 
 /* =========================================================
    ADMIN LOGIN
 ========================================================= */
-router.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and password are required"
-      });
-    }
+router.post(
+  "/login",
+  async (req, res) => {
+    try {
+      const {
+        email,
+        password
+      } = req.body;
 
-    let admin = await Admin.findOne({
-      email,
-      isActive: true
-    });
+      if (!email || !password) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Email and password are required"
+        });
+      }
 
-    if (
-      !admin &&
-      email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      admin = await Admin.findOne({
-        role: "super_admin"
-      });
-
-      if (!admin) {
-        admin = new Admin({
-          name: "Super Admin",
-          email: process.env.ADMIN_EMAIL,
-          password: process.env.ADMIN_PASSWORD,
-          role: "super_admin",
-          permissions: {
-            courses: [
-              "B.Pharm",
-              "D.Pharm",
-              "M.Pharm",
-              "Pharm.D",
-              "PhD"
-            ]
-          },
+      let admin =
+        await Admin.findOne({
+          email,
           isActive: true
         });
 
-        await admin.save();
-      }
-    }
+      if (
+        !admin &&
+        email === process.env.ADMIN_EMAIL &&
+        password ===
+          process.env.ADMIN_PASSWORD
+      ) {
+        admin =
+          await Admin.findOne({
+            role: "super_admin"
+          });
 
-    if (!admin) {
-      return res.status(401).json({
+        if (!admin) {
+          admin = new Admin({
+            name: "Super Admin",
+            email:
+              process.env.ADMIN_EMAIL,
+            password:
+              process.env.ADMIN_PASSWORD,
+            role: "super_admin",
+            permissions: {
+              courses: [
+                "B.Pharm",
+                "D.Pharm",
+                "M.Pharm",
+                "Pharm.D",
+                "PhD"
+              ]
+            },
+            isActive: true
+          });
+
+          await admin.save();
+        }
+      }
+
+      if (!admin) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid credentials"
+        });
+      }
+
+      let isMatch = false;
+
+      if (
+        admin.email ===
+          process.env.ADMIN_EMAIL &&
+        password ===
+          process.env.ADMIN_PASSWORD
+      ) {
+        isMatch = true;
+      } else {
+        isMatch =
+          await admin.comparePassword(
+            password
+          );
+      }
+
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message:
+            "Invalid credentials"
+        });
+      }
+
+      admin.lastLogin =
+        new Date();
+
+      await admin.save();
+
+      const token =
+        jwt.sign(
+          {
+            adminId:
+              admin._id,
+            email:
+              admin.email,
+            role:
+              admin.role,
+            type:
+              "admin"
+          },
+          JWT_SECRET,
+          {
+            expiresIn:
+              "7d"
+          }
+        );
+
+      return res.json({
+        success: true,
+        token,
+
+        user: {
+          id:
+            admin._id,
+          name:
+            admin.name,
+          email:
+            admin.email,
+          role:
+            admin.role,
+          permissions:
+            admin.permissions,
+          type:
+            "admin"
+        }
+      });
+
+    } catch (error) {
+      console.error(
+        "Admin login error:",
+        error
+      );
+
+      return res.status(500).json({
         success: false,
-        message: "Invalid credentials"
+        message:
+          "Server Error"
       });
     }
-
-    let isMatch = false;
-
-    if (
-      admin.email === process.env.ADMIN_EMAIL &&
-      password === process.env.ADMIN_PASSWORD
-    ) {
-      isMatch = true;
-    } else {
-      isMatch = await admin.comparePassword(password);
-    }
-
-    if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: "Invalid credentials"
-      });
-    }
-
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    const token = jwt.sign(
-      {
-        adminId: admin._id,
-        email: admin.email,
-        role: admin.role,
-        type: "admin"
-      },
-      JWT_SECRET,
-      {
-        expiresIn: "7d"
-      }
-    );
-
-    return res.json({
-      success: true,
-      token,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        permissions: admin.permissions,
-        type: "admin"
-      }
-    });
-
-  } catch (error) {
-    console.error("Admin login error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error"
-    });
   }
-});
+);
 
 /* =========================================================
    DASHBOARD STATS
 ========================================================= */
-router.get("/stats", adminAuth, async (req, res) => {
-  try {
-    let totalNotes = await Note.countDocuments();
-    let totalVideos = await Video.countDocuments();
-    let totalUsers = await User.countDocuments();
-    let totalPaidPDFs = await PaidPDF.countDocuments();
-    let totalPapers = await Paper.countDocuments();
 
-    if (req.admin.role !== "super_admin") {
-      const allowedCourses =
-        req.admin.permissions?.courses || [];
+router.get(
+  "/stats",
+  adminAuth,
+  async (req, res) => {
+    try {
+      let totalNotes =
+        await Note.countDocuments();
 
-      totalNotes = await Note.countDocuments({
-        course: { $in: allowedCourses }
+      let totalVideos =
+        await Video.countDocuments();
+
+      let totalUsers =
+        await User.countDocuments();
+
+      let totalPaidPDFs =
+        await PaidPDF.countDocuments();
+
+      let totalPapers =
+        await Paper.countDocuments();
+
+      if (
+        req.admin.role !==
+        "super_admin"
+      ) {
+        const allowedCourses =
+          req.admin.permissions
+            ?.courses || [];
+
+        totalNotes =
+          await Note.countDocuments({
+            course: {
+              $in:
+                allowedCourses
+            }
+          });
+
+        totalVideos =
+          await Video.countDocuments({
+            course: {
+              $in:
+                allowedCourses
+            }
+          });
+
+        totalPaidPDFs =
+          await PaidPDF.countDocuments({
+            course: {
+              $in:
+                allowedCourses
+            }
+          });
+
+        totalPapers =
+          await Paper.countDocuments({
+            course: {
+              $in:
+                allowedCourses
+            }
+          });
+      }
+
+      res.json({
+        totalNotes,
+        totalVideos,
+        totalUsers,
+        totalPaidPDFs,
+        totalPapers
       });
 
-      totalVideos = await Video.countDocuments({
-        course: { $in: allowedCourses }
-      });
+    } catch (error) {
+      console.error(
+        error
+      );
 
-      totalPaidPDFs = await PaidPDF.countDocuments({
-        course: { $in: allowedCourses }
-      });
-
-      totalPapers = await Paper.countDocuments({
-        course: { $in: allowedCourses }
+      res.status(500).json({
+        message:
+          "Server Error"
       });
     }
-
-    res.json({
-      totalNotes,
-      totalVideos,
-      totalUsers,
-      totalPaidPDFs,
-      totalPapers
-    });
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
   }
-});
+);
 
 /* =========================================================
    COURSE PRICES
 ========================================================= */
-router.get("/course-prices", adminAuth, async (req, res) => {
-  try {
-    let prices = await CoursePrice.findOne();
 
-    if (!prices) {
-      const defaultPrices = {
-        BPharm: {
-          price: 99,
-          discount: 0
-        },
+router.get(
+  "/course-prices",
+  adminAuth,
+  async (req, res) => {
+    try {
+      let prices =
+        await CoursePrice.findOne();
 
-        DPharm: {
-          price: 79,
-          discount: 0
-        },
+      if (!prices) {
+        const defaultPrices = {
+          BPharm: {
+            price: 99,
+            discount: 0
+          },
 
-        MPharm: {
-          price: 149,
-          discount: 0
-        },
+          DPharm: {
+            price: 79,
+            discount: 0
+          },
 
-        PharmD: {
-          price: 129,
-          discount: 0
-        },
+          MPharm: {
+            price: 149,
+            discount: 0
+          },
 
-        PhD: {
-          price: 199,
-          discount: 0
-        }
+          PharmD: {
+            price: 129,
+            discount: 0
+          },
+
+          PhD: {
+            price: 199,
+            discount: 0
+          }
+        };
+
+        prices =
+          new CoursePrice({
+            prices:
+              defaultPrices
+          });
+
+        await prices.save();
+
+        return res.json({
+          "B.Pharm":
+            defaultPrices.BPharm,
+
+          "D.Pharm":
+            defaultPrices.DPharm,
+
+          "M.Pharm":
+            defaultPrices.MPharm,
+
+          "Pharm.D":
+            defaultPrices.PharmD,
+
+          "PhD":
+            defaultPrices.PhD
+        });
+      }
+
+      const p =
+        prices.prices;
+
+      res.json({
+        "B.Pharm":
+          p?.get
+            ? p.get("BPharm")
+            : p?.BPharm,
+
+        "D.Pharm":
+          p?.get
+            ? p.get("DPharm")
+            : p?.DPharm,
+
+        "M.Pharm":
+          p?.get
+            ? p.get("MPharm")
+            : p?.MPharm,
+
+        "Pharm.D":
+          p?.get
+            ? p.get("PharmD")
+            : p?.PharmD,
+
+        "PhD":
+          p?.get
+            ? p.get("PhD")
+            : p?.PhD
+      });
+
+    } catch (error) {
+      console.error(
+        "Error fetching course prices:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          error.message
+      });
+    }
+  }
+);
+
+router.put(
+  "/course-prices",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        prices
+      } = req.body;
+
+      if (!prices) {
+        return res.status(400).json({
+          error:
+            "Prices data is required"
+        });
+      }
+
+      const formattedPrices = {
+        BPharm:
+          prices.BPharm ||
+          prices["B.Pharm"] || {
+            price: 99,
+            discount: 0
+          },
+
+        DPharm:
+          prices.DPharm ||
+          prices["D.Pharm"] || {
+            price: 79,
+            discount: 0
+          },
+
+        MPharm:
+          prices.MPharm ||
+          prices["M.Pharm"] || {
+            price: 149,
+            discount: 0
+          },
+
+        PharmD:
+          prices.PharmD ||
+          prices["Pharm.D"] || {
+            price: 129,
+            discount: 0
+          },
+
+        PhD:
+          prices.PhD || {
+            price: 199,
+            discount: 0
+          }
       };
 
-      prices = new CoursePrice({
-        prices: defaultPrices
+      let coursePrices =
+        await CoursePrice.findOne();
+
+      if (!coursePrices) {
+        coursePrices =
+          new CoursePrice({
+            prices:
+              formattedPrices
+          });
+      } else {
+        coursePrices.prices =
+          formattedPrices;
+      }
+
+      coursePrices.updatedAt =
+        new Date();
+
+      coursePrices.updatedBy =
+        req.admin.id;
+
+      await coursePrices.save();
+
+      res.json({
+        success: true,
+
+        message:
+          "Prices updated successfully",
+
+        data:
+          coursePrices.prices
       });
 
-      await prices.save();
+    } catch (error) {
+      console.error(
+        "Error updating course prices:",
+        error
+      );
 
-      return res.json({
-        "B.Pharm": defaultPrices.BPharm,
-        "D.Pharm": defaultPrices.DPharm,
-        "M.Pharm": defaultPrices.MPharm,
-        "Pharm.D": defaultPrices.PharmD,
-        "PhD": defaultPrices.PhD
+      res.status(500).json({
+        error:
+          error.message
       });
     }
-
-    const p = prices.prices;
-
-    res.json({
-      "B.Pharm":
-        p?.get
-          ? p.get("BPharm")
-          : p?.BPharm,
-
-      "D.Pharm":
-        p?.get
-          ? p.get("DPharm")
-          : p?.DPharm,
-
-      "M.Pharm":
-        p?.get
-          ? p.get("MPharm")
-          : p?.MPharm,
-
-      "Pharm.D":
-        p?.get
-          ? p.get("PharmD")
-          : p?.PharmD,
-
-      "PhD":
-        p?.get
-          ? p.get("PhD")
-          : p?.PhD
-    });
-
-  } catch (error) {
-    console.error(
-      "Error fetching course prices:",
-      error
-    );
-
-    res.status(500).json({
-      error: error.message
-    });
   }
-});
-
-router.put("/course-prices", adminAuth, async (req, res) => {
-  try {
-    const { prices } = req.body;
-
-    if (!prices) {
-      return res.status(400).json({
-        error: "Prices data is required"
-      });
-    }
-
-    const formattedPrices = {
-      BPharm:
-        prices.BPharm ||
-        prices["B.Pharm"] || {
-          price: 99,
-          discount: 0
-        },
-
-      DPharm:
-        prices.DPharm ||
-        prices["D.Pharm"] || {
-          price: 79,
-          discount: 0
-        },
-
-      MPharm:
-        prices.MPharm ||
-        prices["M.Pharm"] || {
-          price: 149,
-          discount: 0
-        },
-
-      PharmD:
-        prices.PharmD ||
-        prices["Pharm.D"] || {
-          price: 129,
-          discount: 0
-        },
-
-      PhD:
-        prices.PhD || {
-          price: 199,
-          discount: 0
-        }
-    };
-
-    let coursePrices =
-      await CoursePrice.findOne();
-
-    if (!coursePrices) {
-      coursePrices =
-        new CoursePrice({
-          prices: formattedPrices
-        });
-    } else {
-      coursePrices.prices =
-        formattedPrices;
-    }
-
-    coursePrices.updatedAt =
-      new Date();
-
-    coursePrices.updatedBy =
-      req.admin.id;
-
-    await coursePrices.save();
-
-    res.json({
-      success: true,
-      message:
-        "Prices updated successfully",
-      data:
-        coursePrices.prices
-    });
-
-  } catch (error) {
-    console.error(
-      "Error updating course prices:",
-      error
-    );
-
-    res.status(500).json({
-      error: error.message
-    });
-  }
-});
+);
 
 /* =========================================================
    NOTES CRUD
 ========================================================= */
-router.get("/notes", adminAuth, async (req, res) => {
-  try {
-    let notes =
-      await Note.find()
-        .sort({
-          createdAt: -1
-        });
 
-    if (
-      req.admin.role !==
-      "super_admin"
-    ) {
-      const allowedCourses =
-        req.admin.permissions?.courses ||
-        [];
+router.get(
+  "/notes",
+  adminAuth,
+  async (req, res) => {
+    try {
+      let notes =
+        await Note.find()
+          .sort({
+            createdAt:
+              -1
+          });
 
-      notes = notes.filter(
-        (note) =>
-          allowedCourses.includes(
-            note.course
-          )
+      if (
+        req.admin.role !==
+        "super_admin"
+      ) {
+        const allowedCourses =
+          req.admin.permissions
+            ?.courses || [];
+
+        notes =
+          notes.filter(
+            (note) =>
+              allowedCourses.includes(
+                note.course
+              )
+          );
+      }
+
+      res.json(notes);
+
+    } catch (error) {
+      console.error(
+        error
       );
+
+      res.status(500).json({
+        message:
+          "Server Error"
+      });
     }
-
-    res.json(notes);
-
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      message: "Server Error"
-    });
   }
-});
+);
 
 router.post(
   "/notes",
@@ -828,13 +1009,16 @@ router.post(
   async (req, res) => {
     try {
       const note =
-        new Note(req.body);
+        new Note(
+          req.body
+        );
 
       await note.save();
 
       res.status(201).json({
         success: true,
-        message: "Note Added",
+        message:
+          "Note Added",
         note
       });
 
@@ -845,8 +1029,10 @@ router.post(
       );
 
       res.status(500).json({
-        message: "Server Error",
-        error: error.message
+        message:
+          "Server Error",
+        error:
+          error.message
       });
     }
   }
@@ -874,8 +1060,8 @@ router.delete(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         if (
           !allowedCourses.includes(
@@ -900,7 +1086,9 @@ router.delete(
       });
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -913,6 +1101,7 @@ router.delete(
 /* =========================================================
    VIDEOS CRUD
 ========================================================= */
+
 router.get(
   "/videos",
   adminAuth,
@@ -921,7 +1110,8 @@ router.get(
       let videos =
         await Video.find()
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
       if (
@@ -929,8 +1119,8 @@ router.get(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         videos =
           videos.filter(
@@ -944,7 +1134,9 @@ router.get(
       res.json(videos);
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -961,7 +1153,9 @@ router.post(
   async (req, res) => {
     try {
       const video =
-        new Video(req.body);
+        new Video(
+          req.body
+        );
 
       await video.save();
 
@@ -1010,8 +1204,8 @@ router.delete(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         if (
           !allowedCourses.includes(
@@ -1036,7 +1230,9 @@ router.delete(
       });
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -1049,6 +1245,7 @@ router.delete(
 /* =========================================================
    PAID PDFS CRUD
 ========================================================= */
+
 router.get(
   "/paid-pdfs",
   adminAuth,
@@ -1057,7 +1254,8 @@ router.get(
       let paidPDFs =
         await PaidPDF.find()
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
       if (
@@ -1065,8 +1263,8 @@ router.get(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         paidPDFs =
           paidPDFs.filter(
@@ -1077,10 +1275,14 @@ router.get(
           );
       }
 
-      res.json(paidPDFs);
+      res.json(
+        paidPDFs
+      );
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -1097,7 +1299,9 @@ router.post(
   async (req, res) => {
     try {
       const paidPDF =
-        new PaidPDF(req.body);
+        new PaidPDF(
+          req.body
+        );
 
       await paidPDF.save();
 
@@ -1146,8 +1350,8 @@ router.delete(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         if (
           !allowedCourses.includes(
@@ -1172,7 +1376,9 @@ router.delete(
       });
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -1185,6 +1391,7 @@ router.delete(
 /* =========================================================
    PAPERS CRUD
 ========================================================= */
+
 router.get(
   "/papers",
   adminAuth,
@@ -1193,7 +1400,8 @@ router.get(
       let papers =
         await Paper.find()
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
       if (
@@ -1201,8 +1409,8 @@ router.get(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         papers =
           papers.filter(
@@ -1213,10 +1421,14 @@ router.get(
           );
       }
 
-      res.json(papers);
+      res.json(
+        papers
+      );
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -1233,7 +1445,9 @@ router.post(
   async (req, res) => {
     try {
       const paper =
-        new Paper(req.body);
+        new Paper(
+          req.body
+        );
 
       await paper.save();
 
@@ -1282,8 +1496,8 @@ router.delete(
         "super_admin"
       ) {
         const allowedCourses =
-          req.admin.permissions?.courses ||
-          [];
+          req.admin.permissions
+            ?.courses || [];
 
         if (
           !allowedCourses.includes(
@@ -1308,7 +1522,9 @@ router.delete(
       });
 
     } catch (error) {
-      console.error(error);
+      console.error(
+        error
+      );
 
       res.status(500).json({
         message:
@@ -1321,183 +1537,618 @@ router.delete(
 /* =========================================================
    PUBLIC ROUTES - NOTES
 ========================================================= */
-router.get("/public/notes", async (req, res) => {
-  try {
-    const {
-      course,
-      category,
-      semester,
-      subject,
-      unit
-    } = req.query;
 
-    const filter = {};
+router.get(
+  "/public/notes",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
 
-    if (course) {
-      filter.course = course;
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !==
+          undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(
+            semester
+          );
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !==
+          undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(
+            unit
+          );
+      }
+
+      console.log(
+        "📤 Public notes query:",
+        filter
+      );
+
+      const notes =
+        await Note.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt:
+              -1
+          });
+
+      console.log(
+        `✅ Found ${notes.length} notes`
+      );
+
+      res.json(
+        notes
+      );
+
+    } catch (error) {
+      console.error(
+        "Public notes error:",
+        error
+      );
+
+      res.status(500).json({
+        success: false,
+        message:
+          "Failed to load notes"
+      });
     }
-
-    if (category) {
-      filter.category = category;
-    }
-
-    if (
-      semester !== undefined &&
-      semester !== ""
-    ) {
-      filter.semester = Number(semester);
-    }
-
-    if (subject) {
-      filter.subject = subject;
-    }
-
-    if (
-      unit !== undefined &&
-      unit !== ""
-    ) {
-      filter.unit = Number(unit);
-    }
-
-    console.log("📤 Public notes query:", filter);
-
-    const notes =
-      await Note.find(filter)
-        .select("-fileData")
-        .sort({
-          createdAt: -1
-        });
-
-    console.log(`✅ Found ${notes.length} notes`);
-
-    res.json(notes);
-
-  } catch (error) {
-    console.error(
-      "Public notes error:",
-      error
-    );
-
-    res.status(500).json({
-      success: false,
-      message:
-        "Failed to load notes"
-    });
   }
-});
+);
 
 /* =========================================================
-   PUBLIC UNITS - DYNAMIC (FIXED - 500 ERROR)
+   PUBLIC UNITS - FINAL FIXED VERSION
 ========================================================= */
-router.get("/public/units", async (req, res) => {
-  try {
-    const { category, semester, subject, branch } = req.query;
 
-    console.log("📤 Units API called with:", { category, semester, subject, branch });
+router.get(
+  "/public/units",
+  async (req, res) => {
+    try {
+      const {
+        category,
+        semester,
+        subject,
+        branch,
+        course
+      } = req.query;
 
-    // Build query
-    const query = {};
-    if (category) query.category = category;
-    if (semester) query.semester = parseInt(semester);
-    if (subject) query.subject = subject;
-    if (branch) query.course = branch;
+      console.log(
+        "\n================================="
+      );
 
-    console.log("📤 Query:", JSON.stringify(query));
+      console.log(
+        "📚 PUBLIC UNITS REQUEST"
+      );
 
-    // Check if Note model exists
-    if (!Note) {
-      console.error("❌ Note model not found!");
-      return res.status(500).json({
-        success: false,
-        message: "Note model not loaded"
-      });
-    }
+      console.log(
+        "================================="
+      );
 
-    // Find notes with lean() for better performance
-    const notes = await Note.find(query)
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+      console.log(
+        "category :",
+        category
+      );
 
-    console.log(`✅ Found ${notes.length} notes`);
+      console.log(
+        "semester :",
+        semester
+      );
 
-    // Extract unique units from all notes
-    const unitsMap = new Map();
+      console.log(
+        "subject  :",
+        subject
+      );
 
-    if (notes.length === 0) {
-      console.log("⚠️ No notes found for this query");
-      return res.status(200).json({
-        success: true,
-        data: [],
-        count: 0,
-        message: "No units available for this subject"
-      });
-    }
+      console.log(
+        "branch   :",
+        branch
+      );
 
-    notes.forEach((note, index) => {
-      console.log(`📄 Note ${index + 1}: ${note.title || "Untitled"}`);
-      
-      // Case 1: units array exists and is not empty
-      if (note.units && Array.isArray(note.units) && note.units.length > 0) {
-        console.log(`   ✅ Has units array with ${note.units.length} units`);
-        note.units.forEach(unit => {
-          const unitId = Number(unit.id) || 1;
-          if (!unitsMap.has(unitId)) {
-            unitsMap.set(unitId, {
-              id: unitId,
-              name: unit.name || `Unit ${unitId}`,
-              topics: unit.topics || []
-            });
-          }
+      console.log(
+        "course   :",
+        course
+      );
+
+      /* -----------------------------------------------------
+         DATABASE CONNECTION CHECK
+      ----------------------------------------------------- */
+
+      if (
+        mongoose.connection.readyState !==
+        1
+      ) {
+        console.error(
+          "❌ MongoDB is not connected. State:",
+          mongoose.connection.readyState
+        );
+
+        return res.status(503).json({
+          success: false,
+          message:
+            "Database is not connected"
         });
-      } 
-      // Case 2: unit field exists
-      else if (note.unit !== undefined && note.unit !== null && note.unit !== "") {
-        const unitId = Number(note.unit) || 1;
-        console.log(`   ✅ Has unit field: ${unitId}`);
-        if (!unitsMap.has(unitId)) {
-          unitsMap.set(unitId, {
-            id: unitId,
-            name: `Unit ${unitId}`,
-            topics: []
+      }
+
+      /* -----------------------------------------------------
+         BUILD QUERY
+      ----------------------------------------------------- */
+
+      const query = {};
+
+      /* -----------------------------------------------------
+         CATEGORY
+         CASE INSENSITIVE
+      ----------------------------------------------------- */
+
+      if (
+        category &&
+        String(category).trim() !== ""
+      ) {
+        const cleanCategory =
+          String(
+            category
+          ).trim();
+
+        const escapedCategory =
+          cleanCategory.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+        query.category = {
+          $regex:
+            `^${escapedCategory}$`,
+          $options:
+            "i"
+        };
+      }
+
+      /* -----------------------------------------------------
+         SEMESTER
+      ----------------------------------------------------- */
+
+      if (
+        semester !==
+          undefined &&
+        semester !==
+          null &&
+        String(
+          semester
+        ).trim() !== ""
+      ) {
+        const semesterNumber =
+          Number(
+            semester
+          );
+
+        if (
+          !Number.isInteger(
+            semesterNumber
+          )
+        ) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid semester"
           });
         }
-      } else {
-        console.log(`   ⚠️ No units found in this note`);
-        // Fallback: create unit 1
-        if (!unitsMap.has(1)) {
-          unitsMap.set(1, {
-            id: 1,
-            name: "Unit 1",
-            topics: []
-          });
+
+        query.semester =
+          semesterNumber;
+      }
+
+      /* -----------------------------------------------------
+         SUBJECT
+         CASE INSENSITIVE
+      ----------------------------------------------------- */
+
+      if (
+        subject &&
+        String(subject).trim() !== ""
+      ) {
+        const cleanSubject =
+          String(
+            subject
+          ).trim();
+
+        const escapedSubject =
+          cleanSubject.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+        query.subject = {
+          $regex:
+            `^${escapedSubject}$`,
+          $options:
+            "i"
+        };
+      }
+
+      /* -----------------------------------------------------
+         COURSE / BRANCH
+      ----------------------------------------------------- */
+
+      const selectedCourse =
+        branch || course;
+
+      if (
+        selectedCourse &&
+        String(
+          selectedCourse
+        ).trim() !== ""
+      ) {
+        const cleanCourse =
+          String(
+            selectedCourse
+          ).trim();
+
+        const escapedCourse =
+          cleanCourse.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            "\\$&"
+          );
+
+        query.course = {
+          $regex:
+            `^${escapedCourse}$`,
+          $options:
+            "i"
+        };
+      }
+
+      console.log(
+        "🔎 FINAL MONGODB QUERY:"
+      );
+
+      console.log(
+        JSON.stringify(
+          query,
+          null,
+          2
+        )
+      );
+
+      /* -----------------------------------------------------
+         CHECK NOTE MODEL
+      ----------------------------------------------------- */
+
+      if (
+        !Note ||
+        typeof Note.find !==
+          "function"
+      ) {
+        console.error(
+          "❌ Note model is invalid!"
+        );
+
+        return res.status(500).json({
+          success: false,
+          message:
+            "Note model is not loaded correctly"
+        });
+      }
+
+      /* -----------------------------------------------------
+         FETCH NOTES
+      ----------------------------------------------------- */
+
+      const notes =
+        await Note.find(
+          query
+        )
+          .select(
+            "_id title category semester subject unit units course branch createdAt"
+          )
+          .sort({
+            createdAt:
+              -1
+          })
+          .lean();
+
+      console.log(
+        `✅ NOTES FOUND: ${notes.length}`
+      );
+
+      /* -----------------------------------------------------
+         NO NOTES
+      ----------------------------------------------------- */
+
+      if (
+        !notes ||
+        notes.length === 0
+      ) {
+        console.log(
+          "⚠️ No notes found"
+        );
+
+        return res.status(200).json({
+          success: true,
+          data: [],
+          count: 0,
+          message:
+            "No units available for this subject"
+        });
+      }
+
+      /* -----------------------------------------------------
+         UNIQUE UNITS MAP
+      ----------------------------------------------------- */
+
+      const unitsMap =
+        new Map();
+
+      /* -----------------------------------------------------
+         LOOP THROUGH NOTES
+      ----------------------------------------------------- */
+
+      for (
+        const note of notes
+      ) {
+
+        /* =================================================
+           CASE 1
+           UNITS ARRAY
+        ================================================= */
+
+        if (
+          Array.isArray(
+            note.units
+          ) &&
+          note.units.length >
+            0
+        ) {
+
+          for (
+            const unit
+              of note.units
+          ) {
+
+            if (
+              unit ===
+                null ||
+              unit ===
+                undefined
+            ) {
+              continue;
+            }
+
+            let unitId;
+            let unitName;
+            let topics = [];
+
+            /* ---------------------------------------------
+               OBJECT UNIT
+            --------------------------------------------- */
+
+            if (
+              typeof unit ===
+              "object"
+            ) {
+              unitId =
+                Number(
+                  unit.id
+                );
+
+              unitName =
+                unit.name;
+
+              topics =
+                Array.isArray(
+                  unit.topics
+                )
+                  ? unit.topics
+                  : [];
+            }
+
+            /* ---------------------------------------------
+               NUMBER / STRING UNIT
+            --------------------------------------------- */
+
+            else {
+              unitId =
+                Number(
+                  unit
+                );
+
+              unitName =
+                `Unit ${unitId}`;
+            }
+
+            /* ---------------------------------------------
+               VALID UNIT
+            --------------------------------------------- */
+
+            if (
+              !Number.isInteger(
+                unitId
+              ) ||
+              unitId <= 0
+            ) {
+              continue;
+            }
+
+            if (
+              !unitsMap.has(
+                unitId
+              )
+            ) {
+              unitsMap.set(
+                unitId,
+                {
+                  id:
+                    unitId,
+
+                  name:
+                    unitName ||
+                    `Unit ${unitId}`,
+
+                  topics:
+                    topics
+                }
+              );
+            }
+          }
+        }
+
+        /* =================================================
+           CASE 2
+           NORMAL UNIT FIELD
+        ================================================= */
+
+        const normalUnit =
+          Number(
+            note.unit
+          );
+
+        if (
+          Number.isInteger(
+            normalUnit
+          ) &&
+          normalUnit > 0
+        ) {
+
+          if (
+            !unitsMap.has(
+              normalUnit
+            )
+          ) {
+            unitsMap.set(
+              normalUnit,
+              {
+                id:
+                  normalUnit,
+
+                name:
+                  `Unit ${normalUnit}`,
+
+                topics:
+                  []
+              }
+            );
+          }
         }
       }
-    });
 
-    const units = Array.from(unitsMap.values()).sort((a, b) => a.id - b.id);
+      /* -----------------------------------------------------
+         MAP → ARRAY
+      ----------------------------------------------------- */
 
-    console.log(`✅ Returning ${units.length} units`);
+      const units =
+        Array.from(
+          unitsMap.values()
+        ).sort(
+          (a, b) =>
+            a.id - b.id
+        );
 
-    res.status(200).json({
-      success: true,
-      data: units,
-      count: units.length
-    });
+      console.log(
+        `✅ UNIQUE UNITS RETURNING: ${units.length}`
+      );
 
-  } catch (error) {
-    console.error("❌ Get units error:", error);
-    console.error("❌ Error stack:", error.stack);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch units: " + error.message
-    });
+      console.log(
+        "📦 UNITS:",
+        JSON.stringify(
+          units,
+          null,
+          2
+        )
+      );
+
+      console.log(
+        "=================================\n"
+      );
+
+      /* -----------------------------------------------------
+         RESPONSE
+      ----------------------------------------------------- */
+
+      return res.status(200).json({
+        success: true,
+        data:
+          units,
+        count:
+          units.length
+      });
+
+    } catch (error) {
+
+      console.error(
+        "\n❌❌❌ PUBLIC UNITS ERROR ❌❌❌"
+      );
+
+      console.error(
+        "MESSAGE:",
+        error.message
+      );
+
+      console.error(
+        "NAME:",
+        error.name
+      );
+
+      console.error(
+        "STACK:",
+        error.stack
+      );
+
+      console.error(
+        "=================================\n"
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch units",
+
+        error:
+          process.env.NODE_ENV ===
+          "production"
+            ? undefined
+            : error.message
+      });
+    }
   }
-});
+);
 
 /* =========================================================
-   PUBLIC CONTENT - Compatibility route
+   PUBLIC CONTENT - COMPATIBILITY ROUTE
 ========================================================= */
+
 router.get(
   "/public/content",
   async (req, res) => {
@@ -1513,48 +2164,69 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course = course;
+        filter.course =
+          course;
       }
 
       if (category) {
-        filter.category = category;
+        filter.category =
+          category;
       }
 
       if (
-        semester !== undefined &&
+        semester !==
+          undefined &&
         semester !== ""
       ) {
         filter.semester =
-          Number(semester);
+          Number(
+            semester
+          );
       }
 
       if (subject) {
-        filter.subject = subject;
+        filter.subject =
+          subject;
       }
 
       if (
-        unit !== undefined &&
+        unit !==
+          undefined &&
         unit !== ""
       ) {
         filter.unit =
-          Number(unit);
+          Number(
+            unit
+          );
       }
 
-      console.log("📤 Public content query:", filter);
+      console.log(
+        "📤 Public content query:",
+        filter
+      );
 
       const notes =
-        await Note.find(filter)
-          .select("-fileData")
+        await Note.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
-      console.log(`✅ Found ${notes.length} content items`);
+      console.log(
+        `✅ Found ${notes.length} content items`
+      );
 
       res.json({
         success: true,
-        content: notes,
-        notes: notes
+        content:
+          notes,
+        notes:
+          notes
       });
 
     } catch (error) {
@@ -1575,6 +2247,7 @@ router.get(
 /* =========================================================
    PUBLIC VIDEOS
 ========================================================= */
+
 router.get(
   "/public/videos",
   async (req, res) => {
@@ -1584,20 +2257,27 @@ router.get(
       } = req.query;
 
       const filter = {
-        isPremium: true
+        isPremium:
+          true
       };
 
       if (course) {
-        filter.course = course;
+        filter.course =
+          course;
       }
 
       const videos =
-        await Video.find(filter)
+        await Video.find(
+          filter
+        )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
-      res.json(videos);
+      res.json(
+        videos
+      );
 
     } catch (error) {
       console.error(
@@ -1616,6 +2296,7 @@ router.get(
 /* =========================================================
    PUBLIC FREE VIDEOS
 ========================================================= */
+
 router.get(
   "/public/free-videos",
   async (req, res) => {
@@ -1625,20 +2306,27 @@ router.get(
       } = req.query;
 
       const filter = {
-        isPremium: false
+        isPremium:
+          false
       };
 
       if (course) {
-        filter.course = course;
+        filter.course =
+          course;
       }
 
       const videos =
-        await Video.find(filter)
+        await Video.find(
+          filter
+        )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
-      res.json(videos);
+      res.json(
+        videos
+      );
 
     } catch (error) {
       console.error(
@@ -1657,6 +2345,7 @@ router.get(
 /* =========================================================
    PUBLIC PAID PDFS
 ========================================================= */
+
 router.get(
   "/public/paid-pdfs",
   async (req, res) => {
@@ -1668,16 +2357,22 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course = course;
+        filter.course =
+          course;
       }
 
       const pdfs =
-        await PaidPDF.find(filter)
+        await PaidPDF.find(
+          filter
+        )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
-      res.json(pdfs);
+      res.json(
+        pdfs
+      );
 
     } catch (error) {
       console.error(
@@ -1696,6 +2391,7 @@ router.get(
 /* =========================================================
    PUBLIC PAPERS
 ========================================================= */
+
 router.get(
   "/public/papers",
   async (req, res) => {
@@ -1707,16 +2403,22 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course = course;
+        filter.course =
+          course;
       }
 
       const papers =
-        await Paper.find(filter)
+        await Paper.find(
+          filter
+        )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
-      res.json(papers);
+      res.json(
+        papers
+      );
 
     } catch (error) {
       console.error(
@@ -1735,30 +2437,38 @@ router.get(
 /* =========================================================
    PUBLIC FILE MODEL HELPER
 ========================================================= */
+
 const getContentModel = (
   type
 ) => {
   const normalizedType =
-    String(type || "")
-      .toLowerCase();
+    String(
+      type || ""
+    ).toLowerCase();
 
   if (
-    normalizedType === "note" ||
-    normalizedType === "notes"
+    normalizedType ===
+      "note" ||
+    normalizedType ===
+      "notes"
   ) {
     return Note;
   }
 
   if (
-    normalizedType === "video" ||
-    normalizedType === "videos"
+    normalizedType ===
+      "video" ||
+    normalizedType ===
+      "videos"
   ) {
     return Video;
   }
 
   if (
-    normalizedType === "paper" ||
-    normalizedType === "papers"
+    normalizedType ===
+      "paper" ||
+    normalizedType ===
+      "papers"
   ) {
     return Paper;
   }
@@ -1767,8 +2477,9 @@ const getContentModel = (
 };
 
 /* =========================================================
-   SEND STORED FILE - SHARED FUNCTION
+   SEND STORED FILE
 ========================================================= */
+
 const sendStoredFile = async (
   req,
   res,
@@ -1780,7 +2491,6 @@ const sendStoredFile = async (
       id
     } = req.params;
 
-    // Validate Object ID
     if (
       !mongoose.Types.ObjectId.isValid(
         id
@@ -1793,9 +2503,10 @@ const sendStoredFile = async (
       });
     }
 
-    // Get Model
     const Model =
-      getContentModel(type);
+      getContentModel(
+        type
+      );
 
     if (!Model) {
       return res.status(400).json({
@@ -1805,9 +2516,10 @@ const sendStoredFile = async (
       });
     }
 
-    // Find document
     const item =
-      await Model.findById(id);
+      await Model.findById(
+        id
+      );
 
     if (
       !item ||
@@ -1820,9 +2532,10 @@ const sendStoredFile = async (
       });
     }
 
-    // Parse Base64 data
     const rawData =
-      String(item.fileData);
+      String(
+        item.fileData
+      );
 
     const match =
       rawData.match(
@@ -1851,7 +2564,7 @@ const sendStoredFile = async (
     const safeFileName =
       String(
         item.fileName ||
-        "document.pdf"
+          "document.pdf"
       )
         .replace(
           /[\r\n"]/g,
@@ -1860,7 +2573,6 @@ const sendStoredFile = async (
         .trim() ||
       "document.pdf";
 
-    // Set headers
     res.setHeader(
       "Content-Type",
       mimeType
@@ -1876,9 +2588,9 @@ const sendStoredFile = async (
       `${disposition}; filename="${safeFileName}"`
     );
 
-    // Increment download count for attachment
     if (
-      disposition === "attachment" &&
+      disposition ===
+        "attachment" &&
       typeof item.incrementDownloads ===
         "function"
     ) {
@@ -1887,7 +2599,6 @@ const sendStoredFile = async (
         .catch(() => {});
     }
 
-    // Send file
     return res.end(
       buffer
     );
@@ -1909,6 +2620,7 @@ const sendStoredFile = async (
 /* =========================================================
    PUBLIC PREVIEW
 ========================================================= */
+
 router.get(
   "/public/preview/:type/:id",
   async (req, res) => {
@@ -1923,6 +2635,7 @@ router.get(
 /* =========================================================
    PUBLIC DOWNLOAD
 ========================================================= */
+
 router.get(
   "/public/download/:type/:id",
   async (req, res) => {
@@ -1937,6 +2650,7 @@ router.get(
 /* =========================================================
    PUBLIC PRICE
 ========================================================= */
+
 router.get(
   "/public-price",
   async (req, res) => {
@@ -1950,18 +2664,22 @@ router.get(
             price: 99,
             discount: 0
           },
+
           "D.Pharm": {
             price: 79,
             discount: 0
           },
+
           "M.Pharm": {
             price: 149,
             discount: 0
           },
+
           "Pharm.D": {
             price: 129,
             discount: 0
           },
+
           "PhD": {
             price: 199,
             discount: 0
@@ -1978,26 +2696,44 @@ router.get(
         if (!p) {
           return null;
         }
+
         if (
           typeof p.get ===
           "function"
         ) {
-          return p.get(key);
+          return p.get(
+            key
+          );
         }
+
         return p[key];
       };
 
       res.json({
         "B.Pharm":
-          getPrice("BPharm"),
+          getPrice(
+            "BPharm"
+          ),
+
         "D.Pharm":
-          getPrice("DPharm"),
+          getPrice(
+            "DPharm"
+          ),
+
         "M.Pharm":
-          getPrice("MPharm"),
+          getPrice(
+            "MPharm"
+          ),
+
         "Pharm.D":
-          getPrice("PharmD"),
+          getPrice(
+            "PharmD"
+          ),
+
         "PhD":
-          getPrice("PhD")
+          getPrice(
+            "PhD"
+          )
       });
 
     } catch (error) {
@@ -2016,6 +2752,7 @@ router.get(
 /* =========================================================
    USERS
 ========================================================= */
+
 router.get(
   "/users",
   adminAuth,
@@ -2023,9 +2760,12 @@ router.get(
     try {
       const users =
         await User.find({})
-          .select("-password")
+          .select(
+            "-password"
+          )
           .sort({
-            createdAt: -1
+            createdAt:
+              -1
           });
 
       res.json({
@@ -2050,6 +2790,7 @@ router.get(
 /* =========================================================
    DELETE USER
 ========================================================= */
+
 router.delete(
   "/users/:id",
   adminAuth,
@@ -2107,6 +2848,7 @@ router.delete(
 /* =========================================================
    ADMIN PROFILE
 ========================================================= */
+
 router.get(
   "/profile",
   adminAuth,
@@ -2116,7 +2858,9 @@ router.get(
         await Admin.findById(
           req.admin.id
         )
-        .select("-password");
+          .select(
+            "-password"
+          );
 
       if (!admin) {
         return res.status(404).json({
@@ -2148,6 +2892,7 @@ router.get(
 /* =========================================================
    UPDATE ADMIN PROFILE
 ========================================================= */
+
 router.put(
   "/update-profile",
   adminAuth,
@@ -2174,11 +2919,13 @@ router.put(
       }
 
       if (name) {
-        admin.name = name;
+        admin.name =
+          name;
       }
 
       if (email) {
-        admin.email = email;
+        admin.email =
+          email;
       }
 
       if (
@@ -2206,15 +2953,20 @@ router.put(
 
       res.json({
         success: true,
+
         message:
           "Profile updated successfully",
+
         user: {
           id:
             admin._id,
+
           name:
             admin.name,
+
           email:
             admin.email,
+
           role:
             admin.role
         }
@@ -2238,25 +2990,34 @@ router.put(
 /* =========================================================
    TEST ROUTE
 ========================================================= */
+
 router.get(
   "/test",
   (req, res) => {
     res.json({
       success: true,
+
       message:
         "Admin router is working",
+
       uploadRoute:
         "/api/admin/upload",
+
       publicNotesRoute:
         "/api/admin/public/notes",
+
       publicUnitsRoute:
         "/api/admin/public/units",
+
       publicContentRoute:
         "/api/admin/public/content",
+
       publicPreviewRoute:
         "/api/admin/public/preview/:type/:id",
+
       publicDownloadRoute:
         "/api/admin/public/download/:type/:id",
+
       routes: [
         "POST /upload",
         "POST /login",
@@ -2297,4 +3058,5 @@ router.get(
 /* =========================================================
    FINAL EXPORT
 ========================================================= */
+
 module.exports = router;
