@@ -48,10 +48,10 @@ const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in"
 
 // ========== CATEGORIES ==========
 const categories = [
-  {
-    id: "Notes",
-    label: "Notes",
-    icon: BookOpen,
+  { 
+    id: "Notes", 
+    label: "Notes", 
+    icon: BookOpen, 
     gradient: "from-blue-600 via-indigo-600 to-purple-600",
     bgGradient: "from-blue-50 via-indigo-50 to-purple-50",
     glowColor: "rgba(99, 102, 241, 0.3)",
@@ -59,10 +59,10 @@ const categories = [
     stats: "500+ PDFs",
     badge: "Most Popular"
   },
-  {
-    id: "Exam Crash Course",
-    label: "Exam Crash Course",
-    icon: Rocket,
+  { 
+    id: "Exam Crash Course", 
+    label: "Exam Crash Course", 
+    icon: Rocket, 
     gradient: "from-orange-500 via-amber-500 to-yellow-500",
     bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
     glowColor: "rgba(251, 146, 60, 0.3)",
@@ -70,10 +70,10 @@ const categories = [
     stats: "8 Semesters",
     badge: "🔥 Crash"
   },
-  {
-    id: "PYQs",
-    label: "PYQs",
-    icon: Brain,
+  { 
+    id: "PYQs", 
+    label: "PYQs", 
+    icon: Brain, 
     gradient: "from-rose-500 via-pink-500 to-purple-500",
     bgGradient: "from-rose-50 via-pink-50 to-purple-50",
     glowColor: "rgba(244, 63, 94, 0.3)",
@@ -83,7 +83,7 @@ const categories = [
   }
 ];
 
-// ========== SEMESTER 1 DATA ==========
+// ========== NEW SEMESTER 1 DATA - ONLY 6 SUBJECTS ==========
 const NOTES_DATA = {
   1: {
     "Basics of Python Programming for Pharmaceutical Sciences": {
@@ -143,7 +143,7 @@ const NOTES_DATA = {
   }
 };
 
-// ========== CRASH COURSE DATA ==========
+// ========== CRASH COURSE DATA - SAME 6 SUBJECTS ==========
 const CRASH_DATA = {
   1: {
     "Basics of Python Programming for Pharmaceutical Sciences": {
@@ -203,7 +203,7 @@ const CRASH_DATA = {
   }
 };
 
-// ========== PYQS DATA ==========
+// ========== PYQS DATA - SAME 6 SUBJECTS ==========
 const PYQS_DATA = {
   1: {
     "Basics of Python Programming for Pharmaceutical Sciences": {
@@ -263,7 +263,7 @@ const PYQS_DATA = {
   }
 };
 
-// ========== COLORS ==========
+// ========== SEMESTER COLORS ==========
 const semesterColors = [
   { gradient: "from-rose-500 to-pink-500", glow: "rgba(244, 63, 94, 0.3)", bg: "from-rose-50 to-pink-50" },
   { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59, 130, 246, 0.3)", bg: "from-blue-50 to-cyan-50" },
@@ -272,34 +272,37 @@ const semesterColors = [
   { gradient: "from-orange-500 to-amber-500", glow: "rgba(251, 146, 60, 0.3)", bg: "from-orange-50 to-amber-50" },
   { gradient: "from-pink-500 to-rose-500", glow: "rgba(236, 72, 153, 0.3)", bg: "from-pink-50 to-rose-50" },
   { gradient: "from-cyan-500 to-blue-500", glow: "rgba(6, 182, 212, 0.3)", bg: "from-cyan-50 to-blue-50" },
-  { gradient: "from-teal-500 to-emerald-500", glow: "rgba(20, 184, 166, 0.3)", bg: "from-teal-50 to-emerald-50" }
+  { gradient: "from-teal-500 to-emerald-500", glow: "rgba(20, 184, 166, 0.3)", bg: "from-teal-50 to-emerald-50" },
 ];
 
+// ========== SUBJECT COLORS ==========
 const subjectColors = [
   { gradient: "from-violet-500 to-purple-500", glow: "rgba(139,92,246,0.2)", bg: "from-violet-50 to-purple-50" },
   { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.2)", bg: "from-blue-50 to-cyan-50" },
   { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16,185,129,0.2)", bg: "from-emerald-50 to-teal-50" },
   { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.2)", bg: "from-rose-50 to-pink-50" },
   { gradient: "from-amber-500 to-orange-500", glow: "rgba(251,146,60,0.2)", bg: "from-amber-50 to-orange-50" },
-  { gradient: "from-cyan-500 to-sky-500", glow: "rgba(6,182,212,0.2)", bg: "from-cyan-50 to-sky-50" }
+  { gradient: "from-cyan-500 to-sky-500", glow: "rgba(6,182,212,0.2)", bg: "from-cyan-50 to-sky-50" },
 ];
 
+// ========== SUBJECT ICONS ==========
 const subjectIcons = [
   { icon: Code2, color: "from-violet-100 to-purple-100", textColor: "text-violet-600" },
   { icon: Pill, color: "from-blue-100 to-cyan-100", textColor: "text-blue-600" },
   { icon: MessageSquare, color: "from-emerald-100 to-teal-100", textColor: "text-emerald-600" },
   { icon: HeartPulse, color: "from-rose-100 to-pink-100", textColor: "text-rose-600" },
   { icon: Leaf, color: "from-amber-100 to-orange-100", textColor: "text-amber-600" },
-  { icon: Beaker, color: "from-cyan-100 to-sky-100", textColor: "text-cyan-600" }
+  { icon: Beaker, color: "from-cyan-100 to-sky-100", textColor: "text-cyan-600" },
 ];
 
+// ========== UNIT COLORS ==========
 const unitColors = [
   { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.25)", bg: "from-rose-50 to-pink-50" },
   { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.25)", bg: "from-blue-50 to-cyan-50" },
   { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16,185,129,0.25)", bg: "from-emerald-50 to-teal-50" },
   { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139,92,246,0.25)", bg: "from-purple-50 to-indigo-50" },
   { gradient: "from-orange-500 to-amber-500", glow: "rgba(251,146,60,0.25)", bg: "from-orange-50 to-amber-50" },
-  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" }
+  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" },
 ];
 
 const BPharm = () => {
@@ -312,18 +315,17 @@ const BPharm = () => {
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [selectedUnit, setSelectedUnit] = useState(null);
-
+  
   const [loading, setLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
-
+  
   // ========== API STATES ==========
   const [unitContent, setUnitContent] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
+  const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
-  const [isFetchingContent, setIsFetchingContent] = useState(false);
-  const [allNotes, setAllNotes] = useState([]);
 
   // ========== GET DATA BASED ON SELECTED CATEGORY ==========
   const getCategoryData = () => {
@@ -353,86 +355,33 @@ const BPharm = () => {
     return data[selectedSemester][selectedSubject].units || [];
   };
 
-  // ========== FETCH ALL NOTES FROM BACKEND ==========
-  const fetchAllNotes = async () => {
-    try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-
-      console.log("🔍 Fetching all notes from /api/public/notes");
-
-      const response = await axios.get(`${API_BASE}/api/public/notes`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-
-      console.log("📦 All notes response:", response.data);
-
-      let notes = [];
-      if (Array.isArray(response.data)) {
-        notes = response.data;
-      } else if (response.data && Array.isArray(response.data.data)) {
-        notes = response.data.data;
-      } else if (response.data && Array.isArray(response.data.notes)) {
-        notes = response.data.notes;
-      }
-
-      setAllNotes(notes);
-      console.log(`✅ Loaded ${notes.length} notes from backend`);
-
-      return notes;
-    } catch (error) {
-      console.error("❌ Failed to fetch notes:", error);
-      setAllNotes([]);
-      return [];
-    }
-  };
-
   // ========== FETCH UNIT CONTENT ==========
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit) return;
-
-    setIsFetchingContent(true);
-    setLoading(true);
-
+    
     try {
-      let notes = allNotes;
-      if (notes.length === 0) {
-        notes = await fetchAllNotes();
-      }
-
-      console.log(`🔍 Filtering notes for: Category=${selectedCategory}, Semester=${selectedSemester}, Subject=${selectedSubject}, Unit=${selectedUnit.id}`);
-
-      const filtered = notes.filter(note => {
-        const matchCategory = note.category === selectedCategory;
-        const matchSemester = Number(note.semester) === Number(selectedSemester);
-        const matchSubject = note.subject === selectedSubject;
-        const matchUnit = Number(note.unit) === Number(selectedUnit.id);
-
-        return matchCategory && matchSemester && matchSubject && matchUnit;
+      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+        params: {
+          course: "B.Pharm",
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject,
+          unit: selectedUnit?.id
+        }
       });
+      const content = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.content)
+          ? res.data.content
+          : [];
 
-      console.log(`✅ Found ${filtered.length} matching notes`);
-
-      if (filtered && filtered.length > 0) {
-        setUnitContent(filtered);
-        toast.success(`📚 ${filtered.length} documents found!`);
-      } else {
-        setUnitContent([]);
-        toast.info("No content uploaded for this unit yet");
-      }
-
+      setUnitContent(content);
     } catch (error) {
       console.error("❌ Failed to fetch unit content:", error);
       setUnitContent([]);
-      toast.error("Unable to load content");
-    } finally {
-      setLoading(false);
-      setIsFetchingContent(false);
+      toast.error("Unable to load content for this unit");
     }
   };
-
-  useEffect(() => {
-    fetchAllNotes();
-  }, []);
 
   useEffect(() => {
     if (selectedCategory && selectedSemester && selectedSubject && selectedUnit) {
@@ -466,7 +415,6 @@ const BPharm = () => {
 
   const handleUnitClick = (unit) => {
     setSelectedUnit(unit);
-    setUnitContent([]);
     toast.success(`📚 ${unit.name} selected!`);
   };
 
@@ -535,7 +483,7 @@ const BPharm = () => {
         50% { transform: scale(1.05); opacity: 0.8; }
         100% { transform: scale(1); opacity: 1; }
       }
-
+      
       .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
       .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-slide-down { animation: slideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -543,23 +491,23 @@ const BPharm = () => {
       .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
       .animate-border-pulse { animation: borderPulse 2s ease-in-out infinite; }
       .animate-pop { animation: pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
-
+      
       .shimmer-bg {
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
         background-size: 200% 100%;
         animation: shimmerSlide 1.5s ease-in-out infinite;
       }
-
+      
       .glass-effect {
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
       }
-
+      
       .category-card-1 { animation-delay: 0.1s; }
       .category-card-2 { animation-delay: 0.2s; }
       .category-card-3 { animation-delay: 0.3s; }
-
+      
       .semester-card-1 { animation-delay: 0.05s; }
       .semester-card-2 { animation-delay: 0.1s; }
       .semester-card-3 { animation-delay: 0.15s; }
@@ -568,20 +516,20 @@ const BPharm = () => {
       .semester-card-6 { animation-delay: 0.3s; }
       .semester-card-7 { animation-delay: 0.35s; }
       .semester-card-8 { animation-delay: 0.4s; }
-
+      
       .subject-card-1 { animation-delay: 0.06s; }
       .subject-card-2 { animation-delay: 0.12s; }
       .subject-card-3 { animation-delay: 0.18s; }
       .subject-card-4 { animation-delay: 0.24s; }
       .subject-card-5 { animation-delay: 0.3s; }
       .subject-card-6 { animation-delay: 0.36s; }
-
+      
       .unit-card-1 { animation-delay: 0.05s; }
       .unit-card-2 { animation-delay: 0.1s; }
       .unit-card-3 { animation-delay: 0.15s; }
       .unit-card-4 { animation-delay: 0.2s; }
       .unit-card-5 { animation-delay: 0.25s; }
-
+      
       @media (max-width: 768px) {
         .semester-grid { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
         .subject-grid { grid-template-columns: 1fr; }
@@ -631,91 +579,44 @@ const BPharm = () => {
     return localStorage.getItem("userToken") || localStorage.getItem("token");
   };
 
-  const handleView = async (item) => {
-    if (!item?._id && !item?.id) {
+  const handleView = (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
 
-    const docId = item._id || item.id;
-    setLoadingItemId(docId);
+    const previewUrl =
+      `${API_BASE}/api/admin/public/preview/note/${item._id}`;
 
-    try {
-      if (item.fileData) {
-        const blob = await fetch(item.fileData).then(res => res.blob());
-        const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
 
-        const newWindow = window.open("", "_blank", "noopener,noreferrer");
-        if (!newWindow) {
-          toast.error("Please allow popups to view files");
-          setLoadingItemId(null);
-          return;
-        }
-
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>${item.title || 'Document'}</title>
-              <style>
-                body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
-                iframe { width: 100%; height: 100%; border: none; }
-              </style>
-            </head>
-            <body>
-              <iframe src="${blobUrl}"></iframe>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-        setLoadingItemId(null);
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-        return;
-      }
-
-      toast.error("No file data available");
-
-    } catch (error) {
-      console.error("View error:", error);
-      toast.error(error.message || "Failed to open file");
-      setLoadingItemId(null);
+    if (!win) {
+      toast.error("Please allow popups to preview the PDF");
     }
   };
 
-  const handleDownload = async (item) => {
-    if (!item?._id && !item?.id) {
+  const handleDownload = (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
 
-    const docId = item._id || item.id;
-    setLoadingItemId(docId);
+    const downloadUrl =
+      `${API_BASE}/api/admin/public/download/note/${item._id}`;
 
-    try {
-      if (item.fileData) {
-        const link = document.createElement('a');
-        link.href = item.fileData;
-        link.download = item.fileName || `${item.title || 'document'}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        toast.success(`✅ ${link.download} downloaded!`);
-        setLoadingItemId(null);
-        return;
-      }
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-      toast.error("No file data available");
-
-    } catch (error) {
-      console.error("Download error:", error);
-      toast.error(error.message || "Download failed");
-    } finally {
-      setLoadingItemId(null);
-    }
+    toast.success("Download started!");
   };
 
   const handlePremiumPurchase = async () => {
-    toast.info("💎 Premium purchase flow - Coming soon!");
+    toast("💎 Premium purchase flow - Coming soon!");
   };
 
   // ========== CATEGORY STEP ==========
@@ -738,7 +639,7 @@ const BPharm = () => {
           {categories.map((category, index) => {
             const Icon = category.icon;
             const delay = index === 0 ? 'category-card-1' : index === 1 ? 'category-card-2' : 'category-card-3';
-
+            
             return (
               <div
                 key={category.id}
@@ -748,7 +649,7 @@ const BPharm = () => {
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(category.id, e)}
               >
-                <div
+                <div 
                   className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
                     background: `radial-gradient(circle at ${mousePositions[category.id]?.x || 50}% ${mousePositions[category.id]?.y || 50}%, ${category.glowColor}, transparent 70%)`
@@ -757,7 +658,7 @@ const BPharm = () => {
 
                 <div className={`relative bg-gradient-to-br ${category.bgGradient} rounded-3xl p-7 sm:p-9 transition-all duration-500 group-hover:-translate-y-4 group-hover:shadow-2xl border-2 border-white/50 backdrop-blur-sm overflow-hidden`}>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
+                  
                   <div className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-3xl" style={{
                       background: `conic-gradient(from 0deg, ${category.glowColor}, transparent, ${category.glowColor}, transparent)`,
@@ -860,7 +761,7 @@ const BPharm = () => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const count = subjectCount(sem);
-
+            
             return (
               <div
                 key={sem}
@@ -872,7 +773,7 @@ const BPharm = () => {
                 onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
                 {isAvailable && (
-                  <div
+                  <div 
                     className="absolute -inset-1.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                     style={{
                       background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
@@ -881,7 +782,7 @@ const BPharm = () => {
                 )}
 
                 <div className={`relative bg-gradient-to-br ${isAvailable ? colors.bg : 'from-gray-50 to-gray-100'} rounded-2xl p-6 sm:p-8 text-center transition-all duration-500 ${isAvailable ? 'border-2 border-white/80 hover:-translate-y-3 hover:shadow-2xl animate-border-pulse' : 'border-2 border-gray-200'} overflow-hidden`}>
-
+                  
                   {isAvailable && (
                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   )}
@@ -899,7 +800,7 @@ const BPharm = () => {
                     <div className={`text-5xl sm:text-6xl md:text-7xl font-['Space_Grotesk'] font-extrabold ${isAvailable ? `bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent` : 'text-gray-400'} leading-none`}>
                       {sem}
                     </div>
-
+                    
                     <div className={`text-xs sm:text-sm font-['Inter'] font-semibold uppercase tracking-widest mt-2 ${isAvailable ? 'text-gray-500 group-hover:text-gray-700' : 'text-gray-400'}`}>
                       Semester
                     </div>
@@ -1000,7 +901,7 @@ const BPharm = () => {
             const iconData = subjectIcons[index % subjectIcons.length];
             const Icon = iconData.icon;
             const cardId = `subject-${index}`;
-
+            
             return (
               <div
                 key={subject}
@@ -1011,7 +912,7 @@ const BPharm = () => {
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
-                <div
+                <div 
                   className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
                     background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
@@ -1019,7 +920,7 @@ const BPharm = () => {
                 ></div>
 
                 <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
-
+                  
                   <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-2xl" style={{
                       background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
@@ -1087,7 +988,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== UNIT STEP ==========
+  // ========== UNIT STEP - WITH PREVIEW + DOWNLOAD BUTTONS ==========
   const renderUnitStep = () => {
     const units = getUnits();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
@@ -1146,7 +1047,7 @@ const BPharm = () => {
             const cardId = `unit-${unit.id}`;
             const isSelected = selectedUnit?.id === unit.id;
             const content = getUnitContent(unit);
-
+            
             return (
               <div
                 key={unit.id}
@@ -1157,7 +1058,7 @@ const BPharm = () => {
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
-                <div
+                <div 
                   className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
                     background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
@@ -1165,7 +1066,7 @@ const BPharm = () => {
                 ></div>
 
                 <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 ${isSelected ? 'border-emerald-500 shadow-2xl scale-105' : 'border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3'} overflow-hidden group`}>
-
+                  
                   <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-2xl" style={{
                       background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
@@ -1196,8 +1097,8 @@ const BPharm = () => {
                     {unit.topics && unit.topics.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {unit.topics.slice(0, 3).map((topic, i) => (
-                          <span
-                            key={i}
+                          <span 
+                            key={i} 
                             className={`text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50 group-hover:shadow-md transition-all duration-300`}
                             style={{
                               animation: `pop 0.3s ease ${i * 0.05}s both`
@@ -1213,95 +1114,64 @@ const BPharm = () => {
                         )}
                       </div>
                     )}
-
-                    {/* CONTENT DISPLAY */}
-                    {isSelected && (
+                    {isSelected && content.length > 0 && (
                       <div className="mt-5 pt-4 border-t border-gray-200/50">
-                        {isFetchingContent || loading ? (
-                          <div className="flex items-center justify-center py-6">
-                            <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-                            <span className="ml-3 text-sm text-gray-500 font-['Inter']">Loading content...</span>
-                          </div>
-                        ) : content && content.length > 0 ? (
-                          <>
-                            <p className="text-xs font-['Inter'] font-semibold text-gray-600 mb-3 flex items-center gap-2">
-                              <FileText size={14} className="text-emerald-500" />
-                              {content.length} {content.length === 1 ? "Document" : "Documents"} Available
-                            </p>
+                        <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
+                          📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                        </p>
 
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
-                              {content.map((item, idx) => {
-                                const docId = item._id || item.id;
-                                const isLoading = loadingItemId === docId;
+                        <div className="space-y-3">
+                          {content.map((item) => (
+                            <div
+                              key={item._id}
+                              className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm"
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <FileText size={16} className="text-blue-600 shrink-0" />
+                                <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
+                                  {item.title || item.fileName || "Document"}
+                                </span>
+                              </div>
 
-                                return (
-                                  <div
-                                    key={docId || idx}
-                                    className="rounded-xl bg-white/95 border border-gray-200 shadow-sm p-4 hover:shadow-md transition-all duration-300 hover:border-emerald-200"
-                                  >
-                                    <div className="flex items-start gap-3 mb-3">
-                                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center flex-shrink-0">
-                                        <FileText className="text-blue-600" size={18} />
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-['Inter'] font-semibold text-gray-800 break-words">
-                                          {item.title || item.fileName || `Document ${idx + 1}`}
-                                        </p>
-                                        {item.fileName && item.title !== item.fileName && (
-                                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                                            📎 {item.fileName}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleView(item);
+                                  }}
+                                  className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                >
+                                  <Eye size={14} />
+                                  Preview
+                                </button>
 
-                                    {/* PREVIEW & DOWNLOAD BUTTONS */}
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleView(item);
-                                        }}
-                                        disabled={isLoading}
-                                        className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2.5 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                      >
-                                        <Eye size={14} />
-                                        {isLoading ? "Loading..." : "Preview"}
-                                      </button>
-
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleDownload(item);
-                                        }}
-                                        disabled={isLoading}
-                                        className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2.5 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                      >
-                                        <Download size={14} />
-                                        {isLoading ? "Working..." : "Download"}
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDownload(item);
+                                  }}
+                                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                >
+                                  <Download size={14} />
+                                  Download
+                                </button>
+                              </div>
                             </div>
-                          </>
-                        ) : (
-                          <div className="text-center py-6">
-                            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                              <FolderOpen className="text-gray-400" size={28} />
-                            </div>
-                            <p className="text-sm font-['Inter'] text-gray-400">No content available for this unit yet</p>
-                            <p className="text-xs text-gray-300 mt-1">Admin will upload content soon</p>
-                          </div>
-                        )}
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {isSelected && content.length === 0 && (
+                      <div className="mt-5 pt-4 border-t border-gray-200/50">
+                        <p className="text-xs font-['Inter'] text-gray-400">No content available yet</p>
                       </div>
                     )}
 
                     {!isSelected && (
                       <div className="mt-5 flex items-center justify-between">
                         <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-emerald-600 transition-colors duration-300 flex items-center gap-1">
-                          Click to view content
+                          Click to select
                           <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
                         </span>
                         <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
@@ -1350,15 +1220,15 @@ const BPharm = () => {
           const isCompleted = currentStep > step.number;
           const isActive = currentStep === step.number;
           const Icon = step.icon;
-
+          
           return (
             <div key={step.number} className="flex items-center">
               <div className="flex items-center gap-2">
                 <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${
-                  isCompleted
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200'
-                    : isActive
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow'
+                  isCompleted 
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' 
+                    : isActive 
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow' 
                       : 'bg-gray-200 text-gray-500'
                 }`}>
                   {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
@@ -1389,13 +1259,13 @@ const BPharm = () => {
   // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white">
-      <Toaster
+      <Toaster 
         position="top-right"
         toastOptions={{
           duration: 4000,
           style: { background: '#363636', color: '#fff' },
           success: { duration: 3000, style: { background: '#10b981', color: '#fff' } },
-          error: { duration: 4000, style: { background: '#ef4444', color: '#fff' } }
+          error: { duration: 4000, style: { background: '#ef4444', color: '#fff' } },
         }}
       />
 
@@ -1408,11 +1278,34 @@ const BPharm = () => {
         </div>
       )}
 
+      {!isPremium && (
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
+          <button
+            onClick={handlePremiumPurchase}
+            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
+          >
+            <Crown size={20} className="text-yellow-300" />
+            <span>Get Premium - ₹{premiumPrice}</span>
+            <Rocket size={20} className="text-yellow-300" />
+          </button>
+        </div>
+      )}
+
+      {isPremium && (
+        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base">
+            <Gem size={18} className="text-yellow-300" />
+            Premium Member
+            <Shield size={18} className="text-yellow-300" />
+          </div>
+        </div>
+      )}
+
       <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <div className="relative h-[260px] sm:h-[320px] md:h-[450px] w-full">
-          <div
+          <div 
             className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center"
-            style={{
+            style={{ 
               backgroundImage: `url(${bannerImg})`,
               backgroundPosition: 'center 40%'
             }}
@@ -1435,7 +1328,7 @@ const BPharm = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
-
+        
         {currentStep > 1 && renderProgress()}
 
         <div className="step-container">
