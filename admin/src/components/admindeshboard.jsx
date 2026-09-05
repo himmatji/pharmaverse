@@ -41,7 +41,9 @@ import {
   Trash2,
   Layers,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  Trash,
+  Pencil
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -203,7 +205,7 @@ const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -268,50 +270,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     type: "note"
   });
   const [uploadProgress, setUploadProgress] = useState(0);
-
-  // ========== FORMS (Existing) ==========
-  const [noteForm, setNoteForm] = useState({
-    title: "", description: "", course: "B.Pharm",
-    semester: "", year: "", language: "",
-    fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: ""
-  });
-
-  const [freeVideoForm, setFreeVideoForm] = useState({
-    title: "", description: "", course: "B.Pharm",
-    semester: "", year: "", language: "",
-    videoUrl: "", thumbnail: "", isPremium: false
-  });
-
-  const [freePaperForm, setFreePaperForm] = useState({
-    title: "", description: "", course: "B.Pharm", 
-    semester: "", year: "", language: "",
-    difficulty: "Medium",
-    fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: ""
-  });
-
-  const [pdfForm, setPdfForm] = useState({
-    title: "", description: "", course: "B.Pharm", 
-    semester: "", year: "", language: "",
-    fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: ""
-  });
-
-  const [premiumVideoForm, setPremiumVideoForm] = useState({
-    title: "", description: "", course: "B.Pharm",
-    semester: "", year: "", language: "",
-    videoUrl: "", thumbnail: "", isPremium: true
-  });
-
-  const [premiumPaperForm, setPremiumPaperForm] = useState({
-    title: "", description: "", course: "B.Pharm", 
-    semester: "", year: "", language: "",
-    difficulty: "Medium",
-    fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "", 
-    isPremium: true
-  });
-
-  const currentAdmin = JSON.parse(localStorage.getItem("admin") || "{}");
-  const isSuperAdmin = currentAdmin.role === "super_admin";
-  const allowedCourses = currentAdmin.permissions?.courses || [];
 
   // ========== CATEGORIES ==========
   const categories = [
@@ -656,6 +614,38 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     return branchNames[branchId] || "B.Pharm";
   };
 
+  // ========== DELETE CONTENT ==========
+  const handleDeleteContent = async (id, type) => {
+    if (!window.confirm("Are you sure you want to delete this content?")) return;
+
+    try {
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        alert("Please login first");
+        return;
+      }
+
+      let url;
+      if (type === "note") url = `${API_URL}/notes/${id}`;
+      else if (type === "video") url = `${API_URL}/videos/${id}`;
+      else if (type === "paper") url = `${API_URL}/papers/${id}`;
+      else {
+        alert("Invalid content type");
+        return;
+      }
+
+      await axios.delete(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      alert("✅ Content deleted successfully!");
+      fetchAllData(); // Refresh data
+
+    } catch (error) {
+      alert("❌ Failed to delete: " + (error.response?.data?.message || error.message));
+    }
+  };
+
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     
@@ -741,391 +731,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     } finally {
       setUploading(false);
     }
-  };
-
-  // ========== EXISTING UPLOAD FUNCTIONS ==========
-  const handleNoteFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNoteForm({
-          ...noteForm,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-          fileData: reader.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleNoteThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setNoteForm({ ...noteForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setNoteForm({ ...noteForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handleNoteSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!noteForm.fileData) {
-        alert("Please upload a file first");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/notes`, noteForm, headers);
-      setShowModal({ type: null, open: false });
-      setNoteForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
-      fetchAllData();
-      alert("✅ Free PDF uploaded successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFreePaperFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFreePaperForm({
-          ...freePaperForm,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-          fileData: reader.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleFreePaperThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setFreePaperForm({ ...freePaperForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFreePaperForm({ ...freePaperForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handleFreePaperSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!freePaperForm.fileData) {
-        alert("Please upload a file first");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/papers`, { ...freePaperForm, isPremium: false }, headers);
-      setShowModal({ type: null, open: false });
-      setFreePaperForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", difficulty: "Medium", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
-      fetchAllData();
-      alert("✅ Free Paper uploaded successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handlePdfFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPdfForm({
-          ...pdfForm,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-          fileData: reader.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePdfThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setPdfForm({ ...pdfForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPdfForm({ ...pdfForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handlePdfSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!pdfForm.fileData) {
-        alert("Please upload a file first");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/paid-pdfs`, pdfForm, headers);
-      setShowModal({ type: null, open: false });
-      setPdfForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "" });
-      fetchAllData();
-      alert("✅ Paid PDF uploaded successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handlePremiumPaperFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
-        e.target.value = '';
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPremiumPaperForm({
-          ...premiumPaperForm,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-          fileData: reader.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handlePremiumPaperThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setPremiumPaperForm({ ...premiumPaperForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPremiumPaperForm({ ...premiumPaperForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handlePremiumPaperSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!premiumPaperForm.fileData) {
-        alert("Please upload a file first");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/papers`, { ...premiumPaperForm, isPremium: true }, headers);
-      setShowModal({ type: null, open: false });
-      setPremiumPaperForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", difficulty: "Medium", fileName: "", fileType: "", fileSize: "", fileData: "", thumbnail: "", isPremium: true });
-      fetchAllData();
-      alert("✅ Premium Paper uploaded successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleFreeVideoThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setFreeVideoForm({ ...freeVideoForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setFreeVideoForm({ ...freeVideoForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handleFreeVideoSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!freeVideoForm.videoUrl) {
-        alert("Please enter a video URL");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/videos`, { ...freeVideoForm, isPremium: false }, headers);
-      setShowModal({ type: null, open: false });
-      setFreeVideoForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", videoUrl: "", thumbnail: "", isPremium: false });
-      fetchAllData();
-      alert("✅ Free Video added successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handlePremiumVideoThumbnail = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      try {
-        const compressed = await compressImage(file, 300, 300);
-        setPremiumVideoForm({ ...premiumVideoForm, thumbnail: compressed });
-      } catch (error) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPremiumVideoForm({ ...premiumVideoForm, thumbnail: reader.result });
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-  };
-
-  const handlePremiumVideoSubmit = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      const headers = getAuthHeaders();
-      if (!headers) throw new Error("No token");
-      if (!premiumVideoForm.videoUrl) {
-        alert("Please enter a video URL");
-        setUploading(false);
-        return;
-      }
-      await axios.post(`${API_URL}/videos`, { ...premiumVideoForm, isPremium: true }, headers);
-      setShowModal({ type: null, open: false });
-      setPremiumVideoForm({ title: "", description: "", course: "B.Pharm", semester: "", year: "", language: "", videoUrl: "", thumbnail: "", isPremium: true });
-      fetchAllData();
-      alert("✅ Premium Video added successfully!");
-    } catch (error) {
-      alert(`❌ Upload failed: ${error.response?.data?.message || error.message}`);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDelete = async (id, type) => {
-    if (window.confirm("Delete this item?")) {
-      try {
-        const headers = getAuthHeaders();
-        if (!headers) throw new Error("No token");
-        let url = "";
-        if (type === "note") url = `${API_URL}/notes/${id}`;
-        else if (type === "video") url = `${API_URL}/videos/${id}`;
-        else if (type === "pdf") url = `${API_URL}/paid-pdfs/${id}`;
-        else if (type === "paper") url = `${API_URL}/papers/${id}`;
-        await axios.delete(url, headers);
-        fetchAllData();
-        alert("Deleted successfully!");
-      } catch (error) {
-        alert("Delete failed");
-      }
-    }
-  };
-
-  const handleCourseChange = (formType, course) => {
-    const resetData = { semester: "", year: "", language: "" };
-    if (formType === "note") setNoteForm({ ...noteForm, course, ...resetData });
-    else if (formType === "freeVideo") setFreeVideoForm({ ...freeVideoForm, course, ...resetData });
-    else if (formType === "freePaper") setFreePaperForm({ ...freePaperForm, course, ...resetData });
-    else if (formType === "paidPdf") setPdfForm({ ...pdfForm, course, ...resetData });
-    else if (formType === "premiumVideo") setPremiumVideoForm({ ...premiumVideoForm, course, ...resetData });
-    else if (formType === "premiumPaper") setPremiumPaperForm({ ...premiumPaperForm, course, ...resetData });
-  };
-
-  const renderSemesterYearLanguageDropdowns = (formType, formData, setFormData) => {
-    const config = getCourseOptions(formData.course);
-    const isSemester = config.type === "semester";
-    const placeholder = isSemester ? "Select Semester" : "Select Year";
-    const fieldName = isSemester ? "semester" : "year";
-    return (
-      <div className="space-y-4">
-        <select 
-          className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={formData[fieldName] || ""}
-          onChange={(e) => setFormData({ ...formData, [fieldName]: e.target.value, language: "" })}
-        >
-          <option value="">{placeholder}</option>
-          {config.options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        {config.showLanguage && (
-          <select 
-            className="w-full border border-orange-300 rounded-xl px-4 py-3 bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            value={formData.language || ""}
-            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-          >
-            <option value="">Select Language (Hindi/English)</option>
-            {config.languageOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        )}
-      </div>
-    );
   };
 
   const formatDate = (date) => {
@@ -1237,318 +842,398 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const subjects = getSubjectsForSemester();
     const branchName = getBranchName();
 
+    // Filter content for this branch
+    const branchContent = notes.filter(n => n.branch === branchName || n.course === branchName);
+
     return (
       <div className="animate-fadeIn">
         <div className="mb-8">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-3xl sm:text-4xl font-['Space_Grotesk'] font-extrabold text-gray-900">
-              Upload <span className="bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">Content</span>
+              <span className="bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">{branchName}</span>
             </h2>
-            <span className="px-4 py-1.5 bg-gradient-to-r from-sky-100 to-blue-100 text-sky-700 font-['Inter'] font-bold text-sm rounded-full border border-sky-200">
-              {branchName}
+            <span className="px-4 py-1.5 bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-700 font-['Inter'] font-bold text-sm rounded-full border border-emerald-200">
+              {branchContent.length} Items
             </span>
           </div>
-          <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload notes, crash courses, or PYQs with units & topics for {branchName}</p>
+          <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload and manage content for {branchName}</p>
         </div>
 
-        {uploadProgress > 0 && uploadProgress < 100 && (
-          <div className="mb-6 bg-white rounded-2xl p-4 shadow-lg">
-            <div className="flex justify-between text-sm font-['Inter'] text-gray-600 mb-1">
-              <span>Uploading...</span>
-              <span>{uploadProgress}%</span>
-            </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-sky-500 to-blue-600 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
+        {/* ========== UPLOAD FORM ========== */}
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8">
+          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-blue-50">
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800 flex items-center gap-2">
+              <Upload size={20} className="text-sky-600" />
+              Upload New Content
+            </h3>
           </div>
-        )}
-
-        <form onSubmit={handleUploadSubmit} className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
-          <div className="p-6 sm:p-8 space-y-6">
-
-            {/* Branch - Auto filled */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                Branch <span className="text-red-500">*</span>
-              </label>
-              <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl border border-sky-200">
-                <GraduationCap className="text-sky-600" size={20} />
-                <span className="font-['Inter'] font-medium text-gray-800">{branchName}</span>
-                <span className="text-xs text-gray-400 ml-auto">(Selected)</span>
+          <div className="p-6 sm:p-8">
+            {uploadProgress > 0 && uploadProgress < 100 && (
+              <div className="mb-6 bg-white rounded-2xl p-4 shadow-lg">
+                <div className="flex justify-between text-sm font-['Inter'] text-gray-600 mb-1">
+                  <span>Uploading...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-sky-500 to-blue-600 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setUploadForm(prev => ({ ...prev, category: cat.id }))}
-                    className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] ${
-                      uploadForm.category === cat.id
-                        ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-105`
-                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
-                    }`}
-                  >
-                    <span className={uploadForm.category === cat.id ? "text-white" : "text-gray-500"}>
-                      {cat.icon}
-                    </span>
-                    <span className="font-medium text-sm">{cat.id}</span>
-                    {uploadForm.category === cat.id && <CheckCircle size={16} className="ml-auto" />}
-                  </button>
-                ))}
+            <form onSubmit={handleUploadSubmit} className="space-y-6">
+              {/* Branch - Auto filled */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Branch <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl border border-sky-200">
+                  <GraduationCap className="text-sky-600" size={20} />
+                  <span className="font-['Inter'] font-medium text-gray-800">{branchName}</span>
+                  <span className="text-xs text-gray-400 ml-auto">(Selected)</span>
+                </div>
               </div>
-            </div>
 
-            {/* Semester */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                Semester <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                  <button
-                    key={sem}
-                    type="button"
-                    onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "" }))}
-                    className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
-                      uploadForm.semester === sem
-                        ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"
-                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
-                    }`}
-                  >
-                    {sem}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Subject */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                Subject <span className="text-red-500">*</span>
-              </label>
-              {uploadForm.semester ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
-                  {subjects.map((subject) => (
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {categories.map((cat) => (
                     <button
-                      key={subject}
+                      key={cat.id}
                       type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, subject }))}
-                      className={`p-3 rounded-xl border-2 transition-all duration-300 text-left font-['Inter'] text-sm ${
-                        uploadForm.subject === subject
-                          ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
-                          : "border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700"
+                      onClick={() => setUploadForm(prev => ({ ...prev, category: cat.id }))}
+                      className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] ${
+                        uploadForm.category === cat.id
+                          ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-105`
+                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <BookOpen size={16} />
-                        <span className="truncate">{subject}</span>
-                        {uploadForm.subject === subject && <CheckCircle size={14} className="ml-auto" />}
-                      </div>
+                      <span className={uploadForm.category === cat.id ? "text-white" : "text-gray-500"}>
+                        {cat.icon}
+                      </span>
+                      <span className="font-medium text-sm">{cat.id}</span>
+                      {uploadForm.category === cat.id && <CheckCircle size={16} className="ml-auto" />}
                     </button>
                   ))}
                 </div>
-              ) : (
-                <div className="p-4 bg-gray-100 rounded-xl text-gray-500 font-['Inter'] text-sm text-center">
-                  Please select a semester first
-                </div>
-              )}
-            </div>
-
-            {/* Units */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-['Inter'] font-semibold text-gray-700">
-                  Units & Topics <span className="text-red-500">*</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={addUnit}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] text-sm font-semibold hover:scale-105 transition-all duration-300 shadow-lg"
-                >
-                  <Plus size={16} /> Add Unit
-                </button>
               </div>
 
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {uploadForm.units.map((unit, unitIndex) => (
-                  <div key={unitIndex} className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200">
-                    <div className="flex items-center gap-3 mb-3">
-                      <input
-                        type="text"
-                        value={unit.name}
-                        onChange={(e) => handleUnitChange(unitIndex, "name", e.target.value)}
-                        className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
-                        placeholder="Unit name (e.g. Unit 1)"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeUnit(unitIndex)}
-                        className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
+              {/* Semester */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Semester <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                    <button
+                      key={sem}
+                      type="button"
+                      onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "" }))}
+                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
+                        uploadForm.semester === sem
+                          ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"
+                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                      }`}
+                    >
+                      {sem}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-['Inter'] font-medium text-gray-500">Topics</span>
+              {/* Subject */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Subject <span className="text-red-500">*</span>
+                </label>
+                {uploadForm.semester ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
+                    {subjects.map((subject) => (
+                      <button
+                        key={subject}
+                        type="button"
+                        onClick={() => setUploadForm(prev => ({ ...prev, subject }))}
+                        className={`p-3 rounded-xl border-2 transition-all duration-300 text-left font-['Inter'] text-sm ${
+                          uploadForm.subject === subject
+                            ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
+                            : "border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <BookOpen size={16} />
+                          <span className="truncate">{subject}</span>
+                          {uploadForm.subject === subject && <CheckCircle size={14} className="ml-auto" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-100 rounded-xl text-gray-500 font-['Inter'] text-sm text-center">
+                    Please select a semester first
+                  </div>
+                )}
+              </div>
+
+              {/* Units */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-sm font-['Inter'] font-semibold text-gray-700">
+                    Units & Topics <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={addUnit}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] text-sm font-semibold hover:scale-105 transition-all duration-300 shadow-lg"
+                  >
+                    <Plus size={16} /> Add Unit
+                  </button>
+                </div>
+
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                  {uploadForm.units.map((unit, unitIndex) => (
+                    <div key={unitIndex} className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200">
+                      <div className="flex items-center gap-3 mb-3">
+                        <input
+                          type="text"
+                          value={unit.name}
+                          onChange={(e) => handleUnitChange(unitIndex, "name", e.target.value)}
+                          className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
+                          placeholder="Unit name (e.g. Unit 1)"
+                        />
                         <button
                           type="button"
-                          onClick={() => addTopic(unitIndex)}
-                          className="text-xs text-emerald-600 hover:text-emerald-700 font-['Inter'] font-semibold flex items-center gap-1"
+                          onClick={() => removeUnit(unitIndex)}
+                          className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
                         >
-                          <Plus size={14} /> Add Topic
+                          <Trash2 size={18} />
                         </button>
                       </div>
-                      {unit.topics.map((topic, topicIndex) => (
-                        <div key={topicIndex} className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={topic}
-                            onChange={(e) => handleTopicChange(unitIndex, topicIndex, e.target.value)}
-                            className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
-                            placeholder={`Topic ${topicIndex + 1}`}
-                          />
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-['Inter'] font-medium text-gray-500">Topics</span>
                           <button
                             type="button"
-                            onClick={() => removeTopic(unitIndex, topicIndex)}
-                            className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                            onClick={() => addTopic(unitIndex)}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-['Inter'] font-semibold flex items-center gap-1"
                           >
-                            <X size={16} />
+                            <Plus size={14} /> Add Topic
                           </button>
                         </div>
-                      ))}
+                        {unit.topics.map((topic, topicIndex) => (
+                          <div key={topicIndex} className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={topic}
+                              onChange={(e) => handleTopicChange(unitIndex, topicIndex, e.target.value)}
+                              className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
+                              placeholder={`Topic ${topicIndex + 1}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeTopic(unitIndex, topicIndex)}
+                              className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Title & Description */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Title</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={uploadForm.title}
-                  onChange={handleUploadChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
-                  placeholder="Enter title (optional)"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Description</label>
-                <input
-                  type="text"
-                  name="description"
-                  value={uploadForm.description}
-                  onChange={handleUploadChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
-                  placeholder="Enter description (optional)"
-                />
-              </div>
-            </div>
-
-            {/* File Upload */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                Upload File <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  id="upload-file-input"
-                  type="file"
-                  onChange={handleUploadFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
-                />
-                <div className="p-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-sky-400 transition-all duration-300 bg-gray-50/50">
-                  <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                  <p className="font-['Inter'] text-sm text-gray-600">
-                    {uploadForm.file ? (
-                      <span className="text-emerald-600 font-semibold">{uploadForm.file.name}</span>
-                    ) : (
-                      <>
-                        <span className="font-semibold">Click to upload</span> or drag and drop
-                      </>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-400 font-['Inter'] mt-1">
-                    PDF, DOC, PPT, XLS, TXT (Max 50MB)
-                  </p>
+                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* Premium Toggle */}
-            <div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="isPremium"
-                  checked={uploadForm.isPremium}
-                  onChange={handleUploadChange}
-                  className="w-5 h-5 rounded border-gray-300 text-sky-600 focus:ring-sky-400 focus:ring-2 cursor-pointer"
-                />
-                <span className="font-['Inter'] text-sm text-gray-700">
-                  Mark as Premium Content
-                  <span className="text-xs text-gray-400 block">Students will need to purchase to access</span>
-                </span>
-              </label>
-            </div>
-
-            {/* File Type */}
-            <div>
-              <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">File Type</label>
-              <div className="grid grid-cols-3 gap-3">
-                {["note", "video", "paper"].map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setUploadForm(prev => ({ ...prev, type }))}
-                    className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-medium text-sm capitalize ${
-                      uploadForm.type === type
-                        ? "border-sky-500 bg-sky-500 text-white shadow-lg"
-                        : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
+              {/* Title & Description */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Title</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={uploadForm.title}
+                    onChange={handleUploadChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
+                    placeholder="Enter title (optional)"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Description</label>
+                  <input
+                    type="text"
+                    name="description"
+                    value={uploadForm.description}
+                    onChange={handleUploadChange}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
+                    placeholder="Enter description (optional)"
+                  />
+                </div>
               </div>
-            </div>
 
-            {/* Submit Button */}
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Upload File <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    id="upload-file-input"
+                    type="file"
+                    onChange={handleUploadFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                  />
+                  <div className="p-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-sky-400 transition-all duration-300 bg-gray-50/50">
+                    <Upload className="mx-auto text-gray-400 mb-2" size={32} />
+                    <p className="font-['Inter'] text-sm text-gray-600">
+                      {uploadForm.file ? (
+                        <span className="text-emerald-600 font-semibold">{uploadForm.file.name}</span>
+                      ) : (
+                        <>
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-400 font-['Inter'] mt-1">
+                      PDF, DOC, PPT, XLS, TXT (Max 50MB)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Premium Toggle */}
+              <div>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isPremium"
+                    checked={uploadForm.isPremium}
+                    onChange={handleUploadChange}
+                    className="w-5 h-5 rounded border-gray-300 text-sky-600 focus:ring-sky-400 focus:ring-2 cursor-pointer"
+                  />
+                  <span className="font-['Inter'] text-sm text-gray-700">
+                    Mark as Premium Content
+                    <span className="text-xs text-gray-400 block">Students will need to purchase to access</span>
+                  </span>
+                </label>
+              </div>
+
+              {/* File Type */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">File Type</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {["note", "video", "paper"].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setUploadForm(prev => ({ ...prev, type }))}
+                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-medium text-sm capitalize ${
+                        uploadForm.type === type
+                          ? "border-sky-500 bg-sky-500 text-white shadow-lg"
+                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full py-4 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-lg shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              >
+                {uploading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={20} />
+                    Upload Content
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        {/* ========== UPLOADED CONTENT LIST ========== */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800 flex items-center gap-2">
+              <FileText size={20} className="text-emerald-600" />
+              Uploaded Content ({branchContent.length})
+            </h3>
             <button
-              type="submit"
-              disabled={uploading}
-              className="w-full py-4 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-lg shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+              onClick={() => fetchAllData()}
+              className="text-sm text-sky-600 hover:text-sky-700 font-['Inter'] font-medium flex items-center gap-1"
             >
-              {uploading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload size={20} />
-                  Upload Content for {branchName}
-                </>
-              )}
+              <RefreshCw size={14} /> Refresh
             </button>
           </div>
-        </form>
+
+          {branchContent.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
+              <div className="text-6xl mb-4">📭</div>
+              <p className="text-gray-500 text-lg font-['Inter']">No content uploaded yet for {branchName}</p>
+              <p className="text-gray-400 text-sm mt-1">Upload your first content using the form above</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {branchContent.map((item) => (
+                <div key={item._id} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                  <div className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-['Space_Grotesk'] font-bold text-gray-800 truncate">{item.title}</h4>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.category}</span>
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Sem {item.semester}</span>
+                          {item.isPremium && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Premium</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 font-['Inter']">Subject: {item.subject}</p>
+                        {item.units && item.units.length > 0 && (
+                          <p className="text-xs text-gray-400 font-['Inter'] mt-1">
+                            {item.units.length} unit{item.units.length > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0 ml-2">
+                        <button
+                          onClick={() => handleDeleteContent(item._id, "note")}
+                          className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-400 font-['Inter']">
+                        📄 {item.fileName} • {item.fileSize}
+                      </p>
+                      <p className="text-xs text-gray-400 font-['Inter'] mt-1">
+                        📅 {new Date(item.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`h-1 w-full bg-gradient-to-r ${item.isPremium ? 'from-amber-400 to-orange-500' : 'from-emerald-400 to-teal-500'}`}></div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -1745,235 +1430,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         {/* ========== BRANCH UPLOAD TAB ========== */}
         {isBranchTab() && renderUploadTab()}
 
-        {/* ========== MATERIALS TAB ========== */}
-        {activeTab === "materials" && (
-          <div className="animate-fadeIn">
-            <div className="mb-6">
-              <h2 className="text-3xl font-bold text-gray-800">Free Materials</h2>
-              <p className="text-gray-500">Upload PDF, Video, or Paper - Sab FREE hoga students ke liye</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div onClick={() => setShowModal({ type: "freePdf", open: true })} className="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-6 text-white cursor-pointer hover:scale-105 transition-all duration-500">
-                <div className="flex items-center justify-between"><FileText size={28} /><span className="text-2xl font-bold">{getFilteredNotes().length}</span></div>
-                <h3 className="text-xl font-bold mt-2">Free PDF / Notes</h3>
-                <p className="text-blue-100 text-sm">Upload PDF, DOC, PPT files</p>
-              </div>
-              <div onClick={() => setShowModal({ type: "freeVideo", open: true })} className="bg-gradient-to-br from-red-500 to-red-700 rounded-2xl p-6 text-white cursor-pointer hover:scale-105 transition-all duration-500">
-                <div className="flex items-center justify-between"><Video size={28} /><span className="text-2xl font-bold">{getFilteredVideos().length}</span></div>
-                <h3 className="text-xl font-bold mt-2">Free Videos</h3>
-                <p className="text-red-100 text-sm">Upload YouTube video links (FREE)</p>
-              </div>
-              <div onClick={() => setShowModal({ type: "freePaper", open: true })} className="bg-gradient-to-br from-green-500 to-green-700 rounded-2xl p-6 text-white cursor-pointer hover:scale-105 transition-all duration-500">
-                <div className="flex items-center justify-between"><Brain size={28} /><span className="text-2xl font-bold">{getFilteredPapers().length}</span></div>
-                <h3 className="text-xl font-bold mt-2">Free Papers</h3>
-                <p className="text-green-100 text-sm">Upload predictive papers (FREE)</p>
-              </div>
-            </div>
-
-            {getFilteredNotes().length === 0 && getFreeVideos().length === 0 && getFreePapers().length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg border p-12 text-center">
-                <div className="text-6xl mb-4">📭</div>
-                <p className="text-gray-500 text-lg">No free content uploaded yet</p>
-              </div>
-            ) : (
-              <>
-                {getFilteredNotes().length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">📚 Free PDFs & Notes ({getFilteredNotes().length})</h3>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {getFilteredNotes().map((note) => (
-                        <div key={note._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                          {note.thumbnail && <img src={note.thumbnail} className="w-full h-40 object-cover" />}
-                          <div className="p-4">
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-lg truncate">{note.title}</h4>
-                              <button onClick={() => handleDelete(note._id, "note")} className="text-red-500"><X size={18} /></button>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{note.course}</span>
-                              {note.semester && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Sem {note.semester}</span>}
-                              {note.year && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Year {note.year}</span>}
-                              {note.language && <span className={`text-xs px-2 py-1 rounded-full ${note.language === 'hindi' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{note.language === 'hindi' ? 'हिंदी' : 'English'}</span>}
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Free</span>
-                            </div>
-                            <p className="text-sm text-gray-500 line-clamp-2 mt-2">{note.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {getFreeVideos().length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">🎬 Free Videos ({getFreeVideos().length})</h3>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {getFreeVideos().map((video) => (
-                        <div key={video._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                          {video.thumbnail && <img src={video.thumbnail} className="w-full h-40 object-cover" />}
-                          <div className="p-4">
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-lg truncate">{video.title}</h4>
-                              <button onClick={() => handleDelete(video._id, "video")} className="text-red-500"><X size={18} /></button>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">{video.course}</span>
-                              {video.semester && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Sem {video.semester}</span>}
-                              {video.year && <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Year {video.year}</span>}
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Free</span>
-                            </div>
-                            <p className="text-sm text-gray-500 line-clamp-2 mt-2">{video.description}</p>
-                            {video.videoUrl && <a href={video.videoUrl} target="_blank" className="text-red-500 text-sm mt-2 inline-block">Watch Video →</a>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {getFreePapers().length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">📝 Free Papers ({getFreePapers().length})</h3>
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {getFreePapers().map((paper) => (
-                        <div key={paper._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                          {paper.thumbnail && <img src={paper.thumbnail} className="w-full h-40 object-cover" />}
-                          <div className="p-4">
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-lg truncate">{paper.title}</h4>
-                              <button onClick={() => handleDelete(paper._id, "paper")} className="text-red-500"><X size={18} /></button>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{paper.course}</span>
-                              {paper.semester && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Sem {paper.semester}</span>}
-                              {paper.year && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">Year {paper.year}</span>}
-                              {paper.language && <span className={`text-xs px-2 py-1 rounded-full ${paper.language === 'hindi' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{paper.language === 'hindi' ? 'हिंदी' : 'English'}</span>}
-                              <span className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(paper.difficulty)}`}>{paper.difficulty}</span>
-                            </div>
-                            <p className="text-sm text-gray-500 line-clamp-2 mt-2">{paper.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ========== PAID TAB ========== */}
-        {activeTab === "paid" && (
-          <div className="animate-fadeIn">
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">Paid PDF Materials</h2>
-                <p className="text-gray-500">Manage your premium educational content</p>
-              </div>
-              <button onClick={() => setShowModal({ type: "paidPdf", open: true })} className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-5 py-2.5 rounded-xl shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 text-sm">+ Add Paid PDF</button>
-            </div>
-            {getFilteredPaidPDFs().length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg border p-12 text-center"><div className="text-6xl mb-4">💰</div><p className="text-gray-500 text-lg">No paid PDFs found</p></div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getFilteredPaidPDFs().map((pdf) => (
-                  <div key={pdf._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    {pdf.thumbnail && <img src={pdf.thumbnail} className="w-full h-48 object-cover" />}
-                    <div className="p-4">
-                      <div className="flex justify-between">
-                        <h3 className="text-lg font-bold truncate">{pdf.title}</h3>
-                        <button onClick={() => handleDelete(pdf._id, "pdf")} className="text-red-500"><X size={18} /></button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">{pdf.course}</span>
-                        {pdf.semester && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Sem {pdf.semester}</span>}
-                        {pdf.year && <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Year {pdf.year}</span>}
-                        {pdf.language && <span className={`text-xs px-2 py-1 rounded-full ${pdf.language === 'hindi' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{pdf.language === 'hindi' ? 'हिंदी' : 'English'}</span>}
-                      </div>
-                      <div className="mt-3 text-green-600 font-bold">₹{pdf.price}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ========== VIDEOS TAB ========== */}
-        {activeTab === "videos" && (
-          <div className="animate-fadeIn">
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">Premium Video Library</h2>
-                <p className="text-gray-500">Manage premium video lectures</p>
-              </div>
-              <button onClick={() => setShowModal({ type: "premiumVideo", open: true })} className="bg-gradient-to-r from-red-600 to-red-700 text-white px-5 py-2.5 rounded-xl shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 text-sm">+ Add Premium Video</button>
-            </div>
-            {getPremiumVideos().length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg border p-12 text-center"><div className="text-6xl mb-4">🎬</div><p className="text-gray-500 text-lg">No premium videos found</p></div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getPremiumVideos().map((video) => (
-                  <div key={video._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    {video.thumbnail && <img src={video.thumbnail} className="w-full h-48 object-cover" />}
-                    <div className="p-4">
-                      <div className="flex justify-between">
-                        <h3 className="text-lg font-bold truncate">{video.title}</h3>
-                        <button onClick={() => handleDelete(video._id, "video")} className="text-red-500"><X size={18} /></button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">{video.course}</span>
-                        {video.semester && <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Sem {video.semester}</span>}
-                        {video.year && <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Year {video.year}</span>}
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Premium</span>
-                      </div>
-                      {video.videoUrl && <a href={video.videoUrl} target="_blank" className="text-red-500 text-sm mt-2 inline-block">Watch Video →</a>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ========== PAPERS TAB ========== */}
-        {activeTab === "papers" && (
-          <div className="animate-fadeIn">
-            <div className="flex justify-between items-center mb-6 flex-wrap gap-2">
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">Premium Predictive Papers</h2>
-                <p className="text-gray-500">Manage premium exam papers</p>
-              </div>
-              <button onClick={() => setShowModal({ type: "premiumPaper", open: true })} className="bg-gradient-to-r from-green-600 to-green-700 text-white px-5 py-2.5 rounded-xl shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 text-sm">+ Add Premium Paper</button>
-            </div>
-            {getPremiumPapers().length === 0 ? (
-              <div className="bg-white rounded-2xl shadow-lg border p-12 text-center"><div className="text-6xl mb-4">📄</div><p className="text-gray-500 text-lg">No premium papers found</p></div>
-            ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getPremiumPapers().map((paper) => (
-                  <div key={paper._id} className="bg-white rounded-xl shadow-lg overflow-hidden">
-                    {paper.thumbnail && <img src={paper.thumbnail} className="w-full h-48 object-cover" />}
-                    <div className="p-4">
-                      <div className="flex justify-between">
-                        <h3 className="text-lg font-bold truncate">{paper.title}</h3>
-                        <button onClick={() => handleDelete(paper._id, "paper")} className="text-red-500"><X size={18} /></button>
-                      </div>
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">{paper.course}</span>
-                        {paper.semester && <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">Sem {paper.semester}</span>}
-                        {paper.year && <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Year {paper.year}</span>}
-                        {paper.language && <span className={`text-xs px-2 py-1 rounded-full ${paper.language === 'hindi' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{paper.language === 'hindi' ? 'हिंदी' : 'English'}</span>}
-                        <span className={`text-xs px-2 py-1 rounded-full ${getDifficultyColor(paper.difficulty)}`}>{paper.difficulty}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
+        {/* ========== USERS TAB ========== */}
         {activeTab === "users" && <UsersComponent />}
+
+        {/* ========== PROFILE TAB ========== */}
         {activeTab === "profile" && <AdminProfile />}
+
+        {/* ========== NOTICE TAB ========== */}
         {activeTab === "notice" && <AdminNotice />}
       </div>
 
@@ -2094,231 +1557,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========== MODALS (Existing) ========== */}
-      {/* FREE PDF MODAL */}
-      {showModal.type === "freePdf" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><FileText size={24} className="text-blue-600" />Upload Free PDF</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handleNoteSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" value={noteForm.title} onChange={(e) => setNoteForm({...noteForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" value={noteForm.description} onChange={(e) => setNoteForm({...noteForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500" value={noteForm.course} onChange={(e) => handleCourseChange("note", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("note", noteForm, setNoteForm)}
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-blue-600">
-                  <input type="file" accept="image/*" onChange={handleNoteThumbnail} className="hidden" />
-                  {noteForm.thumbnail ? <img src={noteForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-blue-600">
-                  <input type="file" onChange={handleNoteFileUpload} className="hidden" />
-                  {noteForm.fileName ? <div className="text-green-600">✅ {noteForm.fileName}</div> : <div>📁 Upload PDF (Max 50MB)</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">{uploading ? "Uploading..." : "Upload Free PDF"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* FREE VIDEO MODAL */}
-      {showModal.type === "freeVideo" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><Video size={24} className="text-red-600" />Upload Free Video</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handleFreeVideoSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={freeVideoForm.title} onChange={(e) => setFreeVideoForm({...freeVideoForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={freeVideoForm.description} onChange={(e) => setFreeVideoForm({...freeVideoForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={freeVideoForm.course} onChange={(e) => handleCourseChange("freeVideo", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("freeVideo", freeVideoForm, setFreeVideoForm)}
-              <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={freeVideoForm.videoUrl} onChange={(e) => setFreeVideoForm({...freeVideoForm, videoUrl: e.target.value})} required />
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-red-600">
-                  <input type="file" accept="image/*" onChange={handleFreeVideoThumbnail} className="hidden" />
-                  {freeVideoForm.thumbnail ? <img src={freeVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition">{uploading ? "Uploading..." : "Upload Free Video"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* FREE PAPER MODAL */}
-      {showModal.type === "freePaper" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><Brain size={24} className="text-green-600" />Upload Free Paper</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handleFreePaperSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={freePaperForm.title} onChange={(e) => setFreePaperForm({...freePaperForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={freePaperForm.description} onChange={(e) => setFreePaperForm({...freePaperForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={freePaperForm.course} onChange={(e) => handleCourseChange("freePaper", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("freePaper", freePaperForm, setFreePaperForm)}
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={freePaperForm.difficulty} onChange={(e) => setFreePaperForm({...freePaperForm, difficulty: e.target.value})}>
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-                <option value="Expert">Expert</option>
-              </select>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-green-600">
-                  <input type="file" accept="image/*" onChange={handleFreePaperThumbnail} className="hidden" />
-                  {freePaperForm.thumbnail ? <img src={freePaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-green-600">
-                  <input type="file" onChange={handleFreePaperFileUpload} className="hidden" />
-                  {freePaperForm.fileName ? <div className="text-green-600">✅ {freePaperForm.fileName}</div> : <div>📁 Upload PDF (Max 50MB)</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">{uploading ? "Uploading..." : "Upload Free Paper"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* PAID PDF MODAL */}
-      {showModal.type === "paidPdf" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><CreditCard size={24} className="text-purple-600" />Upload Paid PDF</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handlePdfSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" value={pdfForm.title} onChange={(e) => setPdfForm({...pdfForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" value={pdfForm.description} onChange={(e) => setPdfForm({...pdfForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500" value={pdfForm.course} onChange={(e) => handleCourseChange("paidPdf", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("paidPdf", pdfForm, setPdfForm)}
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-purple-600">
-                  <input type="file" accept="image/*" onChange={handlePdfThumbnail} className="hidden" />
-                  {pdfForm.thumbnail ? <img src={pdfForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-purple-600">
-                  <input type="file" onChange={handlePdfFileUpload} className="hidden" />
-                  {pdfForm.fileName ? <div className="text-green-600">✅ {pdfForm.fileName}</div> : <div>📁 Upload PDF (Max 50MB)</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-purple-600 text-white py-3 rounded-xl font-semibold hover:bg-purple-700 transition">{uploading ? "Uploading..." : "Upload Paid PDF"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* PREMIUM VIDEO MODAL */}
-      {showModal.type === "premiumVideo" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><Video size={24} className="text-red-600" />Upload Premium Video</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handlePremiumVideoSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={premiumVideoForm.title} onChange={(e) => setPremiumVideoForm({...premiumVideoForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={premiumVideoForm.description} onChange={(e) => setPremiumVideoForm({...premiumVideoForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={premiumVideoForm.course} onChange={(e) => handleCourseChange("premiumVideo", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("premiumVideo", premiumVideoForm, setPremiumVideoForm)}
-              <input type="url" placeholder="YouTube Video URL *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500" value={premiumVideoForm.videoUrl} onChange={(e) => setPremiumVideoForm({...premiumVideoForm, videoUrl: e.target.value})} required />
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-red-600">
-                  <input type="file" accept="image/*" onChange={handlePremiumVideoThumbnail} className="hidden" />
-                  {premiumVideoForm.thumbnail ? <img src={premiumVideoForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-red-600 text-white py-3 rounded-xl font-semibold hover:bg-red-700 transition">{uploading ? "Uploading..." : "Upload Premium Video"}</button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* PREMIUM PAPER MODAL */}
-      {showModal.type === "premiumPaper" && showModal.open && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2"><Brain size={24} className="text-green-600" />Upload Premium Paper</h3>
-              <button onClick={() => setShowModal({ type: null, open: false })}><X size={24} /></button>
-            </div>
-            <form onSubmit={handlePremiumPaperSubmit} className="space-y-4">
-              <input type="text" placeholder="Title *" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={premiumPaperForm.title} onChange={(e) => setPremiumPaperForm({...premiumPaperForm, title: e.target.value})} required />
-              <textarea placeholder="Description" rows="3" className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={premiumPaperForm.description} onChange={(e) => setPremiumPaperForm({...premiumPaperForm, description: e.target.value})}></textarea>
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={premiumPaperForm.course} onChange={(e) => handleCourseChange("premiumPaper", e.target.value)}>
-                <option value="B.Pharm">B.Pharm</option>
-                <option value="D.Pharm">D.Pharm</option>
-                <option value="M.Pharm">M.Pharm</option>
-                <option value="Pharm.D">Pharm.D</option>
-                <option value="PhD">PhD</option>
-              </select>
-              {renderSemesterYearLanguageDropdowns("premiumPaper", premiumPaperForm, setPremiumPaperForm)}
-              <select className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500" value={premiumPaperForm.difficulty} onChange={(e) => setPremiumPaperForm({...premiumPaperForm, difficulty: e.target.value})}>
-                <option value="Easy">Easy</option>
-                <option value="Medium">Medium</option>
-                <option value="Hard">Hard</option>
-                <option value="Expert">Expert</option>
-              </select>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-green-600">
-                  <input type="file" accept="image/*" onChange={handlePremiumPaperThumbnail} className="hidden" />
-                  {premiumPaperForm.thumbnail ? <img src={premiumPaperForm.thumbnail} className="h-32 mx-auto rounded" /> : <div>📸 Upload Thumbnail</div>}
-                </label>
-              </div>
-              <div className="border-2 border-dashed rounded-xl p-4 text-center">
-                <label className="cursor-pointer text-green-600">
-                  <input type="file" onChange={handlePremiumPaperFileUpload} className="hidden" />
-                  {premiumPaperForm.fileName ? <div className="text-green-600">✅ {premiumPaperForm.fileName}</div> : <div>📁 Upload PDF (Max 50MB)</div>}
-                </label>
-              </div>
-              <button type="submit" disabled={uploading} className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition">{uploading ? "Uploading..." : "Upload Premium Paper"}</button>
-            </form>
           </div>
         </div>
       )}

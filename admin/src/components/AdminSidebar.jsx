@@ -70,15 +70,11 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: "pharmd", label: "Pharm.D", icon: <HeartPulse size={18} />, color: "from-orange-500 to-amber-500" },
   ];
 
-  // ========== MENU ITEMS - NO UPLOAD OPTION ==========
+  // ========== MENU ITEMS - REMOVED unwanted tabs ==========
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={22} /> },
     { id: "branch", label: "Branch", icon: <GitBranch size={22} />, isDropdown: true },
-    // Upload option REMOVED from here
-    { id: "materials", label: "Free Materials", icon: <FolderOpen size={22} /> },
-    { id: "paid", label: "Paid PDFs", icon: <CreditCard size={22} /> },
-    { id: "videos", label: "Videos", icon: <Video size={22} /> },
-    { id: "papers", label: "Papers", icon: <BookOpen size={22} /> },
+    // Removed: Free Materials, Paid PDFs, Videos, Papers
     { id: "users", label: "Users", icon: <Users size={22} /> },
     { id: "profile", label: "Profile", icon: <User size={22} /> },
     { id: "notice", label: "Notice", icon: <Bell size={22} /> },
