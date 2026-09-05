@@ -273,19 +273,17 @@ const BPharm = () => {
           unit: selectedUnit?.id
         }
       });
-      setUnitContent(res.data || []);
+      const content = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.content)
+          ? res.data.content
+          : [];
+
+      setUnitContent(content);
     } catch (error) {
-      // Fallback to demo content if API fails
-      setUnitContent([
-        {
-          _id: "demo-1",
-          title: `${selectedSubject} - ${selectedUnit?.name}`,
-          description: `Study material for ${selectedUnit?.name}`,
-          fileName: "demo.pdf",
-          isPremium: false,
-          type: "note"
-        }
-      ]);
+      console.error("❌ Failed to fetch unit content:", error);
+      setUnitContent([]);
+      toast.error("Unable to load content for this unit");
     }
   };
 
@@ -487,6 +485,11 @@ const BPharm = () => {
   };
 
   const handleView = async (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
+      toast.error("This file does not have a valid document ID");
+      return;
+    }
+
     setLoadingItemId(item._id);
     try {
       const token = getToken();
@@ -547,6 +550,11 @@ const BPharm = () => {
   };
 
   const handleDownload = async (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
+      toast.error("This file does not have a valid document ID");
+      return;
+    }
+
     setLoadingItemId(item._id);
     try {
       const token = getToken();
@@ -964,23 +972,15 @@ const BPharm = () => {
     const units = getUnits();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
-    // Demo content for selected unit
+    // Content comes only from the backend for the currently selected unit.
+    // Never create fake/demo IDs because Preview/Download require a real MongoDB _id.
     const getUnitContent = (unit) => {
-      // Check if unit has any content
-      if (unitContent.length > 0) {
-        return unitContent;
-      }
-      // Fallback demo content
-      return [
-        {
-          _id: `demo-${unit.id}`,
-          title: `${selectedSubject} - ${unit.name}`,
-          description: `Complete study material for ${unit.name}`,
-          fileName: `${unit.name.toLowerCase().replace(/ /g, '-')}.pdf`,
-          isPremium: false,
-          type: "note"
-        }
-      ];
+      if (!isSelectedUnit(unit)) return [];
+      return Array.isArray(unitContent) ? unitContent : [];
+    };
+
+    const isSelectedUnit = (unit) => {
+      return selectedUnit?.id === unit?.id;
     };
 
     return (
