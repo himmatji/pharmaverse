@@ -564,7 +564,7 @@ router.post(
 );
 
 /* =========================================================
-   ADMIN LOGIN ROUTE (FIXED - was missing router.post)
+   ADMIN LOGIN ROUTE
 ========================================================= */
 
 router.post("/login", async (req, res) => {
@@ -1419,6 +1419,130 @@ router.get(
     }
   }
 );
+
+/* =========================================================
+   PUBLIC NOTES - GET ALL NOTES FOR A SUBJECT
+   ========================================================= */
+
+router.get("/public/notes", async (req, res) => {
+  try {
+    console.log("\n=================================");
+    console.log("📚 PUBLIC NOTES REQUEST");
+    console.log("=================================");
+
+    const {
+      course,
+      category,
+      semester,
+      subject,
+      unit,
+      branch
+    } = req.query;
+
+    console.log("Course:", course);
+    console.log("Category:", category);
+    console.log("Semester:", semester);
+    console.log("Subject:", subject);
+    console.log("Unit:", unit);
+    console.log("Branch:", branch);
+
+    if (mongoose.connection.readyState !== 1) {
+      console.error("❌ MongoDB is not connected");
+      return res.status(500).json({
+        success: false,
+        message: "Database not connected"
+      });
+    }
+
+    const query = {};
+
+    // Build query based on provided filters
+    if (category && category !== "") {
+      query.category = {
+        $regex: `^${String(category).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i"
+      };
+    }
+
+    if (semester !== undefined && semester !== "") {
+      const semesterNumber = Number.parseInt(semester, 10);
+      if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid semester"
+        });
+      }
+      query.semester = semesterNumber;
+    }
+
+    if (subject && subject !== "") {
+      query.subject = {
+        $regex: `^${String(subject).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i"
+      };
+    }
+
+    if (unit !== undefined && unit !== "") {
+      const unitNumber = Number.parseInt(unit, 10);
+      if (Number.isInteger(unitNumber) && unitNumber > 0) {
+        query.unit = unitNumber;
+      }
+    }
+
+    // Course/Branch filter
+    const selectedCourse = branch || course;
+    if (selectedCourse && selectedCourse !== "") {
+      query.$or = [
+        {
+          course: {
+            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $options: "i"
+          }
+        },
+        {
+          branch: {
+            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $options: "i"
+          }
+        }
+      ];
+    }
+
+    // ✅ IMPORTANT: Only fetch notes that have a valid unit (unit > 0)
+    // Agar unit 0 ya null hai toh ignore karo
+    if (query.unit === undefined) {
+      query.unit = { $gt: 0 };
+    }
+
+    console.log("🔎 MongoDB Query:", JSON.stringify(query, null, 2));
+
+    // Fetch notes with all fields except fileData (to keep response light)
+    const notes = await Note.find(query)
+      .select("-fileData")  // fileData ko exclude karo
+      .sort({ createdAt: -1 })
+      .lean();
+
+    console.log("📄 Documents Found:", notes.length);
+    console.log("=================================\n");
+
+    return res.json({
+      success: true,
+      data: notes,
+      count: notes.length
+    });
+
+  } catch (error) {
+    console.error("\n❌ PUBLIC NOTES ERROR:");
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch notes",
+      error: error.message
+    });
+  }
+});
+
 /* =========================================================
    PUBLIC NOTES DOWNLOAD
 ========================================================= */
@@ -1737,6 +1861,11 @@ router.get(
             }
           }
         ];
+      }
+
+      // ✅ IMPORTANT: Only fetch notes with valid unit (unit > 0)
+      if (query.unit === undefined) {
+        query.unit = { $gt: 0 };
       }
 
       console.log(
