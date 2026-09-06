@@ -290,6 +290,23 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   }, []);
 
+  // ========== ADMIN PERMISSIONS ==========
+  const getStoredAdmin = () => {
+    try {
+      const rawAdmin = localStorage.getItem("admin");
+      return rawAdmin ? JSON.parse(rawAdmin) : null;
+    } catch (e) {
+      console.error("Failed to read admin data:", e);
+      return null;
+    }
+  };
+
+  const storedAdmin = getStoredAdmin();
+  const isSuperAdmin = storedAdmin?.role === "super_admin";
+  const allowedCourses = Array.isArray(storedAdmin?.permissions?.courses)
+    ? storedAdmin.permissions.courses
+    : [];
+
   const getFilteredNotes = () => {
     if (isSuperAdmin) return notes;
     return notes.filter(note => allowedCourses.includes(note.course));
@@ -331,12 +348,29 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   };
 
   const getTotalDownloadsFromData = () => {
-    let total = 0;
-    notes.forEach(note => { total += note.downloadCount || 0; });
-    videos.forEach(video => { total += video.downloadCount || 0; });
-    paidPDFs.forEach(pdf => { total += pdf.downloadCount || 0; });
-    papers.forEach(paper => { total += paper.downloadCount || 0; });
-    return total;
+    const allNotes = Array.isArray(notes) ? notes : [];
+    const allVideos = Array.isArray(videos) ? videos : [];
+    const allPaidPDFs = Array.isArray(paidPDFs) ? paidPDFs : [];
+    const allPapers = Array.isArray(papers) ? papers : [];
+
+    return (
+      allNotes.reduce(
+        (total, item) => total + Number(item?.downloadCount || 0),
+        0
+      ) +
+      allVideos.reduce(
+        (total, item) => total + Number(item?.downloadCount || 0),
+        0
+      ) +
+      allPaidPDFs.reduce(
+        (total, item) => total + Number(item?.downloadCount || 0),
+        0
+      ) +
+      allPapers.reduce(
+        (total, item) => total + Number(item?.downloadCount || 0),
+        0
+      )
+    );
   };
 
   const getMonthlyRevenueFromData = () => {
@@ -393,17 +427,36 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   // ========== FETCH DATA ==========
   const fetchAllData = async () => {
     const token = localStorage.getItem("adminToken");
+
     if (!token || !isTokenValid()) {
       localStorage.removeItem("adminToken");
       localStorage.removeItem("admin");
+
       if (onLogout) onLogout();
       setLoading(false);
       return;
     }
+
+    setLoading(true);
     setError(null);
+
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const [statsRes, notesRes, videosRes, paidRes, papersRes, popularRes, activityRes, revenueRes, weeklyRes, pricesRes] = await Promise.allSettled([
+      const headers = {
+        Authorization: `Bearer ${token}`
+      };
+
+      const [
+        statsRes,
+        notesRes,
+        videosRes,
+        paidRes,
+        papersRes,
+        popularRes,
+        activityRes,
+        revenueRes,
+        weeklyRes,
+        pricesRes
+      ] = await Promise.allSettled([
         axios.get(`${API_URL}/stats`, { headers }),
         axios.get(`${API_URL}/notes`, { headers }),
         axios.get(`${API_URL}/videos`, { headers }),
@@ -415,36 +468,149 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         axios.get(`${API_URL}/weekly-performance`, { headers }),
         axios.get(`${API_URL}/course-prices`, { headers })
       ]);
-      if (statsRes.status === "fulfilled") setStats(statsRes.value.data);
-      if (notesRes.status === "fulfilled") setNotes(notesRes.value.data || []);
-      if (videosRes.status === "fulfilled") setVideos(videosRes.value.data || []);
-      if (paidRes.status === "fulfilled") setPaidPDFs(paidRes.value.data || []);
-      if (papersRes.status === "fulfilled") setPapers(papersRes.value.data || []);
-      if (popularRes.status === "fulfilled") setPopularContent(popularRes.value.data.notes || []);
-      if (activityRes.status === "fulfilled") setRecentActivities(activityRes.value.data.activities || []);
-      if (revenueRes.status === "fulfilled") {
-        setRevenueStats({
-          monthlyRevenue: revenueRes.value.data.totalRevenue || 0,
-          totalDownloads: revenueRes.value.data.totalDownloads || 0,
-          activeUsers: revenueRes.value.data.activeUsers || 0,
-          revenueGrowth: revenueRes.value.data.revenueGrowth || 0,
-          downloadGrowth: revenueRes.value.data.downloadGrowth || 0
+
+      if (statsRes.status === "fulfilled") {
+        const data = statsRes.value?.data || {};
+        setStats({
+          totalNotes: Number(data.totalNotes || 0),
+          totalVideos: Number(data.totalVideos || 0),
+          totalUsers: Number(data.totalUsers || 0),
+          totalPaidPDFs: Number(data.totalPaidPDFs || 0),
+          totalPapers: Number(data.totalPapers || 0)
         });
       }
-      if (weeklyRes.status === "fulfilled" && weeklyRes.value.data.data) {
-        setWeeklyData(weeklyRes.value.data.data);
+
+      if (notesRes.status === "fulfilled") {
+        const response = notesRes.value?.data;
+        setNotes(
+          Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : []
+        );
+      } else {
+        console.error("Notes API error:", notesRes.reason);
+        setNotes([]);
       }
-      if (pricesRes.status === "fulfilled" && pricesRes.value.data) {
-        setCoursePrices(pricesRes.value.data);
+
+      if (videosRes.status === "fulfilled") {
+        const response = videosRes.value?.data;
+        setVideos(
+          Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : []
+        );
+      } else {
+        console.error("Videos API error:", videosRes.reason);
+        setVideos([]);
       }
+
+      if (paidRes.status === "fulfilled") {
+        const response = paidRes.value?.data;
+        setPaidPDFs(
+          Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : []
+        );
+      } else {
+        console.error("Paid PDFs API error:", paidRes.reason);
+        setPaidPDFs([]);
+      }
+
+      if (papersRes.status === "fulfilled") {
+        const response = papersRes.value?.data;
+        setPapers(
+          Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : []
+        );
+      } else {
+        console.error("Papers API error:", papersRes.reason);
+        setPapers([]);
+      }
+
+      if (popularRes.status === "fulfilled") {
+        const response = popularRes.value?.data;
+        setPopularContent(
+          Array.isArray(response?.notes)
+            ? response.notes
+            : []
+        );
+      } else {
+        console.error("Popular content API error:", popularRes.reason);
+        setPopularContent([]);
+      }
+
+      if (activityRes.status === "fulfilled") {
+        const response = activityRes.value?.data;
+        setRecentActivities(
+          Array.isArray(response?.activities)
+            ? response.activities
+            : []
+        );
+      } else {
+        console.error("Recent activity API error:", activityRes.reason);
+        setRecentActivities([]);
+      }
+
+      if (revenueRes.status === "fulfilled") {
+        const data = revenueRes.value?.data || {};
+        setRevenueStats({
+          monthlyRevenue: Number(data.totalRevenue || 0),
+          totalDownloads: Number(data.totalDownloads || 0),
+          activeUsers: Number(data.activeUsers || 0),
+          revenueGrowth: Number(data.revenueGrowth || 0),
+          downloadGrowth: Number(data.downloadGrowth || 0)
+        });
+      } else {
+        console.error("Revenue API error:", revenueRes.reason);
+      }
+
+      if (weeklyRes.status === "fulfilled") {
+        const response = weeklyRes.value?.data;
+        if (Array.isArray(response?.data)) {
+          setWeeklyData(response.data);
+        }
+      } else {
+        console.error("Weekly API error:", weeklyRes.reason);
+      }
+
+      if (pricesRes.status === "fulfilled") {
+        const response = pricesRes.value?.data;
+        if (
+          response &&
+          typeof response === "object" &&
+          !Array.isArray(response)
+        ) {
+          setCoursePrices(response);
+        }
+      } else {
+        console.error("Course prices API error:", pricesRes.reason);
+      }
+
     } catch (error) {
-      console.error("Error fetching data:", error);
-      setError("Failed to load dashboard data. Please refresh the page.");
-      if (error.response?.status === 401) {
+      console.error("❌ Admin dashboard error:", error);
+
+      if (
+        error?.response?.status === 401 ||
+        error?.response?.status === 403
+      ) {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("admin");
         if (onLogout) onLogout();
+        return;
       }
+
+      setError(
+        "Failed to load dashboard data. Please refresh the page."
+      );
     } finally {
       setLoading(false);
     }
@@ -1319,7 +1485,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <div className="p-3 bg-blue-100 rounded-xl"><Download size={24} className="text-blue-600" /></div>
                     <div>
                       <p className="text-gray-500 text-sm font-medium">Total Downloads</p>
-                      <p className="text-3xl font-bold text-gray-800">{getTotalDownloadsFromData().toLocaleString()}</p>
+                      <p className="text-3xl font-bold text-gray-800">{Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0).toLocaleString()}</p>
                     </div>
                   </div>
                   <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.downloadGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -1327,7 +1493,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   </div>
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style={{ width: `${Math.min((getTotalDownloadsFromData() / 5000) * 100, 100)}%` }}></div>
+                  <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style={{ width: `${Math.min((Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0) / 5000) * 100, 100)}%` }}></div>
                 </div>
                 <p className="text-gray-400 text-sm mt-2">All content types combined</p>
               </div>
