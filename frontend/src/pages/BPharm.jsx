@@ -169,60 +169,16 @@ const BPharm = () => {
     return [];
   };
 
-  // ========== FETCH UNITS FROM ADMIN ==========
-  const fetchUnits = async () => {
-    if (!selectedCategory || !selectedSemester || !selectedSubject) {
-      setUnits([]);
-      return;
-    }
-
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/units`, {
-        params: {
-          category: selectedCategory,
-          semester: selectedSemester,
-          subject: selectedSubject,
-          branch: "B.Pharm"
-        }
-      });
-
-      // Normalize every unit returned by the backend.
-      // The numeric `id` is the ONLY source of truth for the public label.
-      // Never allow legacy `units[].name` metadata such as "Unit 2" to rename
-      // a document whose actual unit is 1.
-      const fetchedUnits = Array.isArray(res.data?.data)
-        ? res.data.data
-            .map((unit) => {
-              const id = Number(unit?.id);
-              if (!Number.isInteger(id) || id <= 0) return null;
-
-              return {
-                id,
-                name: `Unit ${id}`,
-                topics: []
-              };
-            })
-            .filter(Boolean)
-        : [];
-
-      setUnits(
-        Array.from(
-          new Map(fetchedUnits.map((unit) => [unit.id, unit])).values()
-        ).sort((a, b) => a.id - b.id)
-      );
-    } catch (error) {
-      console.error("Failed to fetch units:", error);
-      setUnits([]);
-    }
-  };
+  // ========== FETCH UNITS FROM ADMIN - REMOVED, using documents only ==========
+  // fetchUnits function removed - now units are derived from documents only
 
   // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
   // Fetch every document for this subject once.
-  // The render section places each document only in the Unit whose
-  // number matches document.unit.
+  // Units are derived from documents - this ensures Unit 1, Unit 2, etc. all appear
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject) {
       setUnitContent([]);
+      setUnits([]);
       return;
     }
 
@@ -234,6 +190,7 @@ const BPharm = () => {
     }
 
     setUnitContent([]);
+    setUnits([]);
 
     const controller = new AbortController();
     contentAbortControllerRef.current = controller;
@@ -260,40 +217,39 @@ const BPharm = () => {
       setUnitContent(rawContent);
 
       // ============================================================
-      // SAFETY FIX:
-      // Always derive units from the documents returned by the server.
-      // This prevents Unit 1 from disappearing if the units endpoint
-      // has incomplete/old unit metadata.
-      // The document's `unit` field is the source of truth.
+      // FIX: DERIVE UNITS ONLY FROM DOCUMENTS
+      // Har document ki 'unit' field se units extract karo
+      // Is tarah Unit 1, Unit 2, Unit 3 sab apne aap aa jayenge
+      // Chahe admin ne unit table mein entry banai ho ya nahi
       // ============================================================
-      const derivedUnits = rawContent
-        .map((item) => {
-          const value = Number(item?.unit);
-          if (!Number.isInteger(value) || value <= 0) return null;
+      const unitMap = new Map();
+      
+      rawContent.forEach((item) => {
+        const unitValue = Number(item?.unit);
+        if (Number.isInteger(unitValue) && unitValue > 0) {
+          if (!unitMap.has(unitValue)) {
+            unitMap.set(unitValue, {
+              id: unitValue,
+              name: `Unit ${unitValue}`,
+              topics: []
+            });
+          }
+        }
+      });
 
-          return {
-            id: value,
-            name: `Unit ${value}`,
-            topics: []
-          };
-        })
-        .filter(Boolean);
-
-      // IMPORTANT: replace the unit list instead of merging with the
-      // `/public/units` response. Older records can contain stale names
-      // (for example id=1 but name="Unit 2"). The document `unit` field
-      // is authoritative, so the visible label must always be `Unit ${id}`.
-      const uniqueDerivedUnits = Array.from(
-        new Map(derivedUnits.map((unit) => [unit.id, unit])).values()
-      ).sort((a, b) => a.id - b.id);
-
-      setUnits(uniqueDerivedUnits);
+      // Units ko sorted order mein set karo (1, 2, 3, 4, ...)
+      const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
+      
+      // Directly units set karo - fetchUnits() call nahi karenge
+      setUnits(derivedUnits);
+      
     } catch (error) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
       if (requestId !== contentRequestIdRef.current) return;
 
       console.error("Failed to fetch subject content:", error);
       setUnitContent([]);
+      setUnits([]);
     } finally {
       if (requestId === contentRequestIdRef.current) {
         contentAbortControllerRef.current = null;
@@ -301,10 +257,10 @@ const BPharm = () => {
     }
   };
 
-  // ========== EFFECT: Fetch units + ALL documents when subject changes ==========
+  // ========== EFFECT: Fetch ALL documents when subject changes ==========
   useEffect(() => {
     if (selectedCategory && selectedSemester && selectedSubject) {
-      fetchUnits();
+      // ✅ Sirf fetchUnitContent() call karo - isme units bhi derive ho jayenge
       fetchUnitContent();
     } else {
       setUnits([]);
@@ -347,7 +303,7 @@ const BPharm = () => {
     } else if (currentStep === 4) {
       setCurrentStep(3);
       setSelectedSubject(null);
-        setUnits([]);
+      setUnits([]);
       setUnitContent([]);
     }
   };
@@ -966,8 +922,7 @@ const BPharm = () => {
               // ============================================================
               // DOCUMENT ISOLATION FIX:
               // A document belongs to exactly one Unit: document.unit.
-              // Never use the `units` array for document placement because
-              // old records may contain stale/multiple unit metadata.
+              // Har document ko uske unit ke andar hi show karo
               // ============================================================
               const content = unitContent.filter((item) => {
                 const itemUnit = Number(item?.unit);
