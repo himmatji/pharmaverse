@@ -385,19 +385,6 @@ router.post(
         });
       }
 
-      /*
-       * UNIT IS REQUIRED.
-       *
-       * Previously:
-       *
-       * unit: parseInt(unit) || 1
-       *
-       * was causing missing/invalid unit
-       * to silently become Unit 1.
-       *
-       * Now it will reject invalid unit.
-       */
-
       if (
         !Number.isInteger(
           unitNumber
@@ -433,20 +420,9 @@ router.post(
 
         subject,
 
-        /*
-         * THIS IS THE ACTUAL UNIT
-         * OF THIS DOCUMENT.
-         */
         unit:
           unitNumber,
 
-        /*
-         * Legacy metadata.
-         *
-         * It is stored only for compatibility.
-         * Public unit display will NOT use
-         * this field as authoritative.
-         */
         units:
           parsedUnits,
 
@@ -581,7 +557,6 @@ router.post("/login", async (req, res) => {
     let admin = await Admin.findOne({ email }).select("+password");
 
     if (!admin) {
-      // Check if this is the super admin from env
       if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
         admin = new Admin({
           name: "Super Admin",
@@ -602,7 +577,6 @@ router.post("/login", async (req, res) => {
       }
     }
 
-    // Check if admin is active
     if (admin.isActive === false) {
       return res.status(403).json({
         success: false,
@@ -610,7 +584,6 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Compare password
     let isMatch = false;
 
     if (admin.email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
@@ -750,9 +723,8 @@ router.get(
   }
 );
 
-
 /* =========================================================
-   ADMIN DASHBOARD ANALYTICS - SAFE COMPATIBILITY ROUTES
+   ADMIN DASHBOARD ANALYTICS
 ========================================================= */
 
 router.get(
@@ -858,7 +830,6 @@ router.get(
     }
   }
 );
-
 
 router.get(
   "/recent-activity",
@@ -1027,7 +998,6 @@ router.get(
   }
 );
 
-
 router.get(
   "/revenue-stats",
   adminAuth,
@@ -1171,7 +1141,6 @@ router.get(
     }
   }
 );
-
 
 router.get(
   "/weekly-performance",
@@ -1422,6 +1391,7 @@ router.get(
 
 /* =========================================================
    PUBLIC NOTES - GET ALL NOTES FOR A SUBJECT
+   ✅ FIXED: Now properly returns all documents with unit > 0
    ========================================================= */
 
 router.get("/public/notes", async (req, res) => {
@@ -1482,6 +1452,7 @@ router.get("/public/notes", async (req, res) => {
       };
     }
 
+    // ✅ Only add unit filter if specific unit is requested
     if (unit !== undefined && unit !== "") {
       const unitNumber = Number.parseInt(unit, 10);
       if (Number.isInteger(unitNumber) && unitNumber > 0) {
@@ -1508,27 +1479,35 @@ router.get("/public/notes", async (req, res) => {
       ];
     }
 
-    // ✅ IMPORTANT: Only fetch notes that have a valid unit (unit > 0)
-    // Agar unit 0 ya null hai toh ignore karo
-    if (query.unit === undefined) {
-      query.unit = { $gt: 0 };
-    }
-
     console.log("🔎 MongoDB Query:", JSON.stringify(query, null, 2));
 
-    // Fetch notes with all fields except fileData (to keep response light)
+    // Fetch all notes matching the query
     const notes = await Note.find(query)
-      .select("-fileData")  // fileData ko exclude karo
+      .select("-fileData")
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log("📄 Documents Found:", notes.length);
+    // ✅ Filter: Only keep documents with valid unit > 0
+    const filteredNotes = notes.filter(note => {
+      const unitVal = Number(note.unit);
+      return Number.isInteger(unitVal) && unitVal > 0;
+    });
+
+    console.log(`📄 Total Documents Found: ${notes.length}`);
+    console.log(`📄 Valid Documents (unit > 0): ${filteredNotes.length}`);
+    
+    // Log each document's unit for debugging
+    filteredNotes.forEach((note, index) => {
+      console.log(`📄 Document ${index + 1}: Unit = ${note.unit}, Title = ${note.title || 'Untitled'}`);
+    });
+    
     console.log("=================================\n");
 
     return res.json({
       success: true,
-      data: notes,
-      count: notes.length
+      data: filteredNotes,
+      count: filteredNotes.length,
+      total: notes.length
     });
 
   } catch (error) {
@@ -1654,7 +1633,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC NOTE VIEW COUNT
 ========================================================= */
@@ -1703,7 +1681,6 @@ router.post(
     }
   }
 );
-
 
 /* =========================================================
    PUBLIC UNITS
@@ -1863,11 +1840,6 @@ router.get(
         ];
       }
 
-      // ✅ IMPORTANT: Only fetch notes with valid unit (unit > 0)
-      if (query.unit === undefined) {
-        query.unit = { $gt: 0 };
-      }
-
       console.log(
         "🔎 Mongo Query:",
         JSON.stringify(
@@ -1882,11 +1854,8 @@ router.get(
           query
         )
           .select(
-            "_id title category semester subject unit course branch createdAt"
+            "_id unit"
           )
-          .sort({
-            createdAt: -1
-          })
           .lean();
 
       console.log(
@@ -1982,7 +1951,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC VIDEOS
 ========================================================= */
@@ -2062,7 +2030,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    PUBLIC VIDEO FILE
@@ -2157,7 +2124,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC PAPERS
 ========================================================= */
@@ -2237,7 +2203,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    PUBLIC PAID PDFS
@@ -2319,7 +2284,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC FREE MATERIAL
 ========================================================= */
@@ -2399,7 +2363,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    ADMIN GET ALL NOTES
@@ -2499,7 +2462,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    GET SINGLE NOTE
 ========================================================= */
@@ -2560,7 +2522,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    DELETE NOTE
@@ -2647,7 +2608,6 @@ router.delete(
   }
 );
 
-
 /* =========================================================
    ADMIN GET VIDEOS
 ========================================================= */
@@ -2731,6 +2691,7 @@ router.get(
     }
   }
 );
+
 /* =========================================================
    DELETE VIDEO
 ========================================================= */
@@ -2787,7 +2748,6 @@ router.delete(
     }
   }
 );
-
 
 /* =========================================================
    ADMIN GET PAPERS
@@ -2863,7 +2823,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    DELETE PAPER
 ========================================================= */
@@ -2921,7 +2880,6 @@ router.delete(
   }
 );
 
-
 /* =========================================================
    ADMIN USERS
 ========================================================= */
@@ -2957,7 +2915,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    UPDATE USER
@@ -3046,7 +3003,6 @@ router.put(
   }
 );
 
-
 /* =========================================================
    DELETE USER
 ========================================================= */
@@ -3104,7 +3060,6 @@ router.delete(
   }
 );
 
-
 /* =========================================================
    NOTICES
 ========================================================= */
@@ -3139,7 +3094,6 @@ router.get(
     }
   }
 );
-
 
 router.post(
   "/notices",
@@ -3198,7 +3152,6 @@ router.post(
   }
 );
 
-
 router.delete(
   "/notices/:id",
   adminAuth,
@@ -3242,7 +3195,6 @@ router.delete(
   }
 );
 
-
 /* =========================================================
    PAYMENT LIST
 ========================================================= */
@@ -3277,7 +3229,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    PAYMENT BY ID
@@ -3335,7 +3286,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    HEALTH CHECK
 ========================================================= */
@@ -3367,7 +3317,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    CONTENT MODEL HELPER
@@ -3413,7 +3362,6 @@ const getContentModel = (
 
   return null;
 };
-
 
 /* =========================================================
    SEND STORED FILE
@@ -3547,7 +3495,6 @@ const sendStoredFile = async (
   }
 };
 
-
 /* =========================================================
    PUBLIC PREVIEW
 ========================================================= */
@@ -3563,7 +3510,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC DOWNLOAD
 ========================================================= */
@@ -3578,7 +3524,6 @@ router.get(
     );
   }
 );
-
 
 /* =========================================================
    PUBLIC PRICE
@@ -3668,7 +3613,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    ADMIN PROFILE
 ========================================================= */
@@ -3709,7 +3653,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    UPDATE ADMIN PROFILE
@@ -3807,7 +3750,6 @@ router.put(
   }
 );
 
-
 /* =========================================================
    TEST ROUTE
 ========================================================= */
@@ -3872,7 +3814,6 @@ router.get(
     });
   }
 );
-
 
 /* =========================================================
    FINAL EXPORT

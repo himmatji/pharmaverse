@@ -170,7 +170,6 @@ const BPharm = () => {
   };
 
   // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
-  // Units are derived from documents - this ensures Unit 1, Unit 2, etc. all appear
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject) {
       setUnitContent([]);
@@ -204,7 +203,6 @@ const BPharm = () => {
 
       if (requestId !== contentRequestIdRef.current) return;
 
-      // Handle both response formats
       const rawContent = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.data)
@@ -214,10 +212,8 @@ const BPharm = () => {
       setUnitContent(rawContent);
 
       // ============================================================
-      // FIX: DERIVE UNITS ONLY FROM DOCUMENTS
+      // FIX: DERIVE UNITS FROM DOCUMENTS
       // Har document ki 'unit' field se units extract karo
-      // Is tarah Unit 1, Unit 2, Unit 3 sab apne aap aa jayenge
-      // Chahe admin ne unit table mein entry banai ho ya nahi
       // ============================================================
       const unitMap = new Map();
       
@@ -234,10 +230,7 @@ const BPharm = () => {
         }
       });
 
-      // Units ko sorted order mein set karo (1, 2, 3, 4, ...)
       const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
-      
-      // Directly units set karo
       setUnits(derivedUnits);
       
     } catch (error) {
@@ -254,10 +247,9 @@ const BPharm = () => {
     }
   };
 
-  // ========== EFFECT: Fetch ALL documents when subject changes ==========
+  // ========== EFFECT: Fetch documents when subject changes ==========
   useEffect(() => {
     if (selectedCategory && selectedSemester && selectedSubject) {
-      // ✅ Sirf fetchUnitContent() call karo - isme units bhi derive ho jayenge
       fetchUnitContent();
     } else {
       setUnits([]);
@@ -858,7 +850,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER UNIT STEP - EACH UNIT SHOWS ONLY ITS OWN DOCUMENTS ==========
+  // ========== RENDER UNIT STEP ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
@@ -917,8 +909,7 @@ const BPharm = () => {
               const cardId = `unit-${unit.id}`;
               
               // ============================================================
-              // DOCUMENT ISOLATION FIX:
-              // A document belongs to exactly one Unit: document.unit.
+              // ✅ EACH UNIT SHOWS ONLY ITS OWN DOCUMENTS
               // Har document ko uske unit ke andar hi show karo
               // ============================================================
               const content = unitContent.filter((item) => {
@@ -999,7 +990,7 @@ const BPharm = () => {
                         </div>
                       )}
                       
-                      {/* Every document is displayed inside its matching Unit card */}
+                      {/* ✅ Only show documents that belong to this unit */}
                       {content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
