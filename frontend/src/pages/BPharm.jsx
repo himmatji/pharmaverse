@@ -236,6 +236,50 @@ const BPharm = () => {
           : [];
 
       setUnitContent(rawContent);
+
+      // ============================================================
+      // SAFETY FIX:
+      // Always derive units from the documents returned by the server.
+      // This prevents Unit 1 from disappearing if the units endpoint
+      // has incomplete/old unit metadata.
+      // The document's `unit` field is the source of truth.
+      // ============================================================
+      const derivedUnits = rawContent
+        .map((item) => {
+          const value = Number(item?.unit);
+          if (!Number.isInteger(value) || value <= 0) return null;
+
+          return {
+            id: value,
+            name: `Unit ${value}`,
+            topics: []
+          };
+        })
+        .filter(Boolean);
+
+      setUnits((currentUnits) => {
+        const map = new Map();
+
+        for (const unit of currentUnits || []) {
+          const id = Number(unit?.id);
+          if (Number.isInteger(id) && id > 0) {
+            map.set(id, {
+              ...unit,
+              id,
+              name: unit?.name || `Unit ${id}`,
+              topics: Array.isArray(unit?.topics) ? unit.topics : []
+            });
+          }
+        }
+
+        for (const unit of derivedUnits) {
+          if (!map.has(unit.id)) {
+            map.set(unit.id, unit);
+          }
+        }
+
+        return Array.from(map.values()).sort((a, b) => a.id - b.id);
+      });
     } catch (error) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
       if (requestId !== contentRequestIdRef.current) return;
@@ -911,11 +955,22 @@ const BPharm = () => {
               const colors = unitColors[index % unitColors.length];
               const cardId = `unit-${unit.id}`;
               
-              // ✅ CRITICAL FIX: Filter content ONLY for this specific unit
-              const content = unitContent.filter(item => {
+              // ============================================================
+              // DOCUMENT ISOLATION FIX:
+              // A document belongs to exactly one Unit: document.unit.
+              // Never use the `units` array for document placement because
+              // old records may contain stale/multiple unit metadata.
+              // ============================================================
+              const content = unitContent.filter((item) => {
                 const itemUnit = Number(item?.unit);
                 const unitId = Number(unit?.id);
-                return itemUnit === unitId;
+
+                return (
+                  Number.isInteger(itemUnit) &&
+                  itemUnit > 0 &&
+                  Number.isInteger(unitId) &&
+                  itemUnit === unitId
+                );
               });
               
               return (

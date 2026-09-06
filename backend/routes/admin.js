@@ -254,9 +254,11 @@ router.post(
       console.log(
         "\n================================="
       );
+
       console.log(
         "📤 ADMIN UPLOAD REQUEST"
       );
+
       console.log(
         "================================="
       );
@@ -354,6 +356,61 @@ router.post(
         });
       }
 
+      /* =====================================================
+         IMPORTANT UNIT FIX
+         ===================================================== */
+
+      const semesterNumber =
+        Number.parseInt(
+          semester,
+          10
+        );
+
+      const unitNumber =
+        Number.parseInt(
+          unit,
+          10
+        );
+
+      if (
+        !Number.isInteger(
+          semesterNumber
+        ) ||
+        semesterNumber <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid semester. Please select a valid semester."
+        });
+      }
+
+      /*
+       * UNIT IS REQUIRED.
+       *
+       * Previously:
+       *
+       * unit: parseInt(unit) || 1
+       *
+       * was causing missing/invalid unit
+       * to silently become Unit 1.
+       *
+       * Now it will reject invalid unit.
+       */
+
+      if (
+        !Number.isInteger(
+          unitNumber
+        ) ||
+        unitNumber <= 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid unit. Please select Unit 1, Unit 2, etc."
+        });
+      }
+
       const contentData = {
         title:
           title ||
@@ -372,13 +429,24 @@ router.post(
         category,
 
         semester:
-          parseInt(semester) || 1,
+          semesterNumber,
 
         subject,
 
+        /*
+         * THIS IS THE ACTUAL UNIT
+         * OF THIS DOCUMENT.
+         */
         unit:
-          parseInt(unit) || 1,
+          unitNumber,
 
+        /*
+         * Legacy metadata.
+         *
+         * It is stored only for compatibility.
+         * Public unit display will NOT use
+         * this field as authoritative.
+         */
         units:
           parsedUnits,
 
@@ -389,8 +457,11 @@ router.post(
           file.mimetype,
 
         fileSize:
-          (file.size / 1024 / 1024)
-            .toFixed(2) +
+          (
+            file.size /
+            1024 /
+            1024
+          ).toFixed(2) +
           " MB",
 
         fileData,
@@ -402,9 +473,11 @@ router.post(
         thumbnail:
           req.body.thumbnail || "",
 
-        downloadCount: 0,
+        downloadCount:
+          0,
 
-        viewCount: 0,
+        viewCount:
+          0,
 
         createdAt:
           new Date(),
@@ -414,7 +487,9 @@ router.post(
       };
 
       const newContent =
-        new Model(contentData);
+        new Model(
+          contentData
+        );
 
       await newContent.save();
 
@@ -443,14 +518,30 @@ router.post(
           "File uploaded successfully",
 
         data: {
-          id: newContent._id,
-          title: newContent.title,
-          category: newContent.category,
-          semester: newContent.semester,
-          subject: newContent.subject,
-          unit: newContent.unit,
-          fileName: newContent.fileName,
-          fileSize: newContent.fileSize,
+          id:
+            newContent._id,
+
+          title:
+            newContent.title,
+
+          category:
+            newContent.category,
+
+          semester:
+            newContent.semester,
+
+          subject:
+            newContent.subject,
+
+          unit:
+            newContent.unit,
+
+          fileName:
+            newContent.fileName,
+
+          fileSize:
+            newContent.fileSize,
+
           isPremium:
             newContent.isPremium
         }
@@ -464,6 +555,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
+
         message:
           "Upload failed: " +
           error.message
@@ -492,6 +584,7 @@ router.use(
       ) {
         return res.status(413).json({
           success: false,
+
           message:
             "File too large. Maximum allowed size is 50MB."
         });
@@ -499,7 +592,9 @@ router.use(
 
       return res.status(400).json({
         success: false,
-        message: err.message
+
+        message:
+          err.message
       });
     }
 
@@ -520,9 +615,13 @@ router.post(
         password
       } = req.body;
 
-      if (!email || !password) {
+      if (
+        !email ||
+        !password
+      ) {
         return res.status(400).json({
           success: false,
+
           message:
             "Email and password are required"
         });
@@ -536,34 +635,45 @@ router.post(
 
       if (
         !admin &&
-        email === process.env.ADMIN_EMAIL &&
+        email ===
+          process.env.ADMIN_EMAIL &&
         password ===
           process.env.ADMIN_PASSWORD
       ) {
         admin =
           await Admin.findOne({
-            role: "super_admin"
+            role:
+              "super_admin"
           });
 
         if (!admin) {
-          admin = new Admin({
-            name: "Super Admin",
-            email:
-              process.env.ADMIN_EMAIL,
-            password:
-              process.env.ADMIN_PASSWORD,
-            role: "super_admin",
-            permissions: {
-              courses: [
-                "B.Pharm",
-                "D.Pharm",
-                "M.Pharm",
-                "Pharm.D",
-                "PhD"
-              ]
-            },
-            isActive: true
-          });
+          admin =
+            new Admin({
+              name:
+                "Super Admin",
+
+              email:
+                process.env.ADMIN_EMAIL,
+
+              password:
+                process.env.ADMIN_PASSWORD,
+
+              role:
+                "super_admin",
+
+              permissions: {
+                courses: [
+                  "B.Pharm",
+                  "D.Pharm",
+                  "M.Pharm",
+                  "Pharm.D",
+                  "PhD"
+                ]
+              },
+
+              isActive:
+                true
+            });
 
           await admin.save();
         }
@@ -572,12 +682,14 @@ router.post(
       if (!admin) {
         return res.status(401).json({
           success: false,
+
           message:
             "Invalid credentials"
         });
       }
 
-      let isMatch = false;
+      let isMatch =
+        false;
 
       if (
         admin.email ===
@@ -585,7 +697,8 @@ router.post(
         password ===
           process.env.ADMIN_PASSWORD
       ) {
-        isMatch = true;
+        isMatch =
+          true;
       } else {
         isMatch =
           await admin.comparePassword(
@@ -596,6 +709,7 @@ router.post(
       if (!isMatch) {
         return res.status(401).json({
           success: false,
+
           message:
             "Invalid credentials"
         });
@@ -611,14 +725,19 @@ router.post(
           {
             adminId:
               admin._id,
+
             email:
               admin.email,
+
             role:
               admin.role,
+
             type:
               "admin"
           },
+
           JWT_SECRET,
+
           {
             expiresIn:
               "7d"
@@ -626,20 +745,27 @@ router.post(
         );
 
       return res.json({
-        success: true,
+        success:
+          true,
+
         token,
 
         user: {
           id:
             admin._id,
+
           name:
             admin.name,
+
           email:
             admin.email,
+
           role:
             admin.role,
+
           permissions:
             admin.permissions,
+
           type:
             "admin"
         }
@@ -653,6 +779,7 @@ router.post(
 
       return res.status(500).json({
         success: false,
+
         message:
           "Server Error"
       });
@@ -922,22 +1049,17 @@ router.put(
           formattedPrices;
       }
 
-      coursePrices.updatedAt =
-        new Date();
-
-      coursePrices.updatedBy =
-        req.admin.id;
-
       await coursePrices.save();
 
-      res.json({
-        success: true,
+      return res.json({
+        success:
+          true,
 
         message:
-          "Prices updated successfully",
+          "Course prices updated successfully",
 
-        data:
-          coursePrices.prices
+        prices:
+          formattedPrices
       });
 
     } catch (error) {
@@ -946,7 +1068,744 @@ router.put(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          error.message
+      });
+    }
+  }
+);
+/* =========================================================
+   PUBLIC NOTES
+========================================================= */
+
+router.get(
+  "/public/notes",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course = course;
+      }
+
+      if (category) {
+        filter.category = category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject = subject;
+      }
+
+      /*
+       * UNIT FILTER
+       *
+       * If unit is provided,
+       * only that exact unit is returned.
+       */
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      console.log(
+        "📚 PUBLIC NOTES FILTER:",
+        filter
+      );
+
+      const notes =
+        await Note.find(filter)
+          .select("-fileData")
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        notes
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Public notes error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch notes"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC NOTE FILE
+========================================================= */
+
+router.get(
+  "/public/notes/:id/file",
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid note ID"
+        });
+      }
+
+      const note =
+        await Note.findById(id);
+
+      if (!note) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Note not found"
+        });
+      }
+
+      if (!note.fileData) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "File data not found"
+        });
+      }
+
+      const matches =
+        note.fileData.match(
+          /^data:(.+);base64,(.+)$/
+        );
+
+      if (!matches) {
+        return res.status(500).json({
+          success:
+            false,
+
+          message:
+            "Invalid file data"
+        });
+      }
+
+      const mimeType =
+        matches[1];
+
+      const base64 =
+        matches[2];
+
+      const buffer =
+        Buffer.from(
+          base64,
+          "base64"
+        );
+
+      res.setHeader(
+        "Content-Type",
+        mimeType
+      );
+
+      res.setHeader(
+        "Content-Length",
+        buffer.length
+      );
+
+      return res.send(
+        buffer
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Public note file error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to load file"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC NOTES DOWNLOAD
+========================================================= */
+
+router.get(
+  "/public/notes/:id/download",
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid note ID"
+        });
+      }
+
+      const note =
+        await Note.findById(id);
+
+      if (!note) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Note not found"
+        });
+      }
+
+      if (!note.fileData) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "File data not found"
+        });
+      }
+
+      const matches =
+        note.fileData.match(
+          /^data:(.+);base64,(.+)$/
+        );
+
+      if (!matches) {
+        return res.status(500).json({
+          success:
+            false,
+
+          message:
+            "Invalid file data"
+        });
+      }
+
+      const mimeType =
+        matches[1];
+
+      const base64 =
+        matches[2];
+
+      const buffer =
+        Buffer.from(
+          base64,
+          "base64"
+        );
+
+      const fileName =
+        note.fileName ||
+        note.title ||
+        "download";
+
+      res.setHeader(
+        "Content-Type",
+        mimeType
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`
+      );
+
+      res.setHeader(
+        "Content-Length",
+        buffer.length
+      );
+
+      await Note.findByIdAndUpdate(
+        id,
+        {
+          $inc: {
+            downloadCount: 1
+          }
+        }
+      );
+
+      return res.send(
+        buffer
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Download error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Download failed"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC NOTE VIEW COUNT
+========================================================= */
+
+router.post(
+  "/public/notes/:id/view",
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid note ID"
+        });
+      }
+
+      await Note.findByIdAndUpdate(
+        id,
+        {
+          $inc: {
+            viewCount: 1
+          }
+        }
+      );
+
+      return res.json({
+        success:
+          true
+      });
+
+    } catch (error) {
+      console.error(
+        "View count error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC UNITS
+   =========================================================
+   
+   VERY IMPORTANT:
+   
+   We use ONLY `note.unit` here.
+   
+   We DO NOT use:
+   
+   note.units
+   
+   because old `units` metadata can contain
+   wrong/stale values and create incorrect
+   Unit 1 / Unit 2 boxes.
+========================================================= */
+
+router.get(
+  "/public/units",
+  async (req, res) => {
+    try {
+      console.log(
+        "\n================================="
+      );
+
+      console.log(
+        "📚 PUBLIC UNITS REQUEST"
+      );
+
+      console.log(
+        "================================="
+      );
+
+      const {
+        category,
+        semester,
+        subject,
+        branch,
+        course
+      } = req.query;
+
+      console.log(
+        "Category:",
+        category
+      );
+
+      console.log(
+        "Semester:",
+        semester
+      );
+
+      console.log(
+        "Subject:",
+        subject
+      );
+
+      console.log(
+        "Branch:",
+        branch
+      );
+
+      console.log(
+        "Course:",
+        course
+      );
+
+
+      /* =====================================================
+         DATABASE CHECK
+      ===================================================== */
+
+      if (
+        mongoose.connection.readyState !==
+        1
+      ) {
+        console.error(
+          "❌ MongoDB is not connected"
+        );
+
+        return res.status(500).json({
+          success:
+            false,
+
+          message:
+            "Database not connected"
+        });
+      }
+
+
+      /* =====================================================
+         BUILD QUERY
+      ===================================================== */
+
+      const query = {};
+
+
+      if (
+        category !== undefined &&
+        category !== ""
+      ) {
+        query.category = {
+          $regex:
+            `^${String(category).replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            )}$`,
+
+          $options:
+            "i"
+        };
+      }
+
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        const semesterNumber =
+          Number.parseInt(
+            semester,
+            10
+          );
+
+        if (
+          !Number.isInteger(
+            semesterNumber
+          )
+        ) {
+          return res.status(400).json({
+            success:
+              false,
+
+            message:
+              "Invalid semester"
+          });
+        }
+
+        query.semester =
+          semesterNumber;
+      }
+
+
+      if (
+        subject !== undefined &&
+        subject !== ""
+      ) {
+        query.subject = {
+          $regex:
+            `^${String(subject).replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            )}$`,
+
+          $options:
+            "i"
+        };
+      }
+
+
+      /*
+       * BRANCH / COURSE
+       *
+       * Frontend sends:
+       *
+       * branch=B.Pharm
+       *
+       * We support both course and branch
+       * fields in the database.
+       */
+
+      const selectedCourse =
+        branch ||
+        course;
+
+
+      if (
+        selectedCourse !== undefined &&
+        selectedCourse !== ""
+      ) {
+        query.$or = [
+          {
+            course: {
+              $regex:
+                `^${String(
+                  selectedCourse
+                ).replace(
+                  /[.*+?^${}()|[\]\\]/g,
+                  "\\$&"
+                )}$`,
+
+              $options:
+                "i"
+            }
+          },
+
+          {
+            branch: {
+              $regex:
+                `^${String(
+                  selectedCourse
+                ).replace(
+                  /[.*+?^${}()|[\]\\]/g,
+                  "\\$&"
+                )}$`,
+
+              $options:
+                "i"
+            }
+          }
+        ];
+      }
+
+
+      console.log(
+        "🔎 Mongo Query:",
+        JSON.stringify(
+          query,
+          null,
+          2
+        )
+      );
+
+
+      /* =====================================================
+         GET DOCUMENTS
+      ===================================================== */
+
+      const notes =
+        await Note.find(
+          query
+        )
+          .select(
+            "_id title category semester subject unit course branch createdAt"
+          )
+          .sort({
+            createdAt: -1
+          })
+          .lean();
+
+
+      console.log(
+        "📄 Documents Found:",
+        notes.length
+      );
+
+
+      /* =====================================================
+         UNIQUE UNIT NUMBERS
+         =====================================================
+         
+         IMPORTANT:
+         ONLY note.unit.
+         
+         Do NOT read note.units here.
+      ===================================================== */
+
+      const unitsSet =
+        new Set();
+
+
+      for (
+        const note of notes
+      ) {
+        const unitNumber =
+          Number(
+            note.unit
+          );
+
+        if (
+          Number.isInteger(
+            unitNumber
+          ) &&
+          unitNumber > 0
+        ) {
+          unitsSet.add(
+            unitNumber
+          );
+        }
+      }
+
+
+      /* =====================================================
+         SORT UNITS
+      ===================================================== */
+
+      const sortedUnits =
+        Array.from(
+          unitsSet
+        )
+          .sort(
+            (a, b) =>
+              a - b
+          )
+          .map(
+            (unitNumber) => ({
+              id:
+                unitNumber,
+
+              unit:
+                unitNumber,
+
+              name:
+                `Unit ${unitNumber}`,
+
+              title:
+                `Unit ${unitNumber}`
+            })
+          );
+
+
+      console.log(
+        "📚 Units:",
+        sortedUnits
+      );
+
+
+      console.log(
+        "=================================\n"
+      );
+
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          sortedUnits,
+
+        count:
+          sortedUnits.length
+      });
+
+    } catch (error) {
+      console.error(
+        "\n❌ PUBLIC UNITS ERROR:"
+      );
+
+      console.error(
+        error
+      );
+
+      console.error(
+        "=================================\n"
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch units",
+
         error:
           error.message
       });
@@ -954,8 +1813,444 @@ router.put(
   }
 );
 
+
 /* =========================================================
-   NOTES CRUD
+   PUBLIC VIDEOS
+========================================================= */
+
+router.get(
+  "/public/videos",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const videos =
+        await Video.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        videos
+      );
+
+    } catch (error) {
+      console.error(
+        "Public videos error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch videos"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC VIDEO FILE
+========================================================= */
+
+router.get(
+  "/public/videos/:id/file",
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid video ID"
+        });
+      }
+
+      const video =
+        await Video.findById(
+          id
+        );
+
+      if (!video) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Video not found"
+        });
+      }
+
+      if (!video.fileData) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Video file not found"
+        });
+      }
+
+      const matches =
+        video.fileData.match(
+          /^data:(.+);base64,(.+)$/
+        );
+
+      if (!matches) {
+        return res.status(500).json({
+          success:
+            false,
+
+          message:
+            "Invalid video data"
+        });
+      }
+
+      const mimeType =
+        matches[1];
+
+      const buffer =
+        Buffer.from(
+          matches[2],
+          "base64"
+        );
+
+      res.setHeader(
+        "Content-Type",
+        mimeType
+      );
+
+      res.setHeader(
+        "Content-Length",
+        buffer.length
+      );
+
+      return res.send(
+        buffer
+      );
+
+    } catch (error) {
+      console.error(
+        "Public video file error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to load video"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC PAPERS
+========================================================= */
+
+router.get(
+  "/public/papers",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const papers =
+        await Paper.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        papers
+      );
+
+    } catch (error) {
+      console.error(
+        "Public papers error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch papers"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC PAID PDFS
+========================================================= */
+
+router.get(
+  "/public/paid-pdfs",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const pdfs =
+        await PaidPDF.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        pdfs
+      );
+
+    } catch (error) {
+      console.error(
+        "Public paid PDFs error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch paid PDFs"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PUBLIC FREE MATERIAL
+========================================================= */
+
+router.get(
+  "/public/free-material",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const materials =
+        await FreeMaterial.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        materials
+      );
+
+    } catch (error) {
+      console.error(
+        "Public free material error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch free material"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   ADMIN GET ALL NOTES
 ========================================================= */
 
 router.get(
@@ -963,12 +2258,46 @@ router.get(
   adminAuth,
   async (req, res) => {
     try {
-      let notes =
-        await Note.find()
-          .sort({
-            createdAt:
-              -1
-          });
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
 
       if (
         req.admin.role !==
@@ -978,78 +2307,156 @@ router.get(
           req.admin.permissions
             ?.courses || [];
 
-        notes =
-          notes.filter(
-            (note) =>
-              allowedCourses.includes(
-                note.course
-              )
-          );
+        filter.course = {
+          $in:
+            allowedCourses
+        };
       }
 
-      res.json(notes);
+      const notes =
+        await Note.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          notes
+      });
 
     } catch (error) {
       console.error(
+        "Admin notes error:",
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
+        success:
+          false,
+
         message:
-          "Server Error"
+          "Failed to fetch notes"
       });
     }
   }
 );
 
-router.post(
-  "/notes",
+
+/* =========================================================
+   GET SINGLE NOTE
+========================================================= */
+
+router.get(
+  "/notes/:id",
   adminAuth,
-  checkPermission("course"),
   async (req, res) => {
     try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid note ID"
+        });
+      }
+
       const note =
-        new Note(
-          req.body
+        await Note.findById(
+          id
+        ).select(
+          "-fileData"
         );
 
-      await note.save();
+      if (!note) {
+        return res.status(404).json({
+          success:
+            false,
 
-      res.status(201).json({
-        success: true,
-        message:
-          "Note Added",
-        note
+          message:
+            "Note not found"
+        });
+      }
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          note
       });
 
     } catch (error) {
       console.error(
-        "Add note error:",
+        "Get note error:",
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
+        success:
+          false,
+
         message:
-          "Server Error",
-        error:
-          error.message
+          "Failed to fetch note"
       });
     }
   }
 );
+
+
+/* =========================================================
+   DELETE NOTE
+========================================================= */
 
 router.delete(
   "/notes/:id",
   adminAuth,
   async (req, res) => {
     try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid note ID"
+        });
+      }
+
       const note =
         await Note.findById(
-          req.params.id
+          id
         );
 
       if (!note) {
         return res.status(404).json({
+          success:
+            false,
+
           message:
             "Note not found"
         });
@@ -1069,477 +2476,52 @@ router.delete(
           )
         ) {
           return res.status(403).json({
+            success:
+              false,
+
             message:
-              "No permission"
+              "You do not have permission to delete this note"
           });
         }
       }
 
       await Note.findByIdAndDelete(
-        req.params.id
+        id
       );
 
-      res.json({
-        success: true,
+      return res.json({
+        success:
+          true,
+
         message:
-          "Note Deleted"
+          "Note deleted successfully"
       });
 
     } catch (error) {
       console.error(
+        "Delete note error:",
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
+        success:
+          false,
+
         message:
-          "Server Error"
+          "Failed to delete note"
       });
     }
   }
 );
 
+
 /* =========================================================
-   VIDEOS CRUD
+   ADMIN GET VIDEOS
 ========================================================= */
 
 router.get(
   "/videos",
   adminAuth,
-  async (req, res) => {
-    try {
-      let videos =
-        await Video.find()
-          .sort({
-            createdAt:
-              -1
-          });
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        videos =
-          videos.filter(
-            (video) =>
-              allowedCourses.includes(
-                video.course
-              )
-          );
-      }
-
-      res.json(videos);
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-router.post(
-  "/videos",
-  adminAuth,
-  checkPermission("course"),
-  async (req, res) => {
-    try {
-      const video =
-        new Video(
-          req.body
-        );
-
-      await video.save();
-
-      res.status(201).json({
-        success: true,
-        message:
-          "Video Added",
-        video
-      });
-
-    } catch (error) {
-      console.error(
-        "Add video error:",
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error",
-        error:
-          error.message
-      });
-    }
-  }
-);
-
-router.delete(
-  "/videos/:id",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const video =
-        await Video.findById(
-          req.params.id
-        );
-
-      if (!video) {
-        return res.status(404).json({
-          message:
-            "Video not found"
-        });
-      }
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        if (
-          !allowedCourses.includes(
-            video.course
-          )
-        ) {
-          return res.status(403).json({
-            message:
-              "No permission"
-          });
-        }
-      }
-
-      await Video.findByIdAndDelete(
-        req.params.id
-      );
-
-      res.json({
-        success: true,
-        message:
-          "Video Deleted"
-      });
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-/* =========================================================
-   PAID PDFS CRUD
-========================================================= */
-
-router.get(
-  "/paid-pdfs",
-  adminAuth,
-  async (req, res) => {
-    try {
-      let paidPDFs =
-        await PaidPDF.find()
-          .sort({
-            createdAt:
-              -1
-          });
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        paidPDFs =
-          paidPDFs.filter(
-            (pdf) =>
-              allowedCourses.includes(
-                pdf.course
-              )
-          );
-      }
-
-      res.json(
-        paidPDFs
-      );
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-router.post(
-  "/paid-pdfs",
-  adminAuth,
-  checkPermission("course"),
-  async (req, res) => {
-    try {
-      const paidPDF =
-        new PaidPDF(
-          req.body
-        );
-
-      await paidPDF.save();
-
-      res.status(201).json({
-        success: true,
-        message:
-          "PDF Added",
-        paidPDF
-      });
-
-    } catch (error) {
-      console.error(
-        "Paid PDF error:",
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error",
-        error:
-          error.message
-      });
-    }
-  }
-);
-
-router.delete(
-  "/paid-pdfs/:id",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const pdf =
-        await PaidPDF.findById(
-          req.params.id
-        );
-
-      if (!pdf) {
-        return res.status(404).json({
-          message:
-            "PDF not found"
-        });
-      }
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        if (
-          !allowedCourses.includes(
-            pdf.course
-          )
-        ) {
-          return res.status(403).json({
-            message:
-              "No permission"
-          });
-        }
-      }
-
-      await PaidPDF.findByIdAndDelete(
-        req.params.id
-      );
-
-      res.json({
-        success: true,
-        message:
-          "PDF Deleted"
-      });
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-/* =========================================================
-   PAPERS CRUD
-========================================================= */
-
-router.get(
-  "/papers",
-  adminAuth,
-  async (req, res) => {
-    try {
-      let papers =
-        await Paper.find()
-          .sort({
-            createdAt:
-              -1
-          });
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        papers =
-          papers.filter(
-            (paper) =>
-              allowedCourses.includes(
-                paper.course
-              )
-          );
-      }
-
-      res.json(
-        papers
-      );
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-router.post(
-  "/papers",
-  adminAuth,
-  checkPermission("course"),
-  async (req, res) => {
-    try {
-      const paper =
-        new Paper(
-          req.body
-        );
-
-      await paper.save();
-
-      res.status(201).json({
-        success: true,
-        message:
-          "Paper Added",
-        paper
-      });
-
-    } catch (error) {
-      console.error(
-        "Add paper error:",
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error",
-        error:
-          error.message
-      });
-    }
-  }
-);
-
-router.delete(
-  "/papers/:id",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const paper =
-        await Paper.findById(
-          req.params.id
-        );
-
-      if (!paper) {
-        return res.status(404).json({
-          message:
-            "Paper not found"
-        });
-      }
-
-      if (
-        req.admin.role !==
-        "super_admin"
-      ) {
-        const allowedCourses =
-          req.admin.permissions
-            ?.courses || [];
-
-        if (
-          !allowedCourses.includes(
-            paper.course
-          )
-        ) {
-          return res.status(403).json({
-            message:
-              "No permission"
-          });
-        }
-      }
-
-      await Paper.findByIdAndDelete(
-        req.params.id
-      );
-
-      res.json({
-        success: true,
-        message:
-          "Paper Deleted"
-      });
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        message:
-          "Server Error"
-      });
-    }
-  }
-);
-
-/* =========================================================
-   PUBLIC ROUTES - NOTES
-========================================================= */
-
-router.get(
-  "/public/notes",
   async (req, res) => {
     try {
       const {
@@ -1563,14 +2545,11 @@ router.get(
       }
 
       if (
-        semester !==
-          undefined &&
+        semester !== undefined &&
         semester !== ""
       ) {
         filter.semester =
-          Number(
-            semester
-          );
+          Number(semester);
       }
 
       if (subject) {
@@ -1579,572 +2558,804 @@ router.get(
       }
 
       if (
-        unit !==
-          undefined &&
+        unit !== undefined &&
         unit !== ""
       ) {
         filter.unit =
-          Number(
-            unit
-          );
+          Number(unit);
       }
 
-      console.log(
-        "📤 Public notes query:",
-        filter
-      );
-
-      const notes =
-        await Note.find(
+      const videos =
+        await Video.find(
           filter
         )
           .select(
             "-fileData"
           )
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
-      console.log(
-        `✅ Found ${notes.length} notes`
-      );
+      return res.json({
+        success:
+          true,
 
-      res.json(
-        notes
-      );
+        data:
+          videos
+      });
 
     } catch (error) {
       console.error(
-        "Public notes error:",
+        "Admin videos error:",
         error
       );
 
-      res.status(500).json({
-        success: false,
+      return res.status(500).json({
+        success:
+          false,
+
         message:
-          "Failed to load notes"
+          "Failed to fetch videos"
       });
     }
   }
 );
 
+
 /* =========================================================
-   PUBLIC UNITS - FINAL FIXED VERSION
+   DELETE VIDEO
 ========================================================= */
 
-router.get(
-  "/public/units",
+router.delete(
+  "/videos/:id",
+  adminAuth,
   async (req, res) => {
     try {
       const {
-        category,
-        semester,
-        subject,
-        branch,
-        course
-      } = req.query;
-
-      console.log(
-        "\n================================="
-      );
-
-      console.log(
-        "📚 PUBLIC UNITS REQUEST"
-      );
-
-      console.log(
-        "================================="
-      );
-
-      console.log(
-        "category :",
-        category
-      );
-
-      console.log(
-        "semester :",
-        semester
-      );
-
-      console.log(
-        "subject  :",
-        subject
-      );
-
-      console.log(
-        "branch   :",
-        branch
-      );
-
-      console.log(
-        "course   :",
-        course
-      );
-
-      /* -----------------------------------------------------
-         DATABASE CONNECTION CHECK
-      ----------------------------------------------------- */
+        id
+      } = req.params;
 
       if (
-        mongoose.connection.readyState !==
-        1
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
       ) {
-        console.error(
-          "❌ MongoDB is not connected. State:",
-          mongoose.connection.readyState
-        );
+        return res.status(400).json({
+          success:
+            false,
 
-        return res.status(503).json({
-          success: false,
           message:
-            "Database is not connected"
+            "Invalid video ID"
         });
       }
 
-      /* -----------------------------------------------------
-         BUILD QUERY
-      ----------------------------------------------------- */
-
-      const query = {};
-
-      /* -----------------------------------------------------
-         CATEGORY
-         CASE INSENSITIVE
-      ----------------------------------------------------- */
-
-      if (
-        category &&
-        String(category).trim() !== ""
-      ) {
-        const cleanCategory =
-          String(
-            category
-          ).trim();
-
-        const escapedCategory =
-          cleanCategory.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
-
-        query.category = {
-          $regex:
-            `^${escapedCategory}$`,
-          $options:
-            "i"
-        };
-      }
-
-      /* -----------------------------------------------------
-         SEMESTER
-      ----------------------------------------------------- */
-
-      if (
-        semester !==
-          undefined &&
-        semester !==
-          null &&
-        String(
-          semester
-        ).trim() !== ""
-      ) {
-        const semesterNumber =
-          Number(
-            semester
-          );
-
-        if (
-          !Number.isInteger(
-            semesterNumber
-          )
-        ) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Invalid semester"
-          });
-        }
-
-        query.semester =
-          semesterNumber;
-      }
-
-      /* -----------------------------------------------------
-         SUBJECT
-         CASE INSENSITIVE
-      ----------------------------------------------------- */
-
-      if (
-        subject &&
-        String(subject).trim() !== ""
-      ) {
-        const cleanSubject =
-          String(
-            subject
-          ).trim();
-
-        const escapedSubject =
-          cleanSubject.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
-
-        query.subject = {
-          $regex:
-            `^${escapedSubject}$`,
-          $options:
-            "i"
-        };
-      }
-
-      /* -----------------------------------------------------
-         COURSE / BRANCH
-      ----------------------------------------------------- */
-
-      const selectedCourse =
-        branch || course;
-
-      if (
-        selectedCourse &&
-        String(
-          selectedCourse
-        ).trim() !== ""
-      ) {
-        const cleanCourse =
-          String(
-            selectedCourse
-          ).trim();
-
-        const escapedCourse =
-          cleanCourse.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          );
-
-        query.course = {
-          $regex:
-            `^${escapedCourse}$`,
-          $options:
-            "i"
-        };
-      }
-
-      console.log(
-        "🔎 FINAL MONGODB QUERY:"
-      );
-
-      console.log(
-        JSON.stringify(
-          query,
-          null,
-          2
-        )
-      );
-
-      /* -----------------------------------------------------
-         CHECK NOTE MODEL
-      ----------------------------------------------------- */
-
-      if (
-        !Note ||
-        typeof Note.find !==
-          "function"
-      ) {
-        console.error(
-          "❌ Note model is invalid!"
+      const video =
+        await Video.findById(
+          id
         );
 
-        return res.status(500).json({
-          success: false,
+      if (!video) {
+        return res.status(404).json({
+          success:
+            false,
+
           message:
-            "Note model is not loaded correctly"
+            "Video not found"
         });
       }
 
-      /* -----------------------------------------------------
-         FETCH NOTES
-      ----------------------------------------------------- */
-
-      const notes =
-        await Note.find(
-          query
-        )
-          .select(
-            "_id title category semester subject unit units course branch createdAt"
-          )
-          .sort({
-            createdAt:
-              -1
-          })
-          .lean();
-
-      console.log(
-        `✅ NOTES FOUND: ${notes.length}`
+      await Video.findByIdAndDelete(
+        id
       );
 
-      /* -----------------------------------------------------
-         NO NOTES
-      ----------------------------------------------------- */
+      return res.json({
+        success:
+          true,
 
-      if (
-        !notes ||
-        notes.length === 0
-      ) {
-        console.log(
-          "⚠️ No notes found"
-        );
-
-        return res.status(200).json({
-          success: true,
-          data: [],
-          count: 0,
-          message:
-            "No units available for this subject"
-        });
-      }
-
-      /* -----------------------------------------------------
-         UNIQUE UNITS MAP
-      ----------------------------------------------------- */
-
-      const unitsMap =
-        new Map();
-
-      /* -----------------------------------------------------
-         LOOP THROUGH NOTES
-      ----------------------------------------------------- */
-
-      for (
-        const note of notes
-      ) {
-
-        /* =================================================
-           CASE 1
-           UNITS ARRAY
-        ================================================= */
-
-        if (
-          Array.isArray(
-            note.units
-          ) &&
-          note.units.length >
-            0
-        ) {
-
-          for (
-            const unit
-              of note.units
-          ) {
-
-            if (
-              unit ===
-                null ||
-              unit ===
-                undefined
-            ) {
-              continue;
-            }
-
-            let unitId;
-            let unitName;
-            let topics = [];
-
-            /* ---------------------------------------------
-               OBJECT UNIT
-            --------------------------------------------- */
-
-            if (
-              typeof unit ===
-              "object"
-            ) {
-              unitId =
-                Number(
-                  unit.id
-                );
-
-              unitName =
-                unit.name;
-
-              topics =
-                Array.isArray(
-                  unit.topics
-                )
-                  ? unit.topics
-                  : [];
-            }
-
-            /* ---------------------------------------------
-               NUMBER / STRING UNIT
-            --------------------------------------------- */
-
-            else {
-              unitId =
-                Number(
-                  unit
-                );
-
-              unitName =
-                `Unit ${unitId}`;
-            }
-
-            /* ---------------------------------------------
-               VALID UNIT
-            --------------------------------------------- */
-
-            if (
-              !Number.isInteger(
-                unitId
-              ) ||
-              unitId <= 0
-            ) {
-              continue;
-            }
-
-            if (
-              !unitsMap.has(
-                unitId
-              )
-            ) {
-              unitsMap.set(
-                unitId,
-                {
-                  id:
-                    unitId,
-
-                  name:
-                    unitName ||
-                    `Unit ${unitId}`,
-
-                  topics:
-                    topics
-                }
-              );
-            }
-          }
-        }
-
-        /* =================================================
-           CASE 2
-           NORMAL UNIT FIELD
-        ================================================= */
-
-        const normalUnit =
-          Number(
-            note.unit
-          );
-
-        if (
-          Number.isInteger(
-            normalUnit
-          ) &&
-          normalUnit > 0
-        ) {
-
-          if (
-            !unitsMap.has(
-              normalUnit
-            )
-          ) {
-            unitsMap.set(
-              normalUnit,
-              {
-                id:
-                  normalUnit,
-
-                name:
-                  `Unit ${normalUnit}`,
-
-                topics:
-                  []
-              }
-            );
-          }
-        }
-      }
-
-      /* -----------------------------------------------------
-         MAP → ARRAY
-      ----------------------------------------------------- */
-
-      const units =
-        Array.from(
-          unitsMap.values()
-        ).sort(
-          (a, b) =>
-            a.id - b.id
-        );
-
-      console.log(
-        `✅ UNIQUE UNITS RETURNING: ${units.length}`
-      );
-
-      console.log(
-        "📦 UNITS:",
-        JSON.stringify(
-          units,
-          null,
-          2
-        )
-      );
-
-      console.log(
-        "=================================\n"
-      );
-
-      /* -----------------------------------------------------
-         RESPONSE
-      ----------------------------------------------------- */
-
-      return res.status(200).json({
-        success: true,
-        data:
-          units,
-        count:
-          units.length
+        message:
+          "Video deleted successfully"
       });
 
     } catch (error) {
-
       console.error(
-        "\n❌❌❌ PUBLIC UNITS ERROR ❌❌❌"
-      );
-
-      console.error(
-        "MESSAGE:",
-        error.message
-      );
-
-      console.error(
-        "NAME:",
-        error.name
-      );
-
-      console.error(
-        "STACK:",
-        error.stack
-      );
-
-      console.error(
-        "=================================\n"
+        "Delete video error:",
+        error
       );
 
       return res.status(500).json({
-        success: false,
+        success:
+          false,
 
         message:
-          "Failed to fetch units",
-
-        error:
-          process.env.NODE_ENV ===
-          "production"
-            ? undefined
-            : error.message
+          "Failed to delete video"
       });
     }
   }
 );
 
+
+/* =========================================================
+   ADMIN GET PAPERS
+========================================================= */
+
+router.get(
+  "/papers",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const papers =
+        await Paper.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          papers
+      });
+
+    } catch (error) {
+      console.error(
+        "Admin papers error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch papers"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   DELETE PAPER
+========================================================= */
+
+router.delete(
+  "/papers/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid paper ID"
+        });
+      }
+
+      const paper =
+        await Paper.findById(
+          id
+        );
+
+      if (!paper) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Paper not found"
+        });
+      }
+
+      await Paper.findByIdAndDelete(
+        id
+      );
+
+      return res.json({
+        success:
+          true,
+
+        message:
+          "Paper deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete paper error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to delete paper"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   ADMIN USERS
+========================================================= */
+
+router.get(
+  "/users",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const users =
+        await User.find()
+          .select(
+            "-password"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          users
+      });
+
+    } catch (error) {
+      console.error(
+        "Users fetch error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch users"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   UPDATE USER
+========================================================= */
+
+router.put(
+  "/users/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      const {
+        name,
+        email,
+        isActive
+      } = req.body;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid user ID"
+        });
+      }
+
+      const updateData = {};
+
+      if (
+        name !== undefined
+      ) {
+        updateData.name =
+          name;
+      }
+
+      if (
+        email !== undefined
+      ) {
+        updateData.email =
+          email;
+      }
+
+      if (
+        isActive !== undefined
+      ) {
+        updateData.isActive =
+          isActive;
+      }
+
+      const user =
+        await User.findByIdAndUpdate(
+          id,
+          updateData,
+          {
+            new: true
+          }
+        ).select(
+          "-password"
+        );
+
+      if (!user) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "User not found"
+        });
+      }
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          user
+      });
+
+    } catch (error) {
+      console.error(
+        "Update user error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to update user"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   DELETE USER
+========================================================= */
+
+router.delete(
+  "/users/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid user ID"
+        });
+      }
+
+      const user =
+        await User.findById(
+          id
+        );
+
+      if (!user) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "User not found"
+        });
+      }
+
+      await User.findByIdAndDelete(
+        id
+      );
+
+      return res.json({
+        success:
+          true,
+
+        message:
+          "User deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete user error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to delete user"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   NOTICES
+========================================================= */
+
+router.get(
+  "/notices",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const notices =
+        await Notice.find()
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          notices
+      });
+
+    } catch (error) {
+      console.error(
+        "Notices error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch notices"
+      });
+    }
+  }
+);
+
+
+router.post(
+  "/notices",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        title,
+        message,
+        course,
+        active
+      } = req.body;
+
+      if (
+        !title ||
+        !message
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Title and message are required"
+        });
+      }
+
+      const notice =
+        new Notice({
+          title,
+          message,
+          course:
+            course || "",
+          active:
+            active !== false,
+          createdAt:
+            new Date()
+        });
+
+      await notice.save();
+
+      return res.status(201).json({
+        success:
+          true,
+
+        data:
+          notice
+      });
+
+    } catch (error) {
+      console.error(
+        "Create notice error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to create notice"
+      });
+    }
+  }
+);
+
+
+router.delete(
+  "/notices/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid notice ID"
+        });
+      }
+
+      await Notice.findByIdAndDelete(
+        id
+      );
+
+      return res.json({
+        success:
+          true,
+
+        message:
+          "Notice deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete notice error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to delete notice"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PAYMENT LIST
+========================================================= */
+
+router.get(
+  "/payments",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const payments =
+        await Payment.find()
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          payments
+      });
+
+    } catch (error) {
+      console.error(
+        "Payments error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch payments"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   PAYMENT BY ID
+========================================================= */
+
+router.get(
+  "/payments/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success:
+            false,
+
+          message:
+            "Invalid payment ID"
+        });
+      }
+
+      const payment =
+        await Payment.findById(
+          id
+        );
+
+      if (!payment) {
+        return res.status(404).json({
+          success:
+            false,
+
+          message:
+            "Payment not found"
+        });
+      }
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          payment
+      });
+
+    } catch (error) {
+      console.error(
+        "Payment error:",
+        error
+      );
+
+      return res.status(500).json({
+        success:
+          false,
+
+        message:
+          "Failed to fetch payment"
+      });
+    }
+  }
+);
+
+
+/* =========================================================
+   HEALTH CHECK
+========================================================= */
+
+router.get(
+  "/health",
+  async (req, res) => {
+    try {
+      return res.json({
+        success:
+          true,
+
+        status:
+          "ok",
+
+        database:
+          mongoose.connection.readyState ===
+          1
+            ? "connected"
+            : "disconnected",
+
+        timestamp:
+          new Date().toISOString()
+      });
+
+    } catch (error) {
+      return res.status(500).json({
+        success:
+          false,
+
+        status:
+          "error"
+      });
+    }
+  }
+);
 /* =========================================================
    PUBLIC CONTENT - COMPATIBILITY ROUTE
 ========================================================= */
@@ -2164,40 +3375,31 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course =
-          course;
+        filter.course = course;
       }
 
       if (category) {
-        filter.category =
-          category;
+        filter.category = category;
       }
 
       if (
-        semester !==
-          undefined &&
+        semester !== undefined &&
         semester !== ""
       ) {
         filter.semester =
-          Number(
-            semester
-          );
+          Number(semester);
       }
 
       if (subject) {
-        filter.subject =
-          subject;
+        filter.subject = subject;
       }
 
       if (
-        unit !==
-          undefined &&
+        unit !== undefined &&
         unit !== ""
       ) {
         filter.unit =
-          Number(
-            unit
-          );
+          Number(unit);
       }
 
       console.log(
@@ -2206,27 +3408,20 @@ router.get(
       );
 
       const notes =
-        await Note.find(
-          filter
-        )
-          .select(
-            "-fileData"
-          )
+        await Note.find(filter)
+          .select("-fileData")
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
       console.log(
         `✅ Found ${notes.length} content items`
       );
 
-      res.json({
+      return res.json({
         success: true,
-        content:
-          notes,
-        notes:
-          notes
+        content: notes,
+        notes: notes
       });
 
     } catch (error) {
@@ -2235,7 +3430,7 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           "Failed to load content"
@@ -2243,6 +3438,7 @@ router.get(
     }
   }
 );
+
 
 /* =========================================================
    PUBLIC VIDEOS
@@ -2257,27 +3453,20 @@ router.get(
       } = req.query;
 
       const filter = {
-        isPremium:
-          true
+        isPremium: true
       };
 
       if (course) {
-        filter.course =
-          course;
+        filter.course = course;
       }
 
       const videos =
-        await Video.find(
-          filter
-        )
+        await Video.find(filter)
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
-      res.json(
-        videos
-      );
+      return res.json(videos);
 
     } catch (error) {
       console.error(
@@ -2285,13 +3474,14 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         message:
           "Server Error"
       });
     }
   }
 );
+
 
 /* =========================================================
    PUBLIC FREE VIDEOS
@@ -2306,27 +3496,20 @@ router.get(
       } = req.query;
 
       const filter = {
-        isPremium:
-          false
+        isPremium: false
       };
 
       if (course) {
-        filter.course =
-          course;
+        filter.course = course;
       }
 
       const videos =
-        await Video.find(
-          filter
-        )
+        await Video.find(filter)
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
-      res.json(
-        videos
-      );
+      return res.json(videos);
 
     } catch (error) {
       console.error(
@@ -2334,13 +3517,14 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         message:
           "Server Error"
       });
     }
   }
 );
+
 
 /* =========================================================
    PUBLIC PAID PDFS
@@ -2357,22 +3541,16 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course =
-          course;
+        filter.course = course;
       }
 
       const pdfs =
-        await PaidPDF.find(
-          filter
-        )
+        await PaidPDF.find(filter)
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
-      res.json(
-        pdfs
-      );
+      return res.json(pdfs);
 
     } catch (error) {
       console.error(
@@ -2380,13 +3558,14 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         message:
           "Server Error"
       });
     }
   }
 );
+
 
 /* =========================================================
    PUBLIC PAPERS
@@ -2403,22 +3582,16 @@ router.get(
       const filter = {};
 
       if (course) {
-        filter.course =
-          course;
+        filter.course = course;
       }
 
       const papers =
-        await Paper.find(
-          filter
-        )
+        await Paper.find(filter)
           .sort({
-            createdAt:
-              -1
+            createdAt: -1
           });
 
-      res.json(
-        papers
-      );
+      return res.json(papers);
 
     } catch (error) {
       console.error(
@@ -2426,7 +3599,7 @@ router.get(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         message:
           "Server Error"
       });
@@ -2434,47 +3607,52 @@ router.get(
   }
 );
 
+
 /* =========================================================
-   PUBLIC FILE MODEL HELPER
+   CONTENT MODEL HELPER
 ========================================================= */
 
 const getContentModel = (
   type
 ) => {
-  const normalizedType =
-    String(
-      type || ""
-    ).toLowerCase();
+  const normalized =
+    String(type || "")
+      .toLowerCase()
+      .trim();
 
   if (
-    normalizedType ===
-      "note" ||
-    normalizedType ===
-      "notes"
+    normalized === "note" ||
+    normalized === "notes"
   ) {
     return Note;
   }
 
   if (
-    normalizedType ===
-      "video" ||
-    normalizedType ===
-      "videos"
+    normalized === "video" ||
+    normalized === "videos"
   ) {
     return Video;
   }
 
   if (
-    normalizedType ===
-      "paper" ||
-    normalizedType ===
-      "papers"
+    normalized === "paper" ||
+    normalized === "papers"
   ) {
     return Paper;
   }
 
+  if (
+    normalized === "paidpdf" ||
+    normalized === "paid-pdf" ||
+    normalized === "paid-pdfs" ||
+    normalized === "pdf"
+  ) {
+    return PaidPDF;
+  }
+
   return null;
 };
+
 
 /* =========================================================
    SEND STORED FILE
@@ -2504,9 +3682,7 @@ const sendStoredFile = async (
     }
 
     const Model =
-      getContentModel(
-        type
-      );
+      getContentModel(type);
 
     if (!Model) {
       return res.status(400).json({
@@ -2517,9 +3693,7 @@ const sendStoredFile = async (
     }
 
     const item =
-      await Model.findById(
-        id
-      );
+      await Model.findById(id);
 
     if (
       !item ||
@@ -2533,9 +3707,7 @@ const sendStoredFile = async (
     }
 
     const rawData =
-      String(
-        item.fileData
-      );
+      String(item.fileData);
 
     const match =
       rawData.match(
@@ -2564,7 +3736,7 @@ const sendStoredFile = async (
     const safeFileName =
       String(
         item.fileName ||
-          "document.pdf"
+        "document.pdf"
       )
         .replace(
           /[\r\n"]/g,
@@ -2589,8 +3761,7 @@ const sendStoredFile = async (
     );
 
     if (
-      disposition ===
-        "attachment" &&
+      disposition === "attachment" &&
       typeof item.incrementDownloads ===
         "function"
     ) {
@@ -2599,9 +3770,7 @@ const sendStoredFile = async (
         .catch(() => {});
     }
 
-    return res.end(
-      buffer
-    );
+    return res.end(buffer);
 
   } catch (error) {
     console.error(
@@ -2616,6 +3785,7 @@ const sendStoredFile = async (
     });
   }
 };
+
 
 /* =========================================================
    PUBLIC PREVIEW
@@ -2632,6 +3802,7 @@ router.get(
   }
 );
 
+
 /* =========================================================
    PUBLIC DOWNLOAD
 ========================================================= */
@@ -2646,6 +3817,7 @@ router.get(
     );
   }
 );
+
 
 /* =========================================================
    PUBLIC PRICE
@@ -2701,47 +3873,33 @@ router.get(
           typeof p.get ===
           "function"
         ) {
-          return p.get(
-            key
-          );
+          return p.get(key);
         }
 
         return p[key];
       };
 
-      res.json({
+      return res.json({
         "B.Pharm":
-          getPrice(
-            "BPharm"
-          ),
+          getPrice("BPharm"),
 
         "D.Pharm":
-          getPrice(
-            "DPharm"
-          ),
+          getPrice("DPharm"),
 
         "M.Pharm":
-          getPrice(
-            "MPharm"
-          ),
+          getPrice("MPharm"),
 
         "Pharm.D":
-          getPrice(
-            "PharmD"
-          ),
+          getPrice("PharmD"),
 
         "PhD":
-          getPrice(
-            "PhD"
-          )
+          getPrice("PhD")
       });
 
     } catch (error) {
-      console.error(
-        error
-      );
+      console.error(error);
 
-      res.status(500).json({
+      return res.status(500).json({
         message:
           error.message
       });
@@ -2749,101 +3907,6 @@ router.get(
   }
 );
 
-/* =========================================================
-   USERS
-========================================================= */
-
-router.get(
-  "/users",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const users =
-        await User.find({})
-          .select(
-            "-password"
-          )
-          .sort({
-            createdAt:
-              -1
-          });
-
-      res.json({
-        success: true,
-        users
-      });
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          error.message
-      });
-    }
-  }
-);
-
-/* =========================================================
-   DELETE USER
-========================================================= */
-
-router.delete(
-  "/users/:id",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const {
-        id
-      } = req.params;
-
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          id
-        )
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid User ID"
-        });
-      }
-
-      const deletedUser =
-        await User.findByIdAndDelete(
-          id
-        );
-
-      if (!deletedUser) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "User not found"
-        });
-      }
-
-      res.json({
-        success: true,
-        message:
-          "User deleted successfully"
-      });
-
-    } catch (error) {
-      console.error(
-        error
-      );
-
-      res.status(500).json({
-        success: false,
-        message:
-          error.message
-      });
-    }
-  }
-);
 
 /* =========================================================
    ADMIN PROFILE
@@ -2857,10 +3920,9 @@ router.get(
       const admin =
         await Admin.findById(
           req.admin.id
-        )
-          .select(
-            "-password"
-          );
+        ).select(
+          "-password"
+        );
 
       if (!admin) {
         return res.status(404).json({
@@ -2870,17 +3932,15 @@ router.get(
         });
       }
 
-      res.json({
+      return res.json({
         success: true,
         admin
       });
 
     } catch (error) {
-      console.error(
-        error
-      );
+      console.error(error);
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           "Server Error"
@@ -2888,6 +3948,7 @@ router.get(
     }
   }
 );
+
 
 /* =========================================================
    UPDATE ADMIN PROFILE
@@ -2919,13 +3980,11 @@ router.put(
       }
 
       if (name) {
-        admin.name =
-          name;
+        admin.name = name;
       }
 
       if (email) {
-        admin.email =
-          email;
+        admin.email = email;
       }
 
       if (
@@ -2951,7 +4010,7 @@ router.put(
 
       await admin.save();
 
-      res.json({
+      return res.json({
         success: true,
 
         message:
@@ -2978,7 +4037,7 @@ router.put(
         error
       );
 
-      res.status(500).json({
+      return res.status(500).json({
         success: false,
         message:
           error.message
@@ -2987,6 +4046,7 @@ router.put(
   }
 );
 
+
 /* =========================================================
    TEST ROUTE
 ========================================================= */
@@ -2994,7 +4054,7 @@ router.put(
 router.get(
   "/test",
   (req, res) => {
-    res.json({
+    return res.json({
       success: true,
 
       message:
@@ -3030,9 +4090,6 @@ router.get(
         "GET /videos",
         "POST /videos",
         "DELETE /videos/:id",
-        "GET /paid-pdfs",
-        "POST /paid-pdfs",
-        "DELETE /paid-pdfs/:id",
         "GET /papers",
         "POST /papers",
         "DELETE /papers/:id",
@@ -3054,6 +4111,7 @@ router.get(
     });
   }
 );
+
 
 /* =========================================================
    FINAL EXPORT
