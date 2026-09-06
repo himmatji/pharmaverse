@@ -261,7 +261,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     category: "",
     semester: "",
     subject: "",
-    unit: "",
+    unit: "",  // ✅ Unit field added
     units: [{ id: 1, name: "Unit 1", topics: [""] }],
     title: "",
     description: "",
@@ -805,7 +805,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       });
 
       alert("✅ Content deleted successfully!");
-      fetchAllData(); // Refresh data
+      fetchAllData();
 
     } catch (error) {
       alert("❌ Failed to delete: " + (error.response?.data?.message || error.message));
@@ -825,6 +825,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
     if (!uploadForm.subject) {
       alert("Please select a subject");
+      return;
+    }
+    // ✅ FIX: Unit validation
+    if (!uploadForm.unit) {
+      alert("Please select a unit");
       return;
     }
     if (!uploadForm.file) {
@@ -848,7 +853,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       formData.append("category", uploadForm.category);
       formData.append("semester", uploadForm.semester);
       formData.append("subject", uploadForm.subject);
-      formData.append("unit", uploadForm.unit || 1);
+      formData.append("unit", uploadForm.unit); // ✅ Unit is now properly sent
       formData.append("units", JSON.stringify(uploadForm.units));
       formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
       formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
@@ -878,7 +883,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           category: "",
           semester: "",
           subject: "",
-          unit: "",
+          unit: "", // ✅ Reset unit
           units: [{ id: 1, name: "Unit 1", topics: [""] }],
           title: "",
           description: "",
@@ -1008,7 +1013,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const subjects = getSubjectsForSemester();
     const branchName = getBranchName();
 
-    // Filter content for this branch
     const branchContent = notes.filter(n => n.branch === branchName || n.course === branchName);
 
     return (
@@ -1112,6 +1116,34 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
+              {/* ✅ FIX: UNIT SELECTION - ADD THIS SECTION */}
+              <div>
+                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
+                  Unit <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((unitNum) => (
+                    <button
+                      key={unitNum}
+                      type="button"
+                      onClick={() => setUploadForm(prev => ({ ...prev, unit: unitNum }))}
+                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
+                        uploadForm.unit === unitNum
+                          ? "border-emerald-500 bg-emerald-500 text-white shadow-lg scale-105"
+                          : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
+                      }`}
+                    >
+                      Unit {unitNum}
+                    </button>
+                  ))}
+                </div>
+                {uploadForm.unit && (
+                  <p className="text-xs text-emerald-600 font-['Inter'] font-medium mt-2">
+                    ✅ Selected: Unit {uploadForm.unit}
+                  </p>
+                )}
+              </div>
+
               {/* Subject */}
               <div>
                 <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
@@ -1128,7 +1160,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                           uploadForm.subject === subject
                             ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
                             : "border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700"
-                        }`}
+                      }`}
                       >
                         <div className="flex items-center gap-2">
                           <BookOpen size={16} />
@@ -1145,11 +1177,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 )}
               </div>
 
-              {/* Units */}
+              {/* Units & Topics - Optional */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-['Inter'] font-semibold text-gray-700">
-                    Units & Topics <span className="text-red-500">*</span>
+                    Units & Topics <span className="text-gray-400 text-xs">(Optional)</span>
                   </label>
                   <button
                     type="button"

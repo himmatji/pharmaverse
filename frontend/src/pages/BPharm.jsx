@@ -209,16 +209,17 @@ const BPharm = () => {
           ? res.data.data
           : [];
 
+      console.log("📄 RAW CONTENT FROM API:", rawContent);
+      console.log("📄 TOTAL DOCUMENTS:", rawContent.length);
+
       setUnitContent(rawContent);
 
-      // ============================================================
-      // FIX: DERIVE UNITS FROM DOCUMENTS
-      // Har document ki 'unit' field se units extract karo
-      // ============================================================
       const unitMap = new Map();
       
       rawContent.forEach((item) => {
         const unitValue = Number(item?.unit);
+        console.log(`📄 Processing: Unit = ${unitValue}, Title = ${item.title || 'Untitled'}`);
+        
         if (Number.isInteger(unitValue) && unitValue > 0) {
           if (!unitMap.has(unitValue)) {
             unitMap.set(unitValue, {
@@ -226,11 +227,19 @@ const BPharm = () => {
               name: `Unit ${unitValue}`,
               topics: []
             });
+            console.log(`✅ Added Unit ${unitValue} to map`);
           }
+        } else {
+          console.log(`❌ Skipping: Invalid unit = ${unitValue}`);
         }
       });
 
+      console.log("📚 UNIT MAP:", Array.from(unitMap.entries()));
+
       const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
+      
+      console.log("📚 DERIVED UNITS:", derivedUnits);
+      
       setUnits(derivedUnits);
       
     } catch (error) {
@@ -908,10 +917,6 @@ const BPharm = () => {
               const colors = unitColors[index % unitColors.length];
               const cardId = `unit-${unit.id}`;
               
-              // ============================================================
-              // ✅ EACH UNIT SHOWS ONLY ITS OWN DOCUMENTS
-              // Har document ko uske unit ke andar hi show karo
-              // ============================================================
               const content = unitContent.filter((item) => {
                 const itemUnit = Number(item?.unit);
                 const unitId = Number(unit?.id);
@@ -990,7 +995,6 @@ const BPharm = () => {
                         </div>
                       )}
                       
-                      {/* ✅ Only show documents that belong to this unit */}
                       {content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">

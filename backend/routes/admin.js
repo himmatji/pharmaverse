@@ -1390,8 +1390,8 @@ router.get(
 );
 
 /* =========================================================
-   PUBLIC NOTES - GET ALL NOTES FOR A SUBJECT
-   ✅ FIXED: Now properly returns all documents with unit > 0
+   ✅ FIXED: PUBLIC NOTES - GET ALL NOTES FOR A SUBJECT
+   Now properly returns all documents with unit > 0
    ========================================================= */
 
 router.get("/public/notes", async (req, res) => {
@@ -1426,7 +1426,6 @@ router.get("/public/notes", async (req, res) => {
 
     const query = {};
 
-    // Build query based on provided filters
     if (category && category !== "") {
       query.category = {
         $regex: `^${String(category).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
@@ -1452,7 +1451,7 @@ router.get("/public/notes", async (req, res) => {
       };
     }
 
-    // ✅ Only add unit filter if specific unit is requested
+    // Only add unit filter if specific unit is requested
     if (unit !== undefined && unit !== "") {
       const unitNumber = Number.parseInt(unit, 10);
       if (Number.isInteger(unitNumber) && unitNumber > 0) {
@@ -1460,7 +1459,6 @@ router.get("/public/notes", async (req, res) => {
       }
     }
 
-    // Course/Branch filter
     const selectedCourse = branch || course;
     if (selectedCourse && selectedCourse !== "") {
       query.$or = [
@@ -1487,7 +1485,13 @@ router.get("/public/notes", async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    // ✅ Filter: Only keep documents with valid unit > 0
+    // Log each document's unit for debugging
+    console.log("📄 RAW DOCUMENTS FROM DB:");
+    notes.forEach((note, index) => {
+      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}, ID: ${note._id}`);
+    });
+
+    // Filter: Only keep documents with valid unit > 0
     const filteredNotes = notes.filter(note => {
       const unitVal = Number(note.unit);
       return Number.isInteger(unitVal) && unitVal > 0;
@@ -1495,12 +1499,13 @@ router.get("/public/notes", async (req, res) => {
 
     console.log(`📄 Total Documents Found: ${notes.length}`);
     console.log(`📄 Valid Documents (unit > 0): ${filteredNotes.length}`);
-    
-    // Log each document's unit for debugging
+
+    // Log valid documents
+    console.log("📄 VALID DOCUMENTS (unit > 0):");
     filteredNotes.forEach((note, index) => {
-      console.log(`📄 Document ${index + 1}: Unit = ${note.unit}, Title = ${note.title || 'Untitled'}`);
+      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}`);
     });
-    
+
     console.log("=================================\n");
 
     return res.json({
