@@ -152,7 +152,7 @@ const BPharm = () => {
   const [mousePositions, setMousePositions] = useState({});
   
   // ========== API STATES ==========
-  const [units, setUnits] = useState([]); // DYNAMIC UNITS from admin
+  const [units, setUnits] = useState([]);
   const [unitContent, setUnitContent] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
   const [user, setUser] = useState(null);
@@ -164,7 +164,6 @@ const BPharm = () => {
 
   // ========== GET SUBJECTS FOR SELECTED SEMESTER ==========
   const getAvailableSubjects = () => {
-    // Only semester 1 has subjects for now
     if (selectedSemester === 1) {
       return SEMESTER_1_SUBJECTS;
     }
@@ -191,7 +190,7 @@ const BPharm = () => {
       const fetchedUnits = res.data?.data || [];
       setUnits(fetchedUnits);
       
-      // If units exist and no unit selected, select first one
+      // Only auto-select if no unit is selected
       if (fetchedUnits.length > 0 && !selectedUnit) {
         setSelectedUnit(fetchedUnits[0]);
       }
@@ -296,8 +295,19 @@ const BPharm = () => {
     setUnitContent([]);
   };
 
+  // ✅ FIXED: Toggle Logic for Unit Click
   const handleUnitClick = (unit) => {
     if (!unit?.id) return;
+
+    // If same unit is clicked, deselect it (toggle off)
+    if (selectedUnit?.id === unit.id) {
+      setSelectedUnit(null);
+      setUnitContent([]);
+      toast.info(`📚 ${unit.name} closed`);
+      return;
+    }
+
+    // Different unit selected
     setSelectedUnit(unit);
     setUnitContent([]);
     toast.success(`📚 ${unit.name} selected!`);
@@ -605,7 +615,6 @@ const BPharm = () => {
     const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
     const allSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
-    // Only semester 1 has data for now
     const hasData = (sem) => sem === 1;
 
     return (
@@ -874,7 +883,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== UNIT STEP - DYNAMIC UNITS FROM ADMIN ==========
+  // ========== UNIT STEP - WITH TOGGLE SUPPORT ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
@@ -933,7 +942,6 @@ const BPharm = () => {
               const cardId = `unit-${unit.id}`;
               const isSelected = selectedUnit?.id === unit.id;
               
-              // Get content for this unit
               const content = unitContent.filter(item => Number(item.unit) === Number(unit.id));
               
               return (
