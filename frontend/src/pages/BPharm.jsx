@@ -190,7 +190,6 @@ const BPharm = () => {
       const fetchedUnits = res.data?.data || [];
       setUnits(fetchedUnits);
       
-      // Only auto-select if no unit is selected
       if (fetchedUnits.length > 0 && !selectedUnit) {
         setSelectedUnit(fetchedUnits[0]);
       }
@@ -295,7 +294,7 @@ const BPharm = () => {
     setUnitContent([]);
   };
 
-  // ✅ FIXED: Toggle Logic for Unit Click
+  // ✅ TOGGLE LOGIC: Click to open/close unit
   const handleUnitClick = (unit) => {
     if (!unit?.id) return;
 
@@ -522,7 +521,7 @@ const BPharm = () => {
     toast.info("💎 Premium purchase flow - Coming soon!");
   };
 
-  // ========== RENDER FUNCTIONS ==========
+  // ========== RENDER CATEGORY STEP ==========
   const renderCategoryStep = () => {
     return (
       <div className="animate-slide-up">
@@ -609,7 +608,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== SEMESTER STEP ==========
+  // ========== RENDER SEMESTER STEP ==========
   const renderSemesterStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
     const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
@@ -748,7 +747,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== SUBJECT STEP ==========
+  // ========== RENDER SUBJECT STEP ==========
   const renderSubjectStep = () => {
     const subjects = getAvailableSubjects();
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
@@ -883,7 +882,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== UNIT STEP - WITH TOGGLE SUPPORT ==========
+  // ========== RENDER UNIT STEP - WITH PROPER UNIT FILTERING ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
@@ -942,7 +941,12 @@ const BPharm = () => {
               const cardId = `unit-${unit.id}`;
               const isSelected = selectedUnit?.id === unit.id;
               
-              const content = unitContent.filter(item => Number(item.unit) === Number(unit.id));
+              // ✅ CRITICAL FIX: Filter content ONLY for this specific unit
+              const content = unitContent.filter(item => {
+                const itemUnit = Number(item?.unit);
+                const unitId = Number(unit?.id);
+                return itemUnit === unitId;
+              });
               
               return (
                 <div
@@ -1011,6 +1015,7 @@ const BPharm = () => {
                         </div>
                       )}
                       
+                      {/* ✅ Unit-specific content - ONLY shows if this unit is selected */}
                       {isSelected && content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
