@@ -169,11 +169,7 @@ const BPharm = () => {
     return [];
   };
 
-  // ========== FETCH UNITS FROM ADMIN - REMOVED, using documents only ==========
-  // fetchUnits function removed - now units are derived from documents only
-
   // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
-  // Fetch every document for this subject once.
   // Units are derived from documents - this ensures Unit 1, Unit 2, etc. all appear
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject) {
@@ -208,6 +204,7 @@ const BPharm = () => {
 
       if (requestId !== contentRequestIdRef.current) return;
 
+      // Handle both response formats
       const rawContent = Array.isArray(res.data)
         ? res.data
         : Array.isArray(res.data?.data)
@@ -240,7 +237,7 @@ const BPharm = () => {
       // Units ko sorted order mein set karo (1, 2, 3, 4, ...)
       const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
       
-      // Directly units set karo - fetchUnits() call nahi karenge
+      // Directly units set karo
       setUnits(derivedUnits);
       
     } catch (error) {
