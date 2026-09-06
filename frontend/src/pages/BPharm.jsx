@@ -144,7 +144,6 @@ const BPharm = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const [selectedUnit, setSelectedUnit] = useState(null);
   
   const [loading, setLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
@@ -189,19 +188,18 @@ const BPharm = () => {
 
       const fetchedUnits = res.data?.data || [];
       setUnits(fetchedUnits);
-      
-      if (fetchedUnits.length > 0 && !selectedUnit) {
-        setSelectedUnit(fetchedUnits[0]);
-      }
     } catch (error) {
       console.error("Failed to fetch units:", error);
       setUnits([]);
     }
   };
 
-  // ========== FETCH UNIT CONTENT ==========
+  // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
+  // Fetch every document for this subject once.
+  // The render section places each document only in the Unit whose
+  // number matches document.unit.
   const fetchUnitContent = async () => {
-    if (!selectedCategory || !selectedSemester || !selectedSubject || !selectedUnit?.id) {
+    if (!selectedCategory || !selectedSemester || !selectedSubject) {
       setUnitContent([]);
       return;
     }
@@ -224,20 +222,25 @@ const BPharm = () => {
           course: "B.Pharm",
           category: selectedCategory,
           semester: selectedSemester,
-          subject: selectedSubject,
-          unit: selectedUnit.id
+          subject: selectedSubject
         },
         signal: controller.signal
       });
 
       if (requestId !== contentRequestIdRef.current) return;
 
-      const rawContent = Array.isArray(res.data) ? res.data : [];
+      const rawContent = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+
       setUnitContent(rawContent);
     } catch (error) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
       if (requestId !== contentRequestIdRef.current) return;
-      console.error("Failed to fetch unit content:", error);
+
+      console.error("Failed to fetch subject content:", error);
       setUnitContent([]);
     } finally {
       if (requestId === contentRequestIdRef.current) {
@@ -246,25 +249,16 @@ const BPharm = () => {
     }
   };
 
-  // ========== EFFECT: Fetch units when subject changes ==========
+  // ========== EFFECT: Fetch units + ALL documents when subject changes ==========
   useEffect(() => {
     if (selectedCategory && selectedSemester && selectedSubject) {
       fetchUnits();
+      fetchUnitContent();
     } else {
       setUnits([]);
-      setSelectedUnit(null);
       setUnitContent([]);
     }
   }, [selectedCategory, selectedSemester, selectedSubject]);
-
-  // ========== EFFECT: Fetch content when unit changes ==========
-  useEffect(() => {
-    if (selectedCategory && selectedSemester && selectedSubject && selectedUnit?.id) {
-      fetchUnitContent();
-    } else {
-      setUnitContent([]);
-    }
-  }, [selectedCategory, selectedSemester, selectedSubject, selectedUnit?.id]);
 
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
@@ -272,7 +266,6 @@ const BPharm = () => {
     setCurrentStep(2);
     setSelectedSemester(null);
     setSelectedSubject(null);
-    setSelectedUnit(null);
     setUnits([]);
     setUnitContent([]);
   };
@@ -281,7 +274,6 @@ const BPharm = () => {
     setSelectedSemester(semester);
     setCurrentStep(3);
     setSelectedSubject(null);
-    setSelectedUnit(null);
     setUnits([]);
     setUnitContent([]);
   };
@@ -289,27 +281,8 @@ const BPharm = () => {
   const handleSubjectClick = (subject) => {
     setSelectedSubject(subject);
     setCurrentStep(4);
-    setSelectedUnit(null);
     setUnits([]);
     setUnitContent([]);
-  };
-
-  // ✅ TOGGLE LOGIC: Click to open/close unit
-  const handleUnitClick = (unit) => {
-    if (!unit?.id) return;
-
-    // If same unit is clicked, deselect it (toggle off)
-    if (selectedUnit?.id === unit.id) {
-      setSelectedUnit(null);
-      setUnitContent([]);
-      toast.info(`📚 ${unit.name} closed`);
-      return;
-    }
-
-    // Different unit selected
-    setSelectedUnit(unit);
-    setUnitContent([]);
-    toast.success(`📚 ${unit.name} selected!`);
   };
 
   const goBack = () => {
@@ -322,8 +295,7 @@ const BPharm = () => {
     } else if (currentStep === 4) {
       setCurrentStep(3);
       setSelectedSubject(null);
-      setSelectedUnit(null);
-      setUnits([]);
+        setUnits([]);
       setUnitContent([]);
     }
   };
@@ -333,7 +305,6 @@ const BPharm = () => {
     setSelectedCategory(null);
     setSelectedSemester(null);
     setSelectedSubject(null);
-    setSelectedUnit(null);
     setUnits([]);
     setUnitContent([]);
   };
@@ -882,7 +853,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER UNIT STEP - WITH PROPER UNIT FILTERING ==========
+  // ========== RENDER UNIT STEP - EACH UNIT SHOWS ONLY ITS OWN DOCUMENTS ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
 
@@ -939,7 +910,6 @@ const BPharm = () => {
             {units.map((unit, index) => {
               const colors = unitColors[index % unitColors.length];
               const cardId = `unit-${unit.id}`;
-              const isSelected = selectedUnit?.id === unit.id;
               
               // ✅ CRITICAL FIX: Filter content ONLY for this specific unit
               const content = unitContent.filter(item => {
@@ -951,7 +921,6 @@ const BPharm = () => {
               return (
                 <div
                   key={unit.id}
-                  onClick={() => handleUnitClick(unit)}
                   className={`group relative cursor-pointer animate-pop`}
                   style={{ animationDelay: `${index * 0.06}s` }}
                   onMouseEnter={() => setHoveredCard(cardId)}
@@ -965,7 +934,7 @@ const BPharm = () => {
                     }}
                   ></div>
 
-                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 ${isSelected ? 'border-emerald-500 shadow-2xl scale-105' : 'border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3'} overflow-hidden group`}>
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
                     
                     <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                       <div className="absolute inset-0 rounded-2xl" style={{
@@ -1015,8 +984,8 @@ const BPharm = () => {
                         </div>
                       )}
                       
-                      {/* ✅ Unit-specific content - ONLY shows if this unit is selected */}
-                      {isSelected && content.length > 0 && (
+                      {/* Every document is displayed inside its matching Unit card */}
+                      {content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
                             📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
@@ -1064,29 +1033,19 @@ const BPharm = () => {
                         </div>
                       )}
 
-                      {isSelected && content.length === 0 && (
+                      {content.length === 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
                         </div>
                       )}
 
-                      {!isSelected && (
-                        <div className="mt-5 flex items-center justify-between">
-                          <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-emerald-600 transition-colors duration-300 flex items-center gap-1">
-                            Click to select
-                            <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
-                          </span>
-                          <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
-                            <ArrowRight className="text-white" size={16} />
-                          </div>
-                        </div>
-                      )}
+
                     </div>
 
-                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform ${isSelected ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'} transition-transform duration-500 rounded-b-2xl`}></div>
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
 
                     <div className="absolute top-4 right-4">
-                      <div className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-gray-300 group-hover:bg-gradient-to-r group-hover:bg-emerald-500'} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
                     </div>
                   </div>
                 </div>
