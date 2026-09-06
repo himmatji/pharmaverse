@@ -186,8 +186,30 @@ const BPharm = () => {
         }
       });
 
-      const fetchedUnits = res.data?.data || [];
-      setUnits(fetchedUnits);
+      // Normalize every unit returned by the backend.
+      // The numeric `id` is the ONLY source of truth for the public label.
+      // Never allow legacy `units[].name` metadata such as "Unit 2" to rename
+      // a document whose actual unit is 1.
+      const fetchedUnits = Array.isArray(res.data?.data)
+        ? res.data.data
+            .map((unit) => {
+              const id = Number(unit?.id);
+              if (!Number.isInteger(id) || id <= 0) return null;
+
+              return {
+                id,
+                name: `Unit ${id}`,
+                topics: []
+              };
+            })
+            .filter(Boolean)
+        : [];
+
+      setUnits(
+        Array.from(
+          new Map(fetchedUnits.map((unit) => [unit.id, unit])).values()
+        ).sort((a, b) => a.id - b.id)
+      );
     } catch (error) {
       console.error("Failed to fetch units:", error);
       setUnits([]);
@@ -257,29 +279,15 @@ const BPharm = () => {
         })
         .filter(Boolean);
 
-      setUnits((currentUnits) => {
-        const map = new Map();
+      // IMPORTANT: replace the unit list instead of merging with the
+      // `/public/units` response. Older records can contain stale names
+      // (for example id=1 but name="Unit 2"). The document `unit` field
+      // is authoritative, so the visible label must always be `Unit ${id}`.
+      const uniqueDerivedUnits = Array.from(
+        new Map(derivedUnits.map((unit) => [unit.id, unit])).values()
+      ).sort((a, b) => a.id - b.id);
 
-        for (const unit of currentUnits || []) {
-          const id = Number(unit?.id);
-          if (Number.isInteger(id) && id > 0) {
-            map.set(id, {
-              ...unit,
-              id,
-              name: unit?.name || `Unit ${id}`,
-              topics: Array.isArray(unit?.topics) ? unit.topics : []
-            });
-          }
-        }
-
-        for (const unit of derivedUnits) {
-          if (!map.has(unit.id)) {
-            map.set(unit.id, unit);
-          }
-        }
-
-        return Array.from(map.values()).sort((a, b) => a.id - b.id);
-      });
+      setUnits(uniqueDerivedUnits);
     } catch (error) {
       if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
       if (requestId !== contentRequestIdRef.current) return;
