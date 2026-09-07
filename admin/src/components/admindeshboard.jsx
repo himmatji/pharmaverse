@@ -201,6 +201,163 @@ const BPHARM_SUBJECTS = {
   ]
 };
 
+// ========== D.PHARM SUBJECTS ==========
+const DPHARM_SUBJECTS = {
+  1: [
+    "Pharmaceutics",
+    "Pharmaceutical Chemistry",
+    "Pharmacognosy",
+    "Human Anatomy & Physiology",
+    "Social Pharmacy"
+  ],
+  2: [
+    "Pharmacology",
+    "Community Pharmacy & Management",
+    "Biochemistry & Clinical Pathology",
+    "Pharmacotherapeutics",
+    "Hospital & Clinical Pharmacy",
+    "Pharmacy Law & Ethics"
+  ]
+};
+
+// ========== M.PHARM SUBJECTS ==========
+const MPHARM_SUBJECTS = {
+  1: [
+    "Modern Pharmaceutics",
+    "Advanced Pharmacognosy",
+    "Pharmaceutical Analysis",
+    "Pharmacology & Toxicology",
+    "Pharmaceutical Regulatory Science"
+  ],
+  2: [
+    "Pharmaceutical Biotechnology",
+    "Clinical Pharmacy",
+    "Pharmaceutical Quality Assurance",
+    "Pharmaceutical Marketing",
+    "Pharmaceutical Nanotechnology"
+  ],
+  3: [
+    "Advanced Medicinal Chemistry",
+    "Pharmaceutical Validation",
+    "Pharmacoepidemiology",
+    "Pharmaceutical Packaging",
+    "Drug Discovery"
+  ],
+  4: [
+    "Pharmaceutical Management",
+    "Pharmaceutical Intellectual Property",
+    "Pharmaceutical Research",
+    "Pharmaceutical Ethics",
+    "Pharmaceutical Informatics"
+  ]
+};
+
+// ========== PHARM.D SUBJECTS ==========
+const PHARMD_SUBJECTS = {
+  1: [
+    "Human Anatomy & Physiology",
+    "Pharmaceutics",
+    "Pharmaceutical Chemistry",
+    "Pharmacognosy",
+    "Social Pharmacy"
+  ],
+  2: [
+    "Pathology",
+    "Pharmacology",
+    "Clinical Pharmacy",
+    "Pharmaceutical Analysis",
+    "Pharmacy Practice"
+  ],
+  3: [
+    "Pharmacotherapeutics",
+    "Hospital Pharmacy",
+    "Biopharmaceutics",
+    "Pharmacokinetics",
+    "Pharmaceutical Jurisprudence"
+  ],
+  4: [
+    "Clinical Pharmacotherapeutics",
+    "Pharmacovigilance",
+    "Pharmaceutical Management",
+    "Pharmaceutical Biotechnology",
+    "Drug Interactions"
+  ],
+  5: [
+    "Advanced Clinical Pharmacy",
+    "Pharmacoeconomics",
+    "Pharmaceutical Research",
+    "Ethics in Pharmacy",
+    "Public Health Pharmacy"
+  ],
+  6: [
+    "Pharmacy Practice Residency",
+    "Clinical Research",
+    "Pharmaceutical Policy",
+    "Pharmaceutical Informatics",
+    "Pharmaceutical Quality"
+  ],
+  7: [
+    "Advanced Pharmacotherapeutics",
+    "Clinical Trials",
+    "Pharmaceutical Leadership",
+    "Pharmaceutical Marketing",
+    "Pharmaceutical Regulations"
+  ],
+  8: [
+    "Pharmacy Practice Management",
+    "Clinical Decision Making",
+    "Pharmaceutical Entrepreneurship",
+    "Pharmaceutical Innovation",
+    "Advanced Clinical Practice"
+  ]
+};
+
+// ========== PHD SUBJECTS ==========
+const PHD_SUBJECTS = {
+  1: [
+    "Research Methodology",
+    "Advanced Pharmaceutical Sciences",
+    "Pharmaceutical Analysis",
+    "Biostatistics",
+    "Scientific Writing"
+  ],
+  2: [
+    "Advanced Pharmacology",
+    "Pharmaceutical Technology",
+    "Pharmaceutical Chemistry",
+    "Pharmacognosy",
+    "Pharmaceutical Management"
+  ],
+  3: [
+    "Clinical Research",
+    "Pharmaceutical Biotechnology",
+    "Pharmaceutical Quality",
+    "Pharmaceutical Marketing",
+    "Pharmaceutical Ethics"
+  ],
+  4: [
+    "Pharmaceutical Nanotechnology",
+    "Pharmaceutical Informatics",
+    "Pharmaceutical Policy",
+    "Pharmaceutical Leadership",
+    "Pharmaceutical Innovation"
+  ],
+  5: [
+    "Advanced Research Methods",
+    "Pharmaceutical Sustainability",
+    "Pharmaceutical Entrepreneurship",
+    "Pharmaceutical Regulations",
+    "Pharmaceutical Practice"
+  ],
+  6: [
+    "Pharmaceutical Thesis",
+    "Pharmaceutical Defense",
+    "Pharmaceutical Publication",
+    "Pharmaceutical Presentation",
+    "Pharmaceutical Collaboration"
+  ]
+};
+
 const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
 };
@@ -261,7 +418,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     category: "",
     semester: "",
     subject: "",
-    unit: "",  // ✅ Unit field added
+    unit: "",
+    language: "", // ✅ NEW: Language field for D.Pharm
     units: [{ id: 1, name: "Unit 1", topics: [""] }],
     title: "",
     description: "",
@@ -798,8 +956,73 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }));
   };
 
+  // ========== GET SUBJECTS BASED ON BRANCH ==========
+  const getSubjectsForBranch = () => {
+    const branchName = getBranchName();
+    const semesterKey = uploadForm.semester;
+
+    if (!semesterKey) return [];
+
+    switch (branchName) {
+      case "B.Pharm":
+        return BPHARM_SUBJECTS[semesterKey] || [];
+      case "D.Pharm":
+        return DPHARM_SUBJECTS[semesterKey] || [];
+      case "M.Pharm":
+        return MPHARM_SUBJECTS[semesterKey] || [];
+      case "Pharm.D":
+        return PHARMD_SUBJECTS[semesterKey] || [];
+      case "PhD":
+        return PHD_SUBJECTS[semesterKey] || [];
+      default:
+        return BPHARM_SUBJECTS[semesterKey] || [];
+    }
+  };
+
+  // ========== GET SEMESTER/YEAR OPTIONS BASED ON BRANCH ==========
+  const getBranchOptions = () => {
+    const branchName = getBranchName();
+    const config = COURSE_CONFIG[branchName];
+    
+    if (config?.type === "year") {
+      return [
+        { value: "1", label: "1st Year" },
+        { value: "2", label: "2nd Year" }
+      ];
+    }
+    
+    // Default semester options
+    return [
+      { value: "1", label: "Semester 1" },
+      { value: "2", label: "Semester 2" },
+      { value: "3", label: "Semester 3" },
+      { value: "4", label: "Semester 4" },
+      { value: "5", label: "Semester 5" },
+      { value: "6", label: "Semester 6" },
+      { value: "7", label: "Semester 7" },
+      { value: "8", label: "Semester 8" }
+    ];
+  };
+
   const getSubjectsForSemester = () => {
-    if (!uploadForm.semester) return [];
+    const branchName = getBranchName();
+    
+    if (branchName === "D.Pharm") {
+      return DPHARM_SUBJECTS[uploadForm.semester] || [];
+    }
+    
+    if (branchName === "M.Pharm") {
+      return MPHARM_SUBJECTS[uploadForm.semester] || [];
+    }
+    
+    if (branchName === "Pharm.D") {
+      return PHARMD_SUBJECTS[uploadForm.semester] || [];
+    }
+    
+    if (branchName === "PhD") {
+      return PHD_SUBJECTS[uploadForm.semester] || [];
+    }
+    
     return BPHARM_SUBJECTS[uploadForm.semester] || [];
   };
 
@@ -855,15 +1078,22 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("Please select a category");
       return;
     }
+    
+    // ✅ Language validation for D.Pharm
+    const branchName = getBranchName();
+    if (branchName === "D.Pharm" && !uploadForm.language) {
+      alert("Please select a language (Hindi/English)");
+      return;
+    }
+    
     if (!uploadForm.semester) {
-      alert("Please select a semester");
+      alert("Please select a semester/year");
       return;
     }
     if (!uploadForm.subject) {
       alert("Please select a subject");
       return;
     }
-    // ✅ FIX: Unit validation
     if (!uploadForm.unit) {
       alert("Please select a unit");
       return;
@@ -889,7 +1119,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       formData.append("category", uploadForm.category);
       formData.append("semester", uploadForm.semester);
       formData.append("subject", uploadForm.subject);
-      formData.append("unit", uploadForm.unit); // ✅ Unit is now properly sent
+      formData.append("unit", uploadForm.unit);
+      formData.append("language", uploadForm.language || "english"); // ✅ Language send
       formData.append("units", JSON.stringify(uploadForm.units));
       formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
       formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
@@ -919,7 +1150,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           category: "",
           semester: "",
           subject: "",
-          unit: "", // ✅ Reset unit
+          unit: "",
+          language: "", // ✅ Reset language
           units: [{ id: 1, name: "Unit 1", topics: [""] }],
           title: "",
           description: "",
@@ -956,16 +1188,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       currency: 'INR',
       minimumFractionDigits: 0
     }).format(amount);
-  };
-
-  const getDifficultyColor = (difficulty) => {
-    switch(difficulty) {
-      case 'Easy': return 'bg-green-100 text-green-700';
-      case 'Medium': return 'bg-yellow-100 text-yellow-700';
-      case 'Hard': return 'bg-orange-100 text-orange-700';
-      case 'Expert': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
   };
 
   const isBranchTab = () => {
@@ -1044,10 +1266,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
-  // ========== RENDER UPLOAD TAB (Branch Click) ==========
+  // ========== RENDER UPLOAD TAB ==========
   const renderUploadTab = () => {
-    const subjects = getSubjectsForSemester();
     const branchName = getBranchName();
+    const subjects = getSubjectsForBranch();
+    const branchOptions = getBranchOptions();
+    const isYearBased = COURSE_CONFIG[branchName]?.type === "year";
+    const showLanguage = COURSE_CONFIG[branchName]?.showLanguage || false;
 
     const branchContent = notes.filter(n => n.branch === branchName || n.course === branchName);
 
@@ -1065,7 +1290,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload and manage content for {branchName}</p>
         </div>
 
-        {/* ========== SIMPLE UPLOAD FORM ========== */}
+        {/* ========== UPLOAD FORM ========== */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8">
           <div className="px-6 sm:px-8 py-5 border-b border-gray-100 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50">
             <div className="flex items-center justify-between gap-4">
@@ -1077,7 +1302,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800">Upload Content</h3>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
-                  Select where the file belongs, then upload it.
+                  {isYearBased ? "Select Language, Year, Subject & Unit" : "Select Semester, Subject & Unit"}
                 </p>
               </div>
               {uploadForm.unit && uploadForm.subject && (
@@ -1150,42 +1375,79 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Step 2: Semester + Subject */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Step 1.5: Language (Only for D.Pharm) */}
+              {showLanguage && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Semester</label>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">1.5</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Language</label>
+                    {uploadForm.language && (
+                      <span className="text-xs font-['Inter'] font-bold text-amber-600">
+                        {uploadForm.language === "hindi" ? "🇮🇳 Hindi" : "🇬🇧 English"} selected
+                      </span>
+                    )}
                   </div>
-                  <select
-                    value={uploadForm.semester}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50"
-                  >
-                    <option value="">Select semester</option>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                      <option key={sem} value={sem}>Semester {sem}</option>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {[
+                      { value: "hindi", label: "हिंदी (Hindi)", icon: "🇮🇳" },
+                      { value: "english", label: "English", icon: "🇬🇧" }
+                    ].map((lang) => (
+                      <button
+                        key={lang.value}
+                        type="button"
+                        onClick={() => setUploadForm(prev => ({ ...prev, language: lang.value }))}
+                        className={`p-3.5 rounded-2xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] text-left ${
+                          uploadForm.language === lang.value
+                            ? "border-amber-500 bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg scale-[1.02]"
+                            : "border-gray-200 bg-white hover:border-amber-300 hover:bg-amber-50 hover:-translate-y-0.5 text-gray-700"
+                        }`}
+                      >
+                        <span className="text-2xl">{lang.icon}</span>
+                        <span className="font-semibold text-sm">{lang.label}</span>
+                        {uploadForm.language === lang.value && <CheckCircle size={16} className="ml-auto" />}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
-                  </div>
-                  <select
-                    value={uploadForm.subject}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
-                    disabled={!uploadForm.semester}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">{uploadForm.semester ? "Select subject" : "Select semester first"}</option>
-                    {subjects.map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
-                    ))}
-                  </select>
+              {/* Step 2: Semester/Year */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">
+                    {isYearBased ? "Year" : "Semester"}
+                  </label>
                 </div>
+                <select
+                  value={uploadForm.semester}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50"
+                >
+                  <option value="">Select {isYearBased ? "year" : "semester"}</option>
+                  {branchOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Step 3: Subject */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
+                </div>
+                <select
+                  value={uploadForm.subject}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
+                  disabled={!uploadForm.semester}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option value="">{uploadForm.semester ? "Select subject" : `Select ${isYearBased ? "year" : "semester"} first`}</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Step 4: Unit */}
@@ -1368,7 +1630,18 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         <h4 className="font-['Space_Grotesk'] font-bold text-gray-800 truncate">{item.title}</h4>
                         <div className="flex flex-wrap gap-1 mt-2">
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.category}</span>
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">Sem {item.semester}</span>
+                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                            {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester}` : `Sem ${item.semester}`}
+                          </span>
+                          {item.language && (
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              item.language === "hindi" 
+                                ? "bg-orange-100 text-orange-700" 
+                                : "bg-blue-100 text-blue-700"
+                            }`}>
+                              {item.language === "hindi" ? "🇮🇳 Hindi" : "🇬🇧 English"}
+                            </span>
+                          )}
                           {item.isPremium && (
                             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Premium</span>
                           )}

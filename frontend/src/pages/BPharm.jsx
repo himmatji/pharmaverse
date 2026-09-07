@@ -487,7 +487,6 @@ const BPharm = () => {
         100% { transform: scale(1); opacity: 1; }
       }
       
-      /* ===== PREMIUM SEMESTER CARD ANIMATIONS ===== */
       @keyframes premiumFloat {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-8px); }
@@ -523,6 +522,27 @@ const BPharm = () => {
         0% { transform: scale(1); }
         50% { transform: scale(1.1) rotate(-3deg); }
         100% { transform: scale(1) rotate(0deg); }
+      }
+      
+      @keyframes floatText {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+      }
+      
+      @keyframes shimmerText {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+      
+      @keyframes pulseRing {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.3); opacity: 0; }
+      }
+      
+      @keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
       }
       
       .premium-card {
@@ -639,6 +659,8 @@ const BPharm = () => {
       .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
       .animate-border-pulse { animation: borderPulse 2s ease-in-out infinite; }
       .animate-pop { animation: pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-float-text { animation: floatText 3s ease-in-out infinite; }
+      .animate-gradient { animation: gradientMove 8s ease-in-out infinite; background-size: 200% 200%; }
       
       .shimmer-bg {
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
@@ -650,6 +672,10 @@ const BPharm = () => {
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+      }
+      
+      .pulse-ring {
+        animation: pulseRing 2s ease-out infinite;
       }
       
       @media (max-width: 768px) {
@@ -752,14 +778,15 @@ const BPharm = () => {
     return (
       <div className="animate-slide-up">
         <div className="text-center mb-12 sm:mb-16">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 animate-float-text">
             <Sparkles className="text-sky-600" size={16} />
             <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-wider uppercase">B.Pharm</span>
+            <Sparkles className="text-sky-600" size={16} />
           </div>
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
-            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Category</span>
+            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">Category</span>
           </h1>
-          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4"></div>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium">Choose what you want to study</p>
         </div>
 
@@ -799,7 +826,7 @@ const BPharm = () => {
                   </div>
 
                   <div className="absolute top-4 right-4 z-10">
-                    <span className={`text-[10px] font-['Inter'] font-bold px-3 py-1 rounded-full bg-gradient-to-r ${category.gradient} text-white shadow-lg`}>
+                    <span className={`text-[10px] font-['Inter'] font-bold px-3 py-1 rounded-full bg-gradient-to-r ${category.gradient} text-white shadow-lg animate-pulse`}>
                       {category.badge}
                     </span>
                   </div>
@@ -817,7 +844,7 @@ const BPharm = () => {
                         {category.stats}
                       </span>
                       <span className="w-px h-4 bg-gray-300"></span>
-                      <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                      <span className="flex items-center gap-1 text-emerald-600 font-medium group-hover:gap-2 transition-all duration-300">
                         <Zap size={14} />
                         Click to Explore
                       </span>
@@ -853,7 +880,7 @@ const BPharm = () => {
             Back
           </button>
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find(c => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md`}>
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find(c => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
@@ -861,15 +888,15 @@ const BPharm = () => {
         </div>
 
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
             <Sparkles className="text-sky-600" size={16} />
             <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 2 of 3</span>
             <Sparkles className="text-sky-600" size={16} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
-            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">Semester</span>
+            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">Semester</span>
           </h2>
-          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4"></div>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             All semesters are unlocked!
@@ -911,7 +938,6 @@ const BPharm = () => {
 
                   {isAvailable && (
                     <>
-                      {/* Premium Glow Ring */}
                       <div 
                         className="glow-ring"
                         style={{
@@ -920,10 +946,8 @@ const BPharm = () => {
                         }}
                       ></div>
                       
-                      {/* Shine Overlay */}
                       <div className="shine-overlay"></div>
                       
-                      {/* Border Animation */}
                       <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
                         <div className="absolute inset-0 rounded-2xl" style={{
                           background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
@@ -931,7 +955,6 @@ const BPharm = () => {
                         }}></div>
                       </div>
 
-                      {/* Premium Sparkle Dots */}
                       <div className="absolute top-2 right-2 sparkle-dot">
                         <Sparkles size={12} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-70`} />
                       </div>
@@ -939,10 +962,8 @@ const BPharm = () => {
                         <Sparkles size={8} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-50`} />
                       </div>
                       
-                      {/* Inner Glass Effect */}
                       <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
                       
-                      {/* Floating Particles */}
                       <div className="absolute top-1/4 right-1 w-2 h-2 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '1s' }}></div>
                       <div className="absolute bottom-1/4 left-1 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
                     </>
@@ -992,19 +1013,19 @@ const BPharm = () => {
         </div>
 
         <div className="mt-10 flex justify-center items-center gap-4 text-sm flex-wrap">
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '0.5s' }}>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 animate-pulse"></div>
               <span className="font-['Inter'] font-bold text-gray-700">8</span>
               <span className="font-['Inter'] text-gray-500">Semesters Available</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '1s' }}>
             <Sparkles size={16} className="text-emerald-500" />
             <span className="font-['Inter'] font-bold text-emerald-600">All Unlocked</span>
             <Sparkles size={16} className="text-emerald-500" />
           </div>
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '1.5s' }}>
             <Gem size={16} className="text-purple-500" />
             <span className="font-['Inter'] font-bold text-purple-600">Premium Content</span>
           </div>
@@ -1039,15 +1060,15 @@ const BPharm = () => {
         </div>
 
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-purple-600" size={18} />
             <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 3 of 3</span>
             <Trophy className="text-purple-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
-            Select Your <span className={`bg-gradient-to-r ${categoryGradient} bg-clip-text text-transparent`}>Subject</span>
+            Select Your <span className={`bg-gradient-to-r ${categoryGradient} bg-clip-text text-transparent animate-gradient`}>Subject</span>
           </h2>
-          <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryGradient} mx-auto rounded-full mt-4`}></div>
+          <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryGradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
             Choose a subject to continue
@@ -1100,7 +1121,7 @@ const BPharm = () => {
                           {subject}
                         </div>
                       </div>
-                      <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-[10px] font-['Inter'] font-bold shadow-lg`}>
+                      <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-[10px] font-['Inter'] font-bold shadow-lg animate-pulse`}>
                         {index + 1}
                       </div>
                     </div>
@@ -1137,7 +1158,7 @@ const BPharm = () => {
 
         {subjects.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Subjects Available</h3>
@@ -1175,15 +1196,15 @@ const BPharm = () => {
         </div>
 
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-emerald-600" size={18} />
             <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Select Unit</span>
             <Trophy className="text-emerald-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
-            Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">Unit</span>
+            Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Unit</span>
           </h2>
-          <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4"></div>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             {units.length > 0 ? `${units.length} Units Available` : "No units available yet"}
@@ -1193,7 +1214,7 @@ const BPharm = () => {
 
         {units.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Units Available</h3>
@@ -1250,7 +1271,7 @@ const BPharm = () => {
                         <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
                           {unit.name}
                         </div>
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg`}>
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
                           {unit.id || index + 1}
                         </div>
                       </div>
@@ -1286,7 +1307,7 @@ const BPharm = () => {
                       
                       {content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
-                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
+                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3 animate-float-text">
                             📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
                           </p>
 
@@ -1294,10 +1315,10 @@ const BPharm = () => {
                             {content.map((item) => (
                               <div
                                 key={item._id}
-                                className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm"
+                                className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
                               >
                                 <div className="flex items-center gap-2 mb-2">
-                                  <FileText size={16} className="text-blue-600 shrink-0" />
+                                  <FileText size={16} className="text-blue-600 shrink-0 animate-pulse" />
                                   <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
                                     {item.title || item.fileName || "Document"}
                                   </span>
@@ -1309,7 +1330,7 @@ const BPharm = () => {
                                       e.stopPropagation();
                                       handleView(item);
                                     }}
-                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
                                   >
                                     <Eye size={14} />
                                     Preview
@@ -1320,7 +1341,7 @@ const BPharm = () => {
                                       e.stopPropagation();
                                       handleDownload(item);
                                     }}
-                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg transition-all"
+                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
                                   >
                                     <Download size={14} />
                                     Download
@@ -1377,11 +1398,11 @@ const BPharm = () => {
                   {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
                   {isActive && (<div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>)}
                 </div>
-                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? 'text-blue-600 font-bold' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
+                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? 'text-blue-600 font-bold animate-pulse' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
                   {step.label}
                 </span>
               </div>
-              {index < steps.length - 1 && (<div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400' : 'bg-gray-200'}`}></div>)}
+              {index < steps.length - 1 && (<div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400 animate-gradient' : 'bg-gray-200'}`}></div>)}
             </div>
           );
         })}
@@ -1390,7 +1411,7 @@ const BPharm = () => {
   };
 
   // ============================================================
-  // MAIN RENDER
+  // MAIN RENDER - FINAL WITH PREMIUM ANIMATIONS
   // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white">
@@ -1425,7 +1446,7 @@ const BPharm = () => {
 
       {isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base">
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
             <Gem size={18} className="text-yellow-300" />
             Premium Member
             <Shield size={18} className="text-yellow-300" />
@@ -1433,25 +1454,87 @@ const BPharm = () => {
         </div>
       )}
 
-      <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-        <div className="relative h-[260px] sm:h-[320px] md:h-[450px] w-full">
-          <div className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center" style={{ backgroundImage: `url(${bannerImg})`, backgroundPosition: 'center 40%' }}>
-            <div className="absolute inset-0 bg-black/35"></div>
+      {/* ============================================================
+          PREMIUM HEADER - WITH PREMIUM ANIMATIONS
+          ============================================================ */}
+      <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 sm:mt-20">
+        <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
+          
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+            style={{ 
+              backgroundImage: `url(${bannerImg})`,
+              backgroundPosition: 'center 8%',
+              backgroundSize: 'cover'
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-[#071426]/90 via-[#071426]/38 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#071426]/70 via-transparent to-transparent"></div>
           </div>
-          <div className="absolute left-0 top-0 h-full w-[62%] bg-[#04172c]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
-          <div className="absolute left-[18%] top-0 h-full w-[22%] bg-[#0a2747]/80 backdrop-blur-md" style={{ clipPath: "polygon(35% 0, 100% 0, 65% 100%, 0% 100%)" }}></div>
-          <div className="relative z-20 flex items-center h-full px-4 sm:px-6 md:px-20">
-            <div className="max-w-[520px]">
-              <h1 className="text-white text-3xl sm:text-4xl md:text-7xl font-['Space_Grotesk'] font-extrabold leading-tight mb-3 sm:mb-5">
-                Bachelor<br /><span className="text-sky-400">of Pharmacy</span>
+
+          {/* Animated Gradient Overlay */}
+          <div className="absolute left-0 top-0 h-full w-[48%] bg-gradient-to-r from-[#071426]/78 via-[#0f2847]/38 to-transparent pointer-events-none"></div>
+          
+          {/* Animated Particles */}
+          <div className="absolute top-20 right-10 w-2 h-2 rounded-full bg-blue-400/30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute top-40 right-20 w-3 h-3 rounded-full bg-purple-400/20 animate-pulse" style={{ animationDelay: '1.2s' }}></div>
+          <div className="absolute bottom-20 right-30 w-1.5 h-1.5 rounded-full bg-cyan-400/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+          
+          {/* Content */}
+          <div className="relative z-20 flex items-end h-full px-4 sm:px-8 md:px-16 lg:px-24 pb-10 sm:pb-12 md:pb-14 lg:pb-16">
+            <div className="max-w-2xl animate-slide-up">
+              
+              {/* Badge with Pulse */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/10 mb-4 animate-float-text">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+                <span className="text-xs font-['Inter'] font-semibold text-blue-300 tracking-widest uppercase">
+                  B.Pharm Program
+                </span>
+                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
+              </div>
+
+              {/* Title with Gradient Animation */}
+              <h1 className="text-white font-['Space_Grotesk'] font-extrabold leading-[1.1]">
+                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: '0.3s' }}>
+                  Bachelor of
+                </span>
+                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
+                  Pharmacy
+                </span>
               </h1>
-              <p className="text-gray-300 text-xs sm:text-sm md:text-lg font-['Inter'] leading-relaxed mb-5 sm:mb-8 max-w-[500px]">
+
+              {/* Decorative Line */}
+              <div className="flex items-center gap-4 mt-4 mb-4">
+                <div className="h-1 w-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-gradient"></div>
+                <div className="h-1 w-8 bg-gradient-to-r from-purple-400 to-cyan-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: '0.5s' }}></div>
+                <div className="h-1 w-4 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: '1s' }}></div>
+              </div>
+
+              {/* Description */}
+              <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: '0.6s' }}>
                 Complete Notes, Semester-wise PDFs, Practical Videos & Predictive Papers for B.Pharm Students.
               </p>
+
+              {/* CTA Button with Hover Animation */}
+              <button 
+                onClick={() => document.getElementById('content-start')?.scrollIntoView({ behavior: 'smooth' })}
+                className="mt-6 group inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-['Inter'] font-semibold text-sm hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 animate-float-text"
+                style={{ animationDelay: '0.9s' }}
+              >
+                <span>Explore Content</span>
+                <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform duration-300" />
+              </button>
             </div>
           </div>
+
+          {/* Bottom Fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-[#f0f7ff] via-[#f0f7ff]/45 to-transparent pointer-events-none"></div>
         </div>
       </div>
+
+      {/* Content Start Anchor */}
+      <div id="content-start"></div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
         

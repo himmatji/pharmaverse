@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
@@ -17,126 +17,545 @@ import {
   Eye,
   Crown,
   Sparkles,
-  Rocket
+  Rocket,
+  ArrowLeft,
+  CheckCircle,
+  Book,
+  Layers,
+  FolderOpen,
+  Zap,
+  Award,
+  Target,
+  Gem,
+  Shield,
+  Trophy,
+  ArrowRight,
+  HeartPulse,
+  Microscope,
+  Pill,
+  FlaskRound,
+  Users,
+  Stethoscope,
+  ChevronRight,
+  Code2,
+  MessageSquare,
+  Atom,
+  Leaf,
+  Beaker
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
+
+// ========== CATEGORIES ==========
+const categories = [
+  { 
+    id: "Notes", 
+    label: "Notes", 
+    icon: BookOpen, 
+    gradient: "from-blue-600 via-indigo-600 to-purple-600",
+    bgGradient: "from-blue-50 via-indigo-50 to-purple-50",
+    glowColor: "rgba(99, 102, 241, 0.3)",
+    description: "Click below to view Notes by Imperfect Pharmacy",
+    stats: "500+ PDFs",
+    badge: "Most Popular"
+  },
+  { 
+    id: "Exam Crash Course", 
+    label: "Exam Crash Course", 
+    icon: Rocket, 
+    gradient: "from-orange-500 via-amber-500 to-yellow-500",
+    bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
+    glowColor: "rgba(251, 146, 60, 0.3)",
+    description: "Click below to view Exam Crash Course by Imperfect Pharmacy",
+    stats: "8 Semesters",
+    badge: "🔥 Crash"
+  },
+  { 
+    id: "PYQs", 
+    label: "PYQs", 
+    icon: Brain, 
+    gradient: "from-rose-500 via-pink-500 to-purple-500",
+    bgGradient: "from-rose-50 via-pink-50 to-purple-50",
+    glowColor: "rgba(244, 63, 94, 0.3)",
+    description: "Click below to view PYQs by Imperfect Pharmacy",
+    stats: "1000+ Questions",
+    badge: "📝 Exam"
+  }
+];
+
+// ========== LANGUAGE OPTIONS ==========
+const languages = [
+  { id: "Hindi", label: "हिंदी", icon: Book, gradient: "from-orange-500 to-amber-500" },
+  { id: "English", label: "English", icon: Book, gradient: "from-blue-500 to-cyan-500" }
+];
+
+// ========== YEAR COLORS ==========
+const yearColors = [
+  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.5)", bg: "from-rose-50 to-pink-50", border: "border-rose-200" },
+  { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.5)", bg: "from-blue-50 to-cyan-50", border: "border-blue-200" }
+];
+
+// ========== SUBJECT COLORS ==========
+const subjectColors = [
+  { gradient: "from-violet-500 to-purple-500", glow: "rgba(139,92,246,0.2)", bg: "from-violet-50 to-purple-50" },
+  { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.2)", bg: "from-blue-50 to-cyan-50" },
+  { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16,185,129,0.2)", bg: "from-emerald-50 to-teal-50" },
+  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.2)", bg: "from-rose-50 to-pink-50" },
+  { gradient: "from-amber-500 to-orange-500", glow: "rgba(251,146,60,0.2)", bg: "from-amber-50 to-orange-50" },
+  { gradient: "from-cyan-500 to-sky-500", glow: "rgba(6,182,212,0.2)", bg: "from-cyan-50 to-sky-50" }
+];
+
+// ========== SUBJECT ICONS ==========
+const subjectIcons = [
+  { icon: Pill, color: "from-blue-100 to-cyan-100", textColor: "text-blue-600" },
+  { icon: FlaskRound, color: "from-emerald-100 to-teal-100", textColor: "text-emerald-600" },
+  { icon: Leaf, color: "from-green-100 to-emerald-100", textColor: "text-green-600" },
+  { icon: HeartPulse, color: "from-rose-100 to-pink-100", textColor: "text-rose-600" },
+  { icon: Users, color: "from-purple-100 to-indigo-100", textColor: "text-purple-600" },
+  { icon: Brain, color: "from-amber-100 to-orange-100", textColor: "text-amber-600" },
+  { icon: Stethoscope, color: "from-sky-100 to-blue-100", textColor: "text-sky-600" },
+  { icon: Microscope, color: "from-violet-100 to-purple-100", textColor: "text-violet-600" }
+];
+
+// ========== UNIT COLORS ==========
+const unitColors = [
+  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244,63,94,0.25)", bg: "from-rose-50 to-pink-50" },
+  { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59,130,246,0.25)", bg: "from-blue-50 to-cyan-50" },
+  { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16,185,129,0.25)", bg: "from-emerald-50 to-teal-50" },
+  { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139,92,246,0.25)", bg: "from-purple-50 to-indigo-50" },
+  { gradient: "from-orange-500 to-amber-500", glow: "rgba(251,146,60,0.25)", bg: "from-orange-50 to-amber-50" },
+  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" }
+];
+
+// ========== D.PHARM SUBJECTS BY YEAR ==========
+const DPHARM_SUBJECTS = {
+  1: [
+    "Pharmaceutics",
+    "Pharmaceutical Chemistry",
+    "Pharmacognosy",
+    "Human Anatomy & Physiology",
+    "Social Pharmacy"
+  ],
+  2: [
+    "Pharmacology",
+    "Community Pharmacy & Management",
+    "Biochemistry & Clinical Pathology",
+    "Pharmacotherapeutics",
+    "Hospital & Clinical Pharmacy",
+    "Pharmacy Law & Ethics"
+  ]
+};
 
 const DPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState(null);
+  // ========== STEP NAVIGATION ==========
+  const [currentStep, setCurrentStep] = useState(1);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedLanguage, setSelectedLanguage] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  
   const [loading, setLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
   
-  const [openYear, setOpenYear] = useState({});
-
-  const [notes, setNotes] = useState([]);
-  const [premiumVideos, setPremiumVideos] = useState([]);
-  const [freeVideos, setFreeVideos] = useState([]);
-  const [premiumPapers, setPremiumPapers] = useState([]);
-  const [freePapers, setFreePapers] = useState([]);
+  // ========== API STATES ==========
+  const [units, setUnits] = useState([]);
+  const [unitContent, setUnitContent] = useState([]);
   const [isPremium, setIsPremium] = useState(false);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  const [pdfsByYearHindi, setPdfsByYearHindi] = useState({});
-  const [pdfsByYearEnglish, setPdfsByYearEnglish] = useState({});
-  const [videosByYear, setVideosByYear] = useState({});
-  const [papersByYear, setPapersByYear] = useState({});
+  // ========== REQUEST CONTROL ==========
+  const contentRequestIdRef = useRef(0);
+  const contentAbortControllerRef = useRef(null);
 
-  const dpharmYears = [1, 2];
+  // ========== GET SUBJECTS FOR SELECTED YEAR ==========
+  const getAvailableSubjects = () => {
+    const year = Number(selectedYear);
+    return Array.isArray(DPHARM_SUBJECTS[year])
+      ? DPHARM_SUBJECTS[year]
+      : [];
+  };
 
-  // ========== STYLES - FIXED MEMORY LEAK ==========
+  // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
+  const fetchUnitContent = async () => {
+    if (!selectedCategory || !selectedYear || !selectedSubject) {
+      setUnitContent([]);
+      setUnits([]);
+      return;
+    }
+
+    const requestId = ++contentRequestIdRef.current;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
+    }
+
+    setUnitContent([]);
+    setUnits([]);
+
+    const controller = new AbortController();
+    contentAbortControllerRef.current = controller;
+
+    try {
+      const params = {
+        course: "D.Pharm",
+        category: selectedCategory,
+        year: selectedYear,
+        subject: selectedSubject
+      };
+
+      // Add language filter only for Notes & Exam Crash Course
+      if (selectedCategory !== "PYQs" && selectedLanguage) {
+        params.language = selectedLanguage;
+      }
+
+      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+        params,
+        signal: controller.signal
+      });
+
+      if (requestId !== contentRequestIdRef.current) return;
+
+      const rawContent = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+          ? res.data.data
+          : [];
+
+      setUnitContent(rawContent);
+
+      const unitMap = new Map();
+      
+      rawContent.forEach((item) => {
+        const unitValue = Number(item?.unit);
+        
+        if (Number.isInteger(unitValue) && unitValue > 0) {
+          if (!unitMap.has(unitValue)) {
+            unitMap.set(unitValue, {
+              id: unitValue,
+              name: `Unit ${unitValue}`,
+              topics: []
+            });
+          }
+        }
+      });
+
+      const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
+      
+      setUnits(derivedUnits);
+      
+    } catch (error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+      if (requestId !== contentRequestIdRef.current) return;
+
+      console.error("Failed to fetch subject content:", error);
+      setUnitContent([]);
+      setUnits([]);
+    } finally {
+      if (requestId === contentRequestIdRef.current) {
+        contentAbortControllerRef.current = null;
+      }
+    }
+  };
+
+  // ========== EFFECT: Fetch documents when subject changes ==========
+  useEffect(() => {
+    if (selectedCategory && selectedYear && selectedSubject) {
+      fetchUnitContent();
+    } else {
+      setUnits([]);
+      setUnitContent([]);
+    }
+  }, [selectedCategory, selectedLanguage, selectedYear, selectedSubject]);
+
+  // ========== HANDLERS ==========
+  const handleCategoryClick = (categoryId) => {
+    setSelectedCategory(categoryId);
+    setCurrentStep(2);
+    setSelectedLanguage(null);
+    setSelectedYear(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+  };
+
+  const handleLanguageClick = (languageId) => {
+    setSelectedLanguage(languageId);
+    setCurrentStep(3);
+    setSelectedYear(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+  };
+
+  const handleYearClick = (year) => {
+    setSelectedYear(year);
+    setCurrentStep(4);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+  };
+
+  const handleSubjectClick = (subject) => {
+    setSelectedSubject(subject);
+    setCurrentStep(5);
+    setUnits([]);
+    setUnitContent([]);
+  };
+
+  const goBack = () => {
+    if (currentStep === 2) {
+      setCurrentStep(1);
+      setSelectedCategory(null);
+    } else if (currentStep === 3) {
+      setCurrentStep(2);
+      setSelectedLanguage(null);
+    } else if (currentStep === 4) {
+      if (selectedCategory === "PYQs") {
+        setCurrentStep(3);
+      } else {
+        setCurrentStep(3);
+      }
+      setSelectedYear(null);
+    } else if (currentStep === 5) {
+      setCurrentStep(4);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+    }
+  };
+
+  const resetNavigation = () => {
+    setCurrentStep(1);
+    setSelectedCategory(null);
+    setSelectedLanguage(null);
+    setSelectedYear(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+  };
+
+  // ========== STYLES ==========
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
-      @keyframes cinematicReveal {
-        0% {
-          opacity: 0;
-          transform: translateY(40px) scale(0.96);
-        }
-        100% {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
+      @keyframes floatMedium {
+        0%, 100% { transform: translateY(0px) scale(1); }
+        50% { transform: translateY(-12px) scale(1.02); }
       }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
+      @keyframes shimmerSlide {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
       }
-      .animate-fadeIn {
-        animation: fadeIn 0.5s ease-out forwards;
+      @keyframes pulseGlow {
+        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
+        50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); }
+      }
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(60px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-40px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.7) rotate(-5deg); }
+        to { opacity: 1; transform: scale(1) rotate(0deg); }
+      }
+      @keyframes rotateGlow {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      @keyframes borderPulse {
+        0%, 100% { border-color: rgba(99,102,241,0.2); }
+        50% { border-color: rgba(99,102,241,0.6); }
+      }
+      @keyframes pop {
+        0% { transform: scale(0.8); opacity: 0; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      @keyframes premiumFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-8px); }
+      }
+      @keyframes premiumShine {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+      @keyframes premiumPulse {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+      }
+      @keyframes premiumBorderFlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @keyframes premiumSparkle {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+        50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+      }
+      @keyframes premiumNumberPop {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1) rotate(-3deg); }
+        100% { transform: scale(1) rotate(0deg); }
+      }
+      @keyframes floatText {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+      }
+      @keyframes gradientMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      .premium-card {
+        animation: premiumFloat 4s ease-in-out infinite;
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      
+      .premium-card::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 16px;
+        padding: 2px;
+        background: linear-gradient(90deg, 
+          rgba(99,102,241,0.3), 
+          rgba(168,85,247,0.3), 
+          rgba(236,72,153,0.3),
+          rgba(99,102,241,0.3)
+        );
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: premiumBorderFlow 6s ease-in-out infinite;
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      
+      .premium-card .glow-ring {
+        position: absolute;
+        inset: -4px;
+        border-radius: 18px;
+        background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), 
+          rgba(255,255,255,0.15) 0%,
+          transparent 60%
+        );
+        opacity: 0.6;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      
+      .premium-card .shine-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        background: linear-gradient(
+          135deg,
+          rgba(255,255,255,0.4) 0%,
+          rgba(255,255,255,0) 40%,
+          rgba(255,255,255,0) 60%,
+          rgba(255,255,255,0.2) 100%
+        );
+        background-size: 300% 100%;
+        animation: premiumShine 8s ease-in-out infinite;
+        pointer-events: none;
+      }
+      
+      .premium-card .sparkle-dot {
+        animation: premiumSparkle 3s ease-in-out infinite;
+      }
+      
+      .premium-card .number-glow {
+        animation: premiumNumberPop 3s ease-in-out infinite;
+      }
+      
+      .premium-card .status-pulse {
+        animation: premiumPulse 2s ease-in-out infinite;
+      }
+      
+      .premium-card:hover {
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      }
+      
+      .premium-card:hover .glow-ring {
+        opacity: 1;
+      }
+      
+      .premium-card .gradient-text {
+        background-size: 200% auto;
+        animation: premiumShine 4s ease-in-out infinite;
+      }
+      
+      .category-card-1 { animation-delay: 0.1s; }
+      .category-card-2 { animation-delay: 0.2s; }
+      .category-card-3 { animation-delay: 0.3s; }
+      
+      .language-card-1 { animation-delay: 0.1s; }
+      .language-card-2 { animation-delay: 0.2s; }
+      
+      .year-card-1 { animation-delay: 0.1s; }
+      .year-card-2 { animation-delay: 0.2s; }
+      
+      .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
+      .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-slide-down { animation: slideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-scale-in { animation: scaleIn 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
+      .animate-border-pulse { animation: borderPulse 2s ease-in-out infinite; }
+      .animate-pop { animation: pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-float-text { animation: floatText 3s ease-in-out infinite; }
+      .animate-gradient { animation: gradientMove 8s ease-in-out infinite; background-size: 200% 200%; }
+      
+      .glass-effect {
+        background: rgba(255,255,255,0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
       }
       
       @media (max-width: 768px) {
-        .hero-title {
-          font-size: 2rem;
-        }
-        .hero-subtitle {
-          font-size: 0.875rem;
-        }
-      }
-      @media (max-width: 640px) {
-        .section-title {
-          font-size: 1.75rem;
-        }
-      }
-      
-      .hide-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .hide-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+        .subject-grid { grid-template-columns: 1fr; }
+        .unit-grid { grid-template-columns: 1fr; }
       }
     `;
     document.head.appendChild(styleSheet);
-
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
+    return () => document.head.removeChild(styleSheet);
   }, []);
 
-  // ========== GOOGLE FONTS - FIXED CLEANUP ==========
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
-
-    return () => {
-      document.head.removeChild(link);
-    };
+    return () => document.head.removeChild(link);
   }, []);
 
-  // Scroll to top on page load
   useEffect(() => {
     window.history.scrollRestoration = "manual";
     window.scrollTo(0, 0);
   }, []);
 
-  // Handle scroll from navbar navigation
   useEffect(() => {
-    const state = location.state;
-    if (state && state.scrollTo) {
-      setTimeout(() => {
-        const element = document.getElementById(state.scrollTo);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 500);
-    }
-  }, [location]);
+    return () => {
+      contentRequestIdRef.current += 1;
+      if (contentAbortControllerRef.current) {
+        contentAbortControllerRef.current.abort();
+        contentAbortControllerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleCardMouseMove = (cardId, e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -154,1252 +573,745 @@ const DPharm = () => {
     });
   };
 
-  const handleYearClick = (year, type) => {
-    setOpenYear(prev => ({
-      ...prev,
-      [`${type}-${year}`]: !prev[`${type}-${year}`]
-    }));
-  };
-
-  // ========== API CALLS ==========
-  const fetchNotes = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/notes?course=D.Pharm`);
-      setNotes(res.data);
-      return { success: true, data: res.data };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Notes fetch error:", error);
-      }
-      return { success: false, error };
-    }
-  };
-
-  const fetchPremiumVideos = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/videos?course=D.Pharm`);
-      
-      const premiumOnly = res.data.filter(video => video.isPremium === true);
-      setPremiumVideos(premiumOnly);
-      
-      const grouped = {};
-      premiumOnly.forEach(video => {
-        let yr = video.year;
-        if (yr === "1st Year" || yr === 1 || yr === "1") {
-          yr = 1;
-        } else if (yr === "2nd Year" || yr === 2 || yr === "2") {
-          yr = 2;
-        } else {
-          yr = 1;
-        }
-        
-        if (!grouped[yr]) grouped[yr] = [];
-        grouped[yr].push(video);
-      });
-      
-      setVideosByYear(grouped);
-      return { success: true, data: premiumOnly };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Premium videos fetch error:", error);
-      }
-      return { success: false, error };
-    }
-  };
-
-  const fetchFreeVideos = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/free-videos?course=D.Pharm`);
-      const freeOnly = res.data.filter(video => video.isPremium === false);
-      setFreeVideos(freeOnly);
-      return { success: true, data: freeOnly };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Free videos fetch error:", error);
-      }
-      try {
-        const allRes = await axios.get(`${API_BASE}/api/admin/public/videos?course=D.Pharm`);
-        const freeOnly = allRes.data.filter(video => video.isPremium === false);
-        setFreeVideos(freeOnly);
-        return { success: true, data: freeOnly };
-      } catch (err) {
-        if (import.meta.env.DEV) {
-          console.error("Fallback video fetch error:", err);
-        }
-        return { success: false, error: err };
-      }
-    }
-  };
-
-  const fetchPaidPDFs = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/paid-pdfs?course=D.Pharm`);
-      
-      if (!res.data || res.data.length === 0) {
-        setPdfsByYearHindi({});
-        setPdfsByYearEnglish({});
-        return { success: true, data: [] };
-      }
-      
-      const hindiPDFs = res.data.filter(pdf => {
-        return pdf.language === "hindi" || pdf.language === "Hindi";
-      });
-      
-      const englishPDFs = res.data.filter(pdf => {
-        return pdf.language === "english" || pdf.language === "English";
-      });
-      
-      const hindiGrouped = {};
-      hindiPDFs.forEach(pdf => {
-        let yr = pdf.year;
-        if (yr === "1st Year" || yr === 1 || yr === "1") yr = 1;
-        else if (yr === "2nd Year" || yr === 2 || yr === "2") yr = 2;
-        else yr = 1;
-        
-        if (!hindiGrouped[yr]) hindiGrouped[yr] = [];
-        hindiGrouped[yr].push(pdf);
-      });
-      setPdfsByYearHindi(hindiGrouped);
-      
-      const englishGrouped = {};
-      englishPDFs.forEach(pdf => {
-        let yr = pdf.year;
-        if (yr === "1st Year" || yr === 1 || yr === "1") yr = 1;
-        else if (yr === "2nd Year" || yr === 2 || yr === "2") yr = 2;
-        else yr = 1;
-        
-        if (!englishGrouped[yr]) englishGrouped[yr] = [];
-        englishGrouped[yr].push(pdf);
-      });
-      setPdfsByYearEnglish(englishGrouped);
-      
-      return { success: true, data: res.data };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Paid PDFs fetch error:", error);
-      }
-      return { success: false, error };
-    }
-  };
-
-  const fetchPapers = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/papers?course=D.Pharm`);
-      setFreePapers(res.data.filter((paper) => paper.isPremium === false));
-      const premiumPapersData = res.data.filter((paper) => paper.isPremium === true);
-      setPremiumPapers(premiumPapersData);
-      
-      const grouped = {};
-      premiumPapersData.forEach(paper => {
-        let yr = paper.year;
-        if (yr === "1st Year" || yr === 1 || yr === "1") yr = 1;
-        else if (yr === "2nd Year" || yr === 2 || yr === "2") yr = 2;
-        else yr = 1;
-        
-        if (!grouped[yr]) grouped[yr] = [];
-        grouped[yr].push(paper);
-      });
-      setPapersByYear(grouped);
-      return { success: true, data: res.data };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Papers fetch error:", error);
-      }
-      return { success: false, error };
-    }
-  };
-
-  const fetchUserStatus = async () => {
-    try {
-      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-      if (!token) return { success: false, error: "No token" };
-
-      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.data.success) {
-        const userData = response.data.user;
-        setUser(userData);
-        setIsPremium(userData.isPremium || false);
-        localStorage.setItem("user", JSON.stringify(userData));
-        return { success: true, data: userData };
-      }
-      return { success: false, error: "API returned false" };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("User status fetch error:", error);
-      }
-      return { success: false, error };
-    }
-  };
-
-  // ========== FIXED PRICE FETCH ==========
-  const fetchPremiumPrice = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public-price`);
-      const data = res.data;
-      const course = data["D.Pharm"];
-
-      if (course && course.price !== undefined) {
-        const discountedPrice = course.price - (course.price * (course.discount || 0)) / 100;
-        setPremiumPrice(Math.round(discountedPrice));
-        return { success: true, data: discountedPrice };
-      }
-      // Fallback for D.Pharm - use B.Pharm price as fallback
-      const fallbackCourse = data["B.Pharm"];
-      if (fallbackCourse && fallbackCourse.price !== undefined) {
-        const discountedPrice = fallbackCourse.price - (fallbackCourse.price * (fallbackCourse.discount || 0)) / 100;
-        setPremiumPrice(Math.round(discountedPrice));
-        return { success: true, data: discountedPrice };
-      }
-      setPremiumPrice(99);
-      return { success: false, error: "Course not found" };
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Price fetch error:", error);
-      }
-      setPremiumPrice(99);
-      return { success: false, error };
-    }
-  };
-
-  // ========== PARALLEL API CALLS - USING Promise.allSettled ==========
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setLoading(true);
-      
-      const results = await Promise.allSettled([
-        fetchNotes(),
-        fetchFreeVideos(),
-        fetchPremiumVideos(),
-        fetchPaidPDFs(),
-        fetchPapers(),
-        fetchUserStatus(),
-        fetchPremiumPrice()
-      ]);
-
-      if (import.meta.env.DEV) {
-        results.forEach((result, index) => {
-          if (result.status === 'rejected') {
-            console.error(`API call ${index} failed:`, result.reason);
-          }
-        });
-      }
-
-      setLoading(false);
-    };
-    
-    fetchAllData();
-  }, []);
-
-  // ========== HELPER FUNCTIONS ==========
+  // ========== VIEW & DOWNLOAD FUNCTIONS ==========
   const getToken = () => {
     return localStorage.getItem("userToken") || localStorage.getItem("token");
   };
 
-  const getUserFromStorage = () => {
-    try {
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      return savedUser;
-    } catch {
-      return {};
-    }
-  };
-
-  // ========== VIEW FUNCTION - FIXED ==========
-  const handleView = async (item, type) => {
-    setLoadingItemId(item._id);
-    try {
-      const token = getToken();
-      
-      if (!token) {
-        toast.error("Please login first to view");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      let viewUrl;
-      if (type === "note") {
-        viewUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-      } else if (type === "paid-pdf" || type === "premium-pdf") {
-        viewUrl = `${API_BASE}/api/admin/public/download/paid-pdf/${item._id}`;
-      } else if (type === "free-paper" || type === "premium-paper") {
-        viewUrl = `${API_BASE}/api/admin/public/download/paper/${item._id}`;
-      } else if (type === "premium-video") {
-        if (item.videoUrl) {
-          window.open(item.videoUrl, "_blank", "noopener,noreferrer");
-          setLoadingItemId(null);
-          return;
-        }
-        viewUrl = `${API_BASE}/api/admin/public/download/video/${item._id}`;
-      } else {
-        toast.error("Invalid file type");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      const response = await fetch(viewUrl, {
-        headers: { 
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to load file');
-      }
-      
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
-      const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
-      
-      if (isMobileOrTablet) {
-        if (blob.type === "application/pdf") {
-          try {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-              const dataUri = e.target.result;
-              const newWindow = window.open("", "_blank", "noopener,noreferrer");
-              if (newWindow) {
-                newWindow.document.write(`
-                  <!DOCTYPE html>
-                  <html>
-                    <head>
-                      <title>${item.title || 'Document'}</title>
-                      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-                      <style>
-                        * { margin: 0; padding: 0; box-sizing: border-box; }
-                        body, html { 
-                          height: 100%; 
-                          width: 100%; 
-                          overflow: hidden;
-                          background: #f5f5f5;
-                          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                        }
-                        #app {
-                          display: flex;
-                          flex-direction: column;
-                          height: 100%;
-                          width: 100%;
-                        }
-                        #toolbar {
-                          background: #4a1a8a;
-                          color: white;
-                          padding: 12px 16px;
-                          display: flex;
-                          justify-content: space-between;
-                          align-items: center;
-                          flex-shrink: 0;
-                          min-height: 56px;
-                          box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                          z-index: 10;
-                        }
-                        #toolbar h3 {
-                          margin: 0;
-                          font-size: 14px;
-                          font-weight: 600;
-                          flex: 1;
-                          overflow: hidden;
-                          text-overflow: ellipsis;
-                          white-space: nowrap;
-                          padding-right: 8px;
-                        }
-                        .toolbar-buttons {
-                          display: flex;
-                          gap: 6px;
-                          flex-shrink: 0;
-                        }
-                        .toolbar-buttons button {
-                          background: rgba(255,255,255,0.15);
-                          border: none;
-                          color: white;
-                          padding: 8px 14px;
-                          border-radius: 8px;
-                          font-size: 12px;
-                          font-weight: 600;
-                          cursor: pointer;
-                          transition: background 0.2s;
-                          white-space: nowrap;
-                        }
-                        .toolbar-buttons button:active {
-                          background: rgba(255,255,255,0.3);
-                          transform: scale(0.95);
-                        }
-                        #viewer {
-                          flex: 1;
-                          overflow: auto;
-                          background: #e8e8e8;
-                          padding: 4px;
-                        }
-                        #viewer iframe {
-                          width: 100%;
-                          height: 100%;
-                          border: none;
-                          background: white;
-                          border-radius: 4px;
-                        }
-                        #loading {
-                          display: flex;
-                          align-items: center;
-                          justify-content: center;
-                          height: 100%;
-                          color: #666;
-                          font-size: 14px;
-                        }
-                        .spinner {
-                          display: inline-block;
-                          width: 24px;
-                          height: 24px;
-                          border: 3px solid #ddd;
-                          border-top: 3px solid #4a1a8a;
-                          border-radius: 50%;
-                          animation: spin 0.8s linear infinite;
-                          margin-right: 12px;
-                        }
-                        @keyframes spin {
-                          0% { transform: rotate(0deg); }
-                          100% { transform: rotate(360deg); }
-                        }
-                        @media (max-width: 480px) {
-                          #toolbar { padding: 10px 12px; min-height: 48px; }
-                          #toolbar h3 { font-size: 12px; }
-                          .toolbar-buttons button { padding: 6px 10px; font-size: 10px; }
-                        }
-                      </style>
-                    </head>
-                    <body>
-                      <div id="app">
-                        <div id="toolbar">
-                          <h3>📄 ${item.title || 'PDF Document'}</h3>
-                          <div class="toolbar-buttons">
-                            <button onclick="downloadPDF()">📥 Download</button>
-                            <button onclick="window.close()">✕ Close</button>
-                          </div>
-                        </div>
-                        <div id="viewer">
-                          <div id="loading">
-                            <span class="spinner"></span>
-                            Loading PDF...
-                          </div>
-                          <iframe id="pdfFrame" src="${dataUri}" onload="document.getElementById('loading').style.display='none';"></iframe>
-                        </div>
-                      </div>
-                      <script>
-                        function downloadPDF() {
-                          const link = document.createElement('a');
-                          link.href = '${dataUri}';
-                          link.download = '${item.title || 'document'}.pdf';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }
-                        setTimeout(function() {
-                          const loading = document.getElementById('loading');
-                          if (loading) loading.style.display = 'none';
-                        }, 3000);
-                      <\/script>
-                    </body>
-                  </html>
-                `);
-                newWindow.document.close();
-                setLoadingItemId(null);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-                return;
-              } else {
-                const link = document.createElement('a');
-                link.href = blobUrl;
-                link.download = `${item.title || 'document'}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                toast.success("PDF downloaded!");
-                setLoadingItemId(null);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                return;
-              }
-            };
-            reader.readAsDataURL(blob);
-            return;
-          } catch (err) {
-            if (import.meta.env.DEV) {
-              console.error("Mobile PDF view error:", err);
-            }
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = `${item.title || 'document'}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast.success("PDF downloaded!");
-            setLoadingItemId(null);
-            setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-            return;
-          }
-        } else {
-          const link = document.createElement('a');
-          link.href = blobUrl;
-          link.download = item.fileName || `${item.title}.pdf`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setLoadingItemId(null);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-          return;
-        }
-      }
-      
-      const newWindow = window.open("", "_blank", "noopener,noreferrer");
-      if (!newWindow) {
-        toast.error("Please allow popups to view files");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      if (blob.type === "application/pdf") {
-        newWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>${item.title || 'Document'}</title>
-              <style>
-                body, html { margin: 0; padding: 0; height: 100%; width: 100%; }
-                iframe { width: 100%; height: 100%; border: none; }
-              </style>
-            </head>
-            <body>
-              <iframe src="${blobUrl}"></iframe>
-            </body>
-          </html>
-        `);
-      } else {
-        newWindow.location.href = blobUrl;
-      }
-      newWindow.document.close();
-      setLoadingItemId(null);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-      
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("View error:", error);
-      }
-      toast.error(error.message || "Failed to open file");
-      setLoadingItemId(null);
-    }
-  };
-
-  // ========== DOWNLOAD FUNCTION - FIXED ==========
-  const handleDownload = async (item, type) => {
-    const isPremiumContent = type === "paid-pdf" || type === "premium-paper" || type === "premium-video";
-    
-    if (isPremiumContent && !isPremium) {
-      handlePremiumPurchase();
+  const handleView = (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
+      toast.error("Invalid document ID");
       return;
     }
 
-    setLoadingItemId(item._id);
-    try {
-      const token = getToken();
-      
-      if (!token) {
-        toast.error("Please login first to download");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      let downloadUrl;
-      if (type === "note") {
-        downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-      } else if (type === "paid-pdf" || type === "premium-pdf") {
-        downloadUrl = `${API_BASE}/api/admin/public/download/paid-pdf/${item._id}`;
-      } else if (type === "free-paper" || type === "premium-paper") {
-        downloadUrl = `${API_BASE}/api/admin/public/download/paper/${item._id}`;
-      } else if (type === "premium-video") {
-        if (item.videoUrl) {
-          window.open(item.videoUrl, "_blank", "noopener,noreferrer");
-          toast.success("Opening video in new tab!");
-          setLoadingItemId(null);
-          return;
-        }
-        downloadUrl = `${API_BASE}/api/admin/public/download/video/${item._id}`;
-      } else {
-        toast.error("Invalid file type");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      const response = await fetch(downloadUrl, {
-        headers: { 
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Download failed');
-      }
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = item.fileName || `${item.title}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      toast.success("Download started!");
-      
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Download error:", error);
-      }
-      toast.error(error.message || "Download failed. Please try again.");
-    } finally {
-      setLoadingItemId(null);
+    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
+    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
+
+    if (!win) {
+      toast.error("Please allow popups to preview the PDF");
     }
   };
 
-  const handleWatchVideo = (video, isFreeVideo = false) => {
-    if (!isFreeVideo && !isPremium) {
-      handlePremiumPurchase();
+  const handleDownload = (item) => {
+    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
+      toast.error("Invalid document ID");
       return;
     }
-    if (video.videoUrl) {
-      window.open(video.videoUrl, "_blank", "noopener,noreferrer");
-    } else {
-      toast.error("Video URL not available");
-    }
+
+    const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Download started!");
   };
 
-  const handleFreeVideoDownload = async (video) => {
-    setLoadingItemId(video._id);
-    try {
-      const token = getToken();
-      
-      if (!token) {
-        toast.error("Please login first to download");
-        setLoadingItemId(null);
-        return;
-      }
-      
-      if (video.videoUrl) {
-        window.open(video.videoUrl, "_blank", "noopener,noreferrer");
-        toast.success("Opening video in new tab!");
-      } else {
-        toast.error("Video URL not available");
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Free video error:", error);
-      }
-      toast.error("Failed to open video");
-    } finally {
-      setLoadingItemId(null);
-    }
-  };
-
-  const updateLocalStorageAfterPurchase = async () => {
-    try {
-      const token = getToken();
-      if (!token) return false;
-      
-      const response = await axios.get(`${API_BASE}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (response.data.success) {
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-        setIsPremium(response.data.user.isPremium || false);
-        setUser(response.data.user);
-        return true;
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Failed to update localStorage:", error);
-      }
-      return false;
-    }
-  };
-
-  // ========== PURCHASE FUNCTION - FIXED ==========
   const handlePremiumPurchase = async () => {
-    try {
-      const token = getToken();
-
-      if (!token) {
-        toast.error("Please login first");
-        navigate('/login');
-        return;
-      }
-
-      const amount = Math.round(premiumPrice);
-
-      const orderResponse = await axios.post(
-        `${API_BASE}/api/payment/create-order`,
-        {
-          amount: amount,
-          productType: "premium_course",
-          productId: "dpharm_premium",
-          productTitle: `D.Pharm Premium Course - Complete Access (₹${amount})`
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      const data = orderResponse.data;
-
-      const options = {
-        key: data.key,
-        amount: data.amount * 100,
-        currency: "INR",
-        name: "PharmaVerse",
-        description: "D.Pharm Premium Course - Full Access",
-        order_id: data.orderId,
-
-        handler: async function (response) {
-          try {
-            const verifyResponse = await axios.post(
-              `${API_BASE}/api/payment/verify-payment`,
-              {
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-                productType: "premium_course",
-                productId: "dpharm_premium"
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (verifyResponse.data.success) {
-              toast.success("Payment Successful! All content is now unlocked!");
-              await updateLocalStorageAfterPurchase();
-              
-              // Refresh data instead of reload
-              await Promise.allSettled([
-                fetchNotes(),
-                fetchFreeVideos(),
-                fetchPremiumVideos(),
-                fetchPaidPDFs(),
-                fetchPapers(),
-                fetchUserStatus()
-              ]);
-            }
-          } catch (error) {
-            if (import.meta.env.DEV) {
-              console.error("Verification error:", error);
-            }
-            toast.error("Payment verification failed");
-          }
-        },
-
-        prefill: {
-          name: user?.name || getUserFromStorage()?.name || "",
-          email: user?.email || getUserFromStorage()?.email || "",
-        },
-
-        theme: { color: "#8b5cf6" },
-      };
-
-      const razor = new window.Razorpay(options);
-      razor.open();
-
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("Payment Error:", error);
-      }
-      toast.error("Payment Failed: " + (error.response?.data?.message || error.message));
-    }
+    toast.info("💎 Premium purchase flow - Coming soon!");
   };
 
-  const tabs = [
-    { id: "notes", label: "Free Materials", icon: BookOpen },
-    { id: "hindi-pdfs", label: "Hindi PDFs", icon: GraduationCap },
-    { id: "english-pdfs", label: "English PDFs", icon: GraduationCap },
-    { id: "videos", label: "Premium Videos", icon: Video },
-    { id: "papers", label: "Premium Papers", icon: Brain },
-  ];
-
-  // ========== RENDER FUNCTIONS ==========
-  const renderFreeCard = (item, type, icon, index) => {
-    const Icon = icon;
-    const cardId = `${type}-${item._id}`;
-    const mousePos = mousePositions[cardId] || { x: 50, y: 50 };
-    
+  // ========== RENDER CATEGORY STEP ==========
+  const renderCategoryStep = () => {
     return (
-      <div
-        key={cardId}
-        className="group relative"
-        style={{
-          animation: `cinematicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) ${index * 0.08}s both`
-        }}
-        onMouseEnter={() => setHoveredCard(cardId)}
-        onMouseLeave={() => handleCardMouseLeave(cardId)}
-        onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-      >
-        <div 
-          className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-xl"
-          style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, #8b5cf6, #7c3aed, #a78bfa)`
-          }}
-        ></div>
-        
-        <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-          
-          <div className="relative h-48 overflow-hidden">
-            {item.thumbnail ? (
-              <>
-                <img 
-                  src={item.thumbnail} 
-                  alt={item.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              </>
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-500 via-indigo-500 to-purple-600 flex items-center justify-center">
-                <Icon className="text-white/30 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" size={56} />
-              </div>
-            )}
-            
-            <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 z-10 backdrop-blur-sm">
-              <Sparkles size={10} className="animate-pulse" />
-              <span className="tracking-wide">FREE ACCESS</span>
-              <Sparkles size={10} className="animate-pulse" />
-            </div>
-            
-            <div className="absolute -bottom-5 left-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300">
-                <Icon className="text-white" size={22} />
-              </div>
-            </div>
+      <div className="animate-slide-up">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 animate-float-text">
+            <Sparkles className="text-sky-600" size={16} />
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-wider uppercase">D.Pharm</span>
+            <Sparkles className="text-sky-600" size={16} />
           </div>
-          
-          <div className="p-5 pt-7">
-            <h3 className="font-['Space_Grotesk'] font-bold text-xl text-gray-900 mb-2 line-clamp-1">{item.title}</h3>
-            <p className="text-gray-500 text-sm leading-relaxed mb-5 line-clamp-2">{item.description || "Comprehensive study material for D.Pharm students."}</p>
-            
-            <div className="flex gap-2.5">
-              <button
-                onClick={() => handleView(item, type)}
-                className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:bg-gray-200 hover:scale-105"
-              >
-                <Eye size={16} />
-                Preview
-              </button>
-              <button
-                onClick={() => handleDownload(item, type)}
-                disabled={loadingItemId === item._id}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-50"
-              >
-                <Download size={16} />
-                {loadingItemId === item._id ? 'Downloading...' : 'Download'}
-              </button>
-            </div>
-          </div>
-          
-          <div className="h-0.5 w-full bg-gradient-to-r from-purple-500 to-indigo-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left"></div>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">Category</span>
+          </h1>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium">Choose what you want to study</p>
         </div>
-      </div>
-    );
-  };
 
-  const renderPremiumCard = (item, type, icon, index) => {
-    const Icon = icon;
-    const isLocked = !isPremium;
-    const cardId = `${type}-${item._id}`;
-    const mousePos = mousePositions[cardId] || { x: 50, y: 50 };
-    
-    return (
-      <div
-        key={cardId}
-        className="group relative"
-        style={{
-          animation: `cinematicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) ${index * 0.08}s both`
-        }}
-        onMouseEnter={() => setHoveredCard(cardId)}
-        onMouseLeave={() => handleCardMouseLeave(cardId)}
-        onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-      >
-        <div 
-          className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-xl"
-          style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, #8b5cf6, #7c3aed, #a78bfa)`
-          }}
-        ></div>
-        
-        <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-          
-          <div className="relative h-48 overflow-hidden">
-            {item.thumbnail ? (
-              <>
-                <img 
-                  src={item.thumbnail} 
-                  alt={item.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              </>
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-500 via-indigo-500 to-purple-600 flex items-center justify-center">
-                <Icon className="text-white/30 group-hover:scale-125 group-hover:rotate-12 transition-all duration-500" size={56} />
-              </div>
-            )}
-            
-            {!isLocked && (
-              <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 z-10 backdrop-blur-sm">
-                <Crown size={10} className="text-yellow-300" />
-                <span>PREMIUM</span>
-              </div>
-            )}
-            
-            {isLocked && (
-              <div className="absolute inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-20">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center shadow-2xl">
-                    <Lock size={32} className="text-white" />
-                  </div>
-                  <p className="text-white font-bold text-sm">Premium Content</p>
-                  <p className="text-white/60 text-xs mt-1">Unlock with Premium</p>
-                </div>
-              </div>
-            )}
-            
-            <div className="absolute -bottom-5 left-4">
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-xl transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-300 ${isLocked ? 'opacity-50' : ''}`}>
-                {isLocked ? <Lock className="text-white" size={20} /> : <Icon className="text-white" size={22} />}
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-5 pt-7">
-            <h3 className="font-['Space_Grotesk'] font-bold text-xl text-gray-900 mb-2 line-clamp-1">{item.title}</h3>
-            
-            {(type === "paid-pdf" || type === "premium-paper") && (
-              <div className="mb-3">
-                {item.year && <span className="text-xs font-medium bg-purple-50 text-purple-700 px-2.5 py-1 rounded-lg">Year {item.year}</span>}
-                {item.language && <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ml-2 ${item.language === 'hindi' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>{item.language === 'hindi' ? 'हिंदी' : 'English'}</span>}
-              </div>
-            )}
-            
-            <p className="text-gray-500 text-sm leading-relaxed mb-5 line-clamp-2">{item.description || "Premium study material for D.Pharm excellence."}</p>
-            
-            <div className="flex gap-2.5">
-              {isLocked ? (
-                <button
-                  onClick={handlePremiumPurchase}
-                  className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all duration-300 hover:scale-105"
-                >
-                  <Rocket size={16} />
-                  Unlock Now - ₹{premiumPrice}
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => handleView(item, type)}
-                    className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105"
-                  >
-                    <Eye size={16} />
-                    Preview
-                  </button>
-                  <button
-                    onClick={() => handleDownload(item, type)}
-                    disabled={loadingItemId === item._id}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105 disabled:opacity-50"
-                  >
-                    <Download size={16} />
-                    {loadingItemId === item._id ? 'Downloading...' : 'Download'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-          
-          <div className="h-0.5 w-full bg-gradient-to-r from-purple-500 to-indigo-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left"></div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderFreeVideoCard = (video, index) => {
-    const cardId = `free-video-${video._id}`;
-    const mousePos = mousePositions[cardId] || { x: 50, y: 50 };
-    
-    return (
-      <div
-        key={cardId}
-        className="group relative"
-        style={{
-          animation: `cinematicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) ${index * 0.08}s both`
-        }}
-        onMouseEnter={() => setHoveredCard(cardId)}
-        onMouseLeave={() => handleCardMouseLeave(cardId)}
-        onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-      >
-        <div 
-          className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-xl"
-          style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, #8b5cf6, #7c3aed, #a78bfa)`
-          }}
-        ></div>
-        
-        <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-          <div 
-            className="relative h-52 overflow-hidden cursor-pointer"
-            onClick={() => handleWatchVideo(video, true)}
-          >
-            {video.thumbnail ? (
-              <>
-                <img 
-                  src={video.thumbnail} 
-                  alt={video.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              </>
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-500 via-indigo-500 to-purple-600 flex items-center justify-center">
-                <Video className="text-white/30 group-hover:scale-125 transition-all duration-500" size={56} />
-              </div>
-            )}
-            
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/50 flex items-center justify-center group-hover:scale-110 transition-all duration-500">
-                <PlayCircle size={36} className="text-white ml-0.5" />
-              </div>
-            </div>
-            
-            <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-              FREE ACCESS
-            </div>
-          </div>
-          
-          <div className="p-5">
-            <h3 className="font-['Space_Grotesk'] font-bold text-xl text-gray-900 mb-2 line-clamp-1">{video.title}</h3>
-            <p className="text-gray-500 text-sm leading-relaxed mb-5 line-clamp-2">{video.description || "Free video lecture series."}</p>
-            
-            <div className="flex gap-2.5">
-              <button onClick={() => handleWatchVideo(video, true)} className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105">
-                <PlayCircle size={16} /> Watch Now
-              </button>
-              <button onClick={() => handleFreeVideoDownload(video)} disabled={loadingItemId === video._id} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
-                <Download size={16} />
-                {loadingItemId === video._id ? 'Opening...' : 'Download'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderPremiumVideoCard = (video, index) => {
-    const isLocked = !isPremium;
-    const cardId = `premium-video-${video._id}`;
-    const mousePos = mousePositions[cardId] || { x: 50, y: 50 };
-    
-    return (
-      <div
-        key={cardId}
-        className="group relative"
-        style={{
-          animation: `cinematicReveal 0.6s cubic-bezier(0.23, 1, 0.32, 1) ${index * 0.08}s both`
-        }}
-        onMouseEnter={() => setHoveredCard(cardId)}
-        onMouseLeave={() => handleCardMouseLeave(cardId)}
-        onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-      >
-        <div 
-          className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-xl"
-          style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, #8b5cf6, #7c3aed, #a78bfa)`
-          }}
-        ></div>
-        
-        <div className="relative bg-white rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2">
-          <div 
-            className="relative h-52 overflow-hidden cursor-pointer"
-            onClick={() => {
-              if (isLocked) handlePremiumPurchase();
-              else handleWatchVideo(video, false);
-            }}
-          >
-            {video.thumbnail ? (
-              <>
-                <img 
-                  src={video.thumbnail} 
-                  alt={video.title} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-              </>
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-500 via-indigo-500 to-purple-600 flex items-center justify-center">
-                <Video className="text-white/30 group-hover:scale-125 transition-all duration-500" size={56} />
-              </div>
-            )}
-            
-            {!isLocked && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border-2 border-white/50 flex items-center justify-center group-hover:scale-110 transition-all duration-500">
-                  <PlayCircle size={36} className="text-white ml-0.5" />
-                </div>
-              </div>
-            )}
-            
-            {!isLocked && (
-              <div className="absolute top-3 right-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-lg backdrop-blur-sm">
-                <Crown size={10} className="text-yellow-300" /> PREMIUM
-              </div>
-            )}
-            
-            {isLocked && (
-              <div className="absolute inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-20">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center shadow-2xl">
-                    <Lock size={32} className="text-white" />
-                  </div>
-                  <p className="text-white font-bold text-sm">Premium Video</p>
-                  <p className="text-white/60 text-xs mt-1">Unlock with Premium</p>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div className="p-5">
-            <h3 className="font-['Space_Grotesk'] font-bold text-xl text-gray-900 mb-2 line-clamp-1">{video.title}</h3>
-            <div className="flex gap-2 my-2 flex-wrap">
-              {video.course && <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">{video.course}</span>}
-              {video.year && <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{video.year}</span>}
-            </div>
-            <p className="text-gray-500 text-sm leading-relaxed mb-4 line-clamp-2">{video.description || "Premium video lecture."}</p>
-            
-            <div className="flex gap-2.5">
-              {isLocked ? (
-                <button onClick={handlePremiumPurchase} className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:scale-105">
-                  <Rocket size={16} /> Unlock - ₹{premiumPrice}
-                </button>
-              ) : (
-                <>
-                  <button onClick={() => handleWatchVideo(video, false)} className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:scale-105">
-                    <PlayCircle size={16} /> Watch
-                  </button>
-                  <button onClick={() => handleDownload(video, "premium-video")} disabled={loadingItemId === video._id} className="flex-1 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-gray-200 hover:scale-105 disabled:opacity-50">
-                    <Download size={16} />
-                    {loadingItemId === video._id ? 'Opening...' : 'Download'}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // ========== YEAR SECTION - FIXED DYNAMIC LABELS ==========
-  const renderYearSection = (title, data, type, renderCard, icon, years = dpharmYears, noDataMessage = "No content available yet.") => {
-    const hasData = years.some(yr => data[yr] && data[yr].length > 0);
-    
-    if (!hasData) {
-      return (
-        <div className="mb-12">
-          <h3 className="text-xl sm:text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
-          <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="text-6xl mb-4">📚</div>
-            <p className="text-gray-500">{noDataMessage}</p>
-          </div>
-        </div>
-      );
-    }
-    
-    const activeYears = years.filter(yr => data[yr] && data[yr].length > 0);
-    
-    // Dynamic label based on type
-    const getItemLabel = (count) => {
-      if (type.includes('video')) return `${count} ${count === 1 ? 'Video' : 'Videos'}`;
-      if (type.includes('paper')) return `${count} ${count === 1 ? 'Paper' : 'Papers'}`;
-      return `${count} ${count === 1 ? 'PDF' : 'PDFs'}`;
-    };
-    
-    return (
-      <div className="mb-12">
-        <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800 flex items-center gap-2">{icon}{title}</h3>
-        
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 mb-6 sm:mb-8 max-w-md mx-auto">
-          {activeYears.map(yr => {
-            const items = data[yr] || [];
-            const isOpen = openYear[`${type}-${yr}`] === true;
-            const yearName = yr === 1 ? "1st Year" : "2nd Year";
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
+          {categories.map((category, index) => {
+            const Icon = category.icon;
+            const delay = index === 0 ? 'category-card-1' : index === 1 ? 'category-card-2' : 'category-card-3';
             
             return (
               <div
-                key={yr}
-                onClick={() => handleYearClick(yr, type)}
-                className={`group cursor-pointer transition-all duration-300 transform hover:scale-105 ${
-                  isOpen ? 'scale-105' : ''
-                }`}
+                key={category.id}
+                onClick={() => handleCategoryClick(category.id)}
+                className={`group relative cursor-pointer animate-slide-up ${delay}`}
+                onMouseEnter={() => setHoveredCard(category.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                onMouseMove={(e) => handleCardMouseMove(category.id, e)}
               >
-                <div className={`relative overflow-hidden rounded-2xl p-4 sm:p-6 text-center transition-all duration-300 ${
-                  isOpen 
-                    ? 'bg-gradient-to-br from-purple-600 to-indigo-700 text-white shadow-2xl' 
-                    : 'bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 hover:border-purple-300 hover:shadow-xl text-gray-700'
-                }`}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                <div 
+                  className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                  style={{
+                    background: `radial-gradient(circle at ${mousePositions[category.id]?.x || 50}% ${mousePositions[category.id]?.y || 50}%, ${category.glowColor}, transparent 70%)`
+                  }}
+                ></div>
+
+                <div className={`relative bg-gradient-to-br ${category.bgGradient} rounded-3xl p-7 sm:p-9 transition-all duration-500 group-hover:-translate-y-4 group-hover:shadow-2xl border-2 border-white/50 backdrop-blur-sm overflow-hidden`}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   
-                  <div className={`text-3xl sm:text-5xl font-bold mb-1 sm:mb-2 ${
-                    isOpen ? 'text-white' : 'text-purple-600 group-hover:text-purple-700'
-                  }`}>
-                    {yr}
+                  <div className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                    <div className="absolute inset-0 rounded-3xl" style={{
+                      background: `conic-gradient(from 0deg, ${category.glowColor}, transparent, ${category.glowColor}, transparent)`,
+                      animation: 'rotateGlow 4s linear infinite'
+                    }}></div>
                   </div>
-                  
-                  <div className={`text-[10px] sm:text-sm font-medium ${
-                    isOpen ? 'text-purple-200' : 'text-gray-500'
-                  }`}>
-                    {yearName}
+
+                  <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-r ${category.gradient} flex items-center justify-center mb-5 shadow-2xl group-hover:scale-110 transition-all duration-500 animate-float-medium relative z-10`}>
+                    <Icon className="text-white" size={34} />
                   </div>
-                  
-                  <div className={`mt-2 sm:mt-3 inline-flex items-center gap-1 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
-                    isOpen 
-                      ? 'bg-white/20 text-white' 
-                      : 'bg-purple-100 text-purple-600'
-                  }`}>
-                    <FileText size={10} />
-                    <span>{getItemLabel(items.length)}</span>
+
+                  <div className="absolute top-4 right-4 z-10">
+                    <span className={`text-[10px] font-['Inter'] font-bold px-3 py-1 rounded-full bg-gradient-to-r ${category.gradient} text-white shadow-lg animate-pulse`}>
+                      {category.badge}
+                    </span>
                   </div>
-                  
-                  <div className={`absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 transform transition-transform duration-300 ${
-                    isOpen ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
-                  }`}></div>
+
+                  <div className="relative z-10">
+                    <h3 className="text-2xl font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2">
+                      {category.label}
+                    </h3>
+                    <p className="text-sm font-['Inter'] text-gray-600 leading-relaxed mb-3">
+                      {category.description}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs font-['Inter']">
+                      <span className="flex items-center gap-1 text-gray-500">
+                        <Award size={14} className="text-amber-500" />
+                        {category.stats}
+                      </span>
+                      <span className="w-px h-4 bg-gray-300"></span>
+                      <span className="flex items-center gap-1 text-emerald-600 font-medium group-hover:gap-2 transition-all duration-300">
+                        <Zap size={14} />
+                        Click to Explore
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${category.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left rounded-b-3xl`}></div>
                 </div>
               </div>
             );
           })}
         </div>
-        
-        {activeYears.map(yr => {
-          const items = data[yr] || [];
-          const isOpen = openYear[`${type}-${yr}`] === true;
-          const yearName = yr === 1 ? "1st Year" : "2nd Year";
-          
-          if (!isOpen || items.length === 0) return null;
+      </div>
+    );
+  };
+
+  // ========== RENDER LANGUAGE STEP ==========
+  const renderLanguageStep = () => {
+    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
+    const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
+    const Icon = categoryIcon;
+
+    return (
+      <div className="animate-slide-up">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find(c => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
+              <Icon className="text-white" size={18} />
+            </div>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
+            <Sparkles className="text-sky-600" size={16} />
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Select Language</span>
+            <Sparkles className="text-sky-600" size={16} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            Choose <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-blue-500 bg-clip-text text-transparent animate-gradient">Language</span>
+          </h2>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-orange-500 via-amber-500 to-blue-500 mx-auto rounded-full mt-4 animate-gradient"></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium">Select your preferred language</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          {languages.map((language, index) => {
+            const Icon = language.icon;
+            const delay = `language-card-${index + 1}`;
+            
+            return (
+              <div
+                key={language.id}
+                onClick={() => handleLanguageClick(language.id)}
+                className={`group relative cursor-pointer animate-slide-up ${delay}`}
+                onMouseEnter={() => setHoveredCard(language.id)}
+                onMouseLeave={() => setHoveredCard(null)}
+                onMouseMove={(e) => handleCardMouseMove(language.id, e)}
+              >
+                <div 
+                  className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                  style={{
+                    background: `radial-gradient(circle at ${mousePositions[language.id]?.x || 50}% ${mousePositions[language.id]?.y || 50}%, rgba(139,92,246,0.3), transparent 70%)`
+                  }}
+                ></div>
+
+                <div className={`relative bg-gradient-to-br from-white to-gray-50 rounded-3xl p-8 transition-all duration-500 group-hover:-translate-y-4 group-hover:shadow-2xl border-2 border-white/50 backdrop-blur-sm overflow-hidden`}>
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  
+                  <div className={`w-20 h-20 rounded-2xl bg-gradient-to-r ${language.gradient} flex items-center justify-center mb-5 shadow-2xl group-hover:scale-110 transition-all duration-500 animate-float-medium relative z-10 mx-auto`}>
+                    <Icon className="text-white" size={34} />
+                  </div>
+
+                  <div className="relative z-10 text-center">
+                    <h3 className="text-3xl font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2">
+                      {language.label}
+                    </h3>
+                    <div className="flex items-center justify-center gap-1 text-emerald-600 font-medium group-hover:gap-2 transition-all duration-300">
+                      <Zap size={14} />
+                      Click to Select
+                    </div>
+                  </div>
+
+                  <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${language.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left rounded-b-3xl`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ========== RENDER YEAR STEP ==========
+  const renderYearStep = () => {
+    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
+    const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
+    const Icon = categoryIcon;
+    const years = [1, 2];
+
+    return (
+      <div className="animate-scale-in">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find(c => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
+              <Icon className="text-white" size={18} />
+            </div>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+            {selectedLanguage && selectedCategory !== "PYQs" && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedLanguage}</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
+            <Sparkles className="text-sky-600" size={16} />
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Select Year</span>
+            <Sparkles className="text-sky-600" size={16} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">Year</span>
+          </h2>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Both years are unlocked!
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 max-w-2xl mx-auto">
+          {years.map((year, index) => {
+            const colors = yearColors[index];
+            const cardId = `year-${year}`;
+            const delay = `year-card-${index + 1}`;
+            
+            return (
+              <div
+                key={year}
+                onClick={() => handleYearClick(year)}
+                className="group relative cursor-pointer"
+              >
+                <div 
+                  className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                  style={{
+                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 68%)`
+                  }}
+                ></div>
+
+                <div
+                  className={`relative rounded-2xl p-8 text-center transition-all duration-500 overflow-hidden premium-card ${delay}
+                    bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.border.replace('border-', 'shadow-')}`}
+                  style={{
+                    boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)`
+                  }}
+                >
+                  <div 
+                    className="glow-ring"
+                    style={{
+                      '--x': `${mousePositions[cardId]?.x || 50}%`,
+                      '--y': `${mousePositions[cardId]?.y || 50}%`
+                    }}
+                  ></div>
+                  
+                  <div className="shine-overlay"></div>
+                  
+                  <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
+                    <div className="absolute inset-0 rounded-2xl" style={{
+                      background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                      animation: 'rotateGlow 4s linear infinite'
+                    }}></div>
+                  </div>
+
+                  <div className="absolute top-2 right-2 sparkle-dot">
+                    <Sparkles size={12} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-70`} />
+                  </div>
+                  <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: '1.5s' }}>
+                    <Sparkles size={8} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-50`} />
+                  </div>
+                  
+                  <div className="relative z-10">
+                    <div className={`text-6xl sm:text-7xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>
+                      {year}
+                    </div>
+                    
+                    <div className="text-sm font-['Inter'] font-semibold uppercase tracking-widest mt-2 text-gray-500 group-hover:text-gray-700">
+                      {year === 1 ? "1st Year" : "2nd Year"}
+                    </div>
+
+                    <div className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                      <CheckCircle size={12} />
+                      Open
+                    </div>
+
+                    <div className="mt-3 h-0.5 w-16 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center"></div>
+                    <div className="mt-3 text-sm font-['Inter'] font-medium text-gray-400">
+                      {DPHARM_SUBJECTS[year]?.length || 0} Subjects
+                    </div>
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
+                      <span className="text-xs font-['Inter'] font-medium text-emerald-500">Available</span>
+                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ========== RENDER SUBJECT STEP ==========
+  const renderSubjectStep = () => {
+    const subjects = getAvailableSubjects();
+    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
+    const categoryGradient = categories.find(c => c.id === selectedCategory)?.gradient || 'from-purple-500 to-pink-500';
+
+    return (
+      <div className="animate-slide-down">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{categoryLabel}</span>
+            {selectedLanguage && selectedCategory !== "PYQs" && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-500 text-sm font-['Inter'] font-medium">Language:</span>
+                <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedLanguage}</span>
+              </>
+            )}
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Year:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedYear}</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner animate-float-text">
+            <Sparkles className="text-purple-600" size={18} />
+            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Select Subject</span>
+            <Trophy className="text-purple-600" size={18} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            Select Your <span className={`bg-gradient-to-r ${categoryGradient} bg-clip-text text-transparent animate-gradient`}>Subject</span>
+          </h2>
+          <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryGradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+            Choose a subject to continue
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+          {subjects.map((subject, index) => {
+            const colors = subjectColors[index % subjectColors.length];
+            const iconData = subjectIcons[index % subjectIcons.length];
+            const Icon = iconData.icon;
+            const cardId = `subject-${index}`;
+            
+            return (
+              <div
+                key={subject}
+                onClick={() => handleSubjectClick(subject)}
+                className={`group relative cursor-pointer animate-pop`}
+                style={{ animationDelay: `${index * 0.06}s` }}
+                onMouseEnter={() => setHoveredCard(cardId)}
+                onMouseLeave={() => setHoveredCard(null)}
+                onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+              >
+                <div 
+                  className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                  style={{
+                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                  }}
+                ></div>
+
+                <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
+                  
+                  <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                    <div className="absolute inset-0 rounded-2xl" style={{
+                      background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                      animation: 'rotateGlow 4s linear infinite'
+                    }}></div>
+                  </div>
+
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${iconData.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-md`}>
+                          <Icon className={`${iconData.textColor}`} size={22} />
+                        </div>
+                        <div className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
+                          {subject}
+                        </div>
+                      </div>
+                      <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-[10px] font-['Inter'] font-bold shadow-lg animate-pulse`}>
+                        {index + 1}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                        Click to view units
+                      </span>
+                      <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-purple-600 transition-colors duration-300 flex items-center gap-1">
+                        Explore Subject
+                        <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
+                      </span>
+                      <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
+                        <ArrowRight className="text-white" size={16} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {subjects.length === 0 && (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+              <FolderOpen className="text-gray-400" size={48} />
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Subjects Available</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">Subjects for this year are coming soon!</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== RENDER UNIT STEP ==========
+  const renderUnitStep = () => {
+    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
+
+    return (
+      <div className="animate-slide-up">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{categoryLabel}</span>
+            {selectedLanguage && selectedCategory !== "PYQs" && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-500 text-sm font-['Inter'] font-medium">Language:</span>
+                <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedLanguage}</span>
+              </>
+            )}
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Year:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedYear}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Subject:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 truncate max-w-[120px]">{selectedSubject}</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner animate-float-text">
+            <Sparkles className="text-emerald-600" size={18} />
+            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Select Unit</span>
+            <Trophy className="text-emerald-600" size={18} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Unit</span>
+          </h2>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4 animate-gradient"></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {units.length > 0 ? `${units.length} Units Available` : "No units available yet"}
+          </p>
+        </div>
+
+        {units.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+              <FolderOpen className="text-gray-400" size={48} />
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Units Available</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any content for this subject yet.</p>
+            <p className="font-['Inter'] text-gray-400 text-sm mt-1">Units will appear here once content is uploaded.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            {units.map((unit, index) => {
+              const colors = unitColors[index % unitColors.length];
+              const cardId = `unit-${unit.id}`;
+              
+              const content = unitContent.filter((item) => {
+                const itemUnit = Number(item?.unit);
+                const unitId = Number(unit?.id);
+
+                return (
+                  Number.isInteger(itemUnit) &&
+                  itemUnit > 0 &&
+                  Number.isInteger(unitId) &&
+                  itemUnit === unitId
+                );
+              });
+              
+              return (
+                <div
+                  key={unit.id}
+                  className={`group relative cursor-pointer animate-pop`}
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                >
+                  <div 
+                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    style={{
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                    }}
+                  ></div>
+
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
+                    
+                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 rounded-2xl" style={{
+                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                        animation: 'rotateGlow 4s linear infinite'
+                      }}></div>
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                          {unit.name}
+                        </div>
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
+                          {unit.id || index + 1}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                        <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? 'Topic' : 'Topics'} • {content.length} {content.length === 1 ? 'Document' : 'Documents'}
+                        </span>
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                      </div>
+
+                      {unit.topics && unit.topics.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {unit.topics.slice(0, 3).map((topic, i) => (
+                            <span 
+                              key={i} 
+                              className={`text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50 group-hover:shadow-md transition-all duration-300`}
+                              style={{
+                                animation: `pop 0.3s ease ${i * 0.05}s both`
+                              }}
+                            >
+                              {topic}
+                            </span>
+                          ))}
+                          {unit.topics.length > 3 && (
+                            <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
+                              +{unit.topics.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      {content.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3 animate-float-text">
+                            📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                          </p>
+
+                          <div className="space-y-3">
+                            {content.map((item) => (
+                              <div
+                                key={item._id}
+                                className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+                              >
+                                <div className="flex items-center gap-2 mb-2">
+                                  <FileText size={16} className="text-blue-600 shrink-0 animate-pulse" />
+                                  <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
+                                    {item.title || item.fileName || "Document"}
+                                  </span>
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleView(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                  >
+                                    <Eye size={14} />
+                                    Preview
+                                  </button>
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                  >
+                                    <Download size={14} />
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {content.length === 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== PROGRESS INDICATOR ==========
+  const renderProgress = () => {
+    const steps = [
+      { number: 1, label: "Category", icon: BookOpen },
+      { number: 2, label: "Language", icon: Book },
+      { number: 3, label: "Year", icon: GraduationCap },
+      { number: 4, label: "Subject", icon: Book },
+      { number: 5, label: "Unit", icon: Layers }
+    ];
+
+    // For PYQs, skip Language step
+    const isPYQ = selectedCategory === "PYQs";
+    const filteredSteps = isPYQ 
+      ? steps.filter(s => s.number !== 2)
+      : steps;
+
+    // Map currentStep to display step
+    const getDisplayStep = () => {
+      if (isPYQ) {
+        if (currentStep <= 2) return currentStep;
+        return currentStep - 1;
+      }
+      return currentStep;
+    };
+
+    const displayStep = getDisplayStep();
+
+    return (
+      <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-12">
+        {filteredSteps.map((step, index) => {
+          const isCompleted = displayStep > step.number;
+          const isActive = displayStep === step.number;
+          const Icon = step.icon;
           
           return (
-            <div key={`content-${yr}`} className="mt-6 animate-fadeIn">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm sm:text-base">
-                  {yr}
+            <div key={step.number} className="flex items-center">
+              <div className="flex items-center gap-2">
+                <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' : isActive ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow' : 'bg-gray-200 text-gray-500'}`}>
+                  {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
+                  {isActive && (<div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>)}
                 </div>
-                <h4 className="text-lg sm:text-xl font-bold text-gray-800">{yearName}</h4>
-                <span className="text-xs sm:text-sm text-gray-500">({getItemLabel(items.length)})</span>
+                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? 'text-blue-600 font-bold animate-pulse' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
+                  {step.label}
+                </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {items.map((item, idx) => renderCard(item, type, idx))}
-              </div>
+              {index < filteredSteps.length - 1 && (<div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400 animate-gradient' : 'bg-gray-200'}`}></div>)}
             </div>
           );
         })}
@@ -1407,238 +1319,153 @@ const DPharm = () => {
     );
   };
 
+  // ============================================================
+  // MAIN RENDER
+  // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-purple-50 to-white">
       <Toaster 
         position="top-right"
         toastOptions={{
           duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            style: {
-              background: '#10b981',
-              color: '#fff',
-            },
-          },
-          error: {
-            duration: 4000,
-            style: {
-              background: '#ef4444',
-              color: '#fff',
-            },
-          },
+          style: { background: '#363636', color: '#fff' },
+          success: { duration: 3000, style: { background: '#10b981', color: '#fff' } },
+          error: { duration: 4000, style: { background: '#ef4444', color: '#fff' } },
         }}
       />
 
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 flex items-center gap-3 shadow-xl">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            <span className="text-gray-700 font-medium text-sm sm:text-base">Loading...</span>
+          <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-2xl">
+            <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <span className="font-['Inter'] text-gray-700 font-medium">Loading...</span>
           </div>
         </div>
       )}
 
       {!isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button
-            onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 sm:px-8 py-2.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-2 sm:gap-3 text-sm sm:text-base w-full justify-center"
-          >
-            <Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" />
+          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center">
+            <Crown size={20} className="text-yellow-300" />
             <span>Get Premium - ₹{premiumPrice}</span>
-            <Crown size={18} className="sm:w-6 sm:h-6 text-yellow-300" />
+            <Rocket size={20} className="text-yellow-300" />
           </button>
         </div>
       )}
 
       {isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl font-bold shadow-xl flex items-center gap-2 text-sm sm:text-base">
-            <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" />
+          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
+            <Gem size={18} className="text-yellow-300" />
             Premium Member
-            <Crown size={16} className="sm:w-5 sm:h-5 text-yellow-300" />
+            <Shield size={18} className="text-yellow-300" />
           </div>
         </div>
       )}
 
-      {/* HERO SECTION */}
-      <div className="w-screen bg-[#1a0a2e] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-        <div className="relative h-[300px] sm:h-[360px] md:h-[520px] w-full">
-          <div className="absolute right-0 top-0 w-[70%] h-full overflow-hidden">
-            <img src={bannerImg} alt="Pharmacy" className="w-full h-full object-cover object-center translate-y-[35px] scale-[1.02]" />
-            <div className="absolute inset-0 bg-black/35"></div>
+      {/* ============================================================
+          PREMIUM HEADER - D.PHARM BANNER
+          ============================================================ */}
+      <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#1a0a2e] to-[#0f2847] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 sm:mt-20">
+        <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
+          
+          {/* Background Image */}
+          <div 
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+            style={{ 
+              backgroundImage: `url(${bannerImg})`,
+              backgroundPosition: 'center 8%',
+              backgroundSize: 'cover'
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-[#071426]/90 via-[#071426]/38 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#071426]/70 via-transparent to-transparent"></div>
           </div>
-          <div className="absolute left-0 top-0 h-full w-[62%] bg-[#140826]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
-          <div className="absolute left-[18%] top-0 h-full w-[22%] bg-[#2a1a4e]/80 backdrop-blur-md" style={{ clipPath: "polygon(35% 0, 100% 0, 65% 100%, 0% 100%)" }}></div>
-          <div className="relative z-20 flex items-center h-full px-4 sm:px-6 md:px-20">
-            <div className="max-w-[520px]">
-              <h1 className="text-white text-3xl sm:text-4xl md:text-7xl font-extrabold leading-tight mb-3 sm:mb-5">
-                Diploma<br /><span className="text-purple-400">of Pharmacy</span>
+
+          {/* Animated Gradient Overlay */}
+          <div className="absolute left-0 top-0 h-full w-[48%] bg-gradient-to-r from-[#071426]/78 via-[#0f2847]/38 to-transparent pointer-events-none"></div>
+          
+          {/* Animated Particles */}
+          <div className="absolute top-20 right-10 w-2 h-2 rounded-full bg-purple-400/30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+          <div className="absolute top-40 right-20 w-3 h-3 rounded-full bg-pink-400/20 animate-pulse" style={{ animationDelay: '1.2s' }}></div>
+          <div className="absolute bottom-20 right-30 w-1.5 h-1.5 rounded-full bg-blue-400/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+          
+          {/* Content */}
+          <div className="relative z-20 flex items-end h-full px-4 sm:px-8 md:px-16 lg:px-24 pb-10 sm:pb-12 md:pb-14 lg:pb-16">
+            <div className="max-w-2xl animate-slide-up">
+              
+              {/* Badge with Pulse */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-white/10 mb-4 animate-float-text">
+                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+                <span className="text-xs font-['Inter'] font-semibold text-purple-300 tracking-widest uppercase">
+                  D.Pharm Program
+                </span>
+                <span className="w-2 h-2 rounded-full bg-pink-400 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
+              </div>
+
+              {/* Title with Gradient Animation */}
+              <h1 className="text-white font-['Space_Grotesk'] font-extrabold leading-[1.1]">
+                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: '0.3s' }}>
+                  Diploma of
+                </span>
+                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-purple-400 via-pink-400 to-amber-400 bg-clip-text text-transparent animate-gradient">
+                  Pharmacy
+                </span>
               </h1>
-              <p className="text-gray-300 text-xs sm:text-sm md:text-lg leading-relaxed mb-5 sm:mb-8 max-w-[500px]">
+
+              {/* Decorative Line */}
+              <div className="flex items-center gap-4 mt-4 mb-4">
+                <div className="h-1 w-16 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full animate-gradient"></div>
+                <div className="h-1 w-8 bg-gradient-to-r from-pink-400 to-amber-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: '0.5s' }}></div>
+                <div className="h-1 w-4 bg-gradient-to-r from-amber-400 to-purple-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: '1s' }}></div>
+              </div>
+
+              {/* Description */}
+              <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: '0.6s' }}>
                 Complete Notes, Year-wise PDFs, Practical Videos & Predictive Papers for D.Pharm Students.
               </p>
+
+              {/* CTA Button with Hover Animation */}
+              <button 
+                onClick={() => document.getElementById('content-start')?.scrollIntoView({ behavior: 'smooth' })}
+                className="mt-6 group inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-600 text-white font-['Inter'] font-semibold text-sm hover:shadow-2xl hover:shadow-purple-500/30 transition-all duration-300 hover:scale-105 animate-float-text"
+                style={{ animationDelay: '0.9s' }}
+              >
+                <span>Explore Content</span>
+                <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform duration-300" />
+              </button>
             </div>
           </div>
+
+          {/* Bottom Fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-[#faf5ff] via-[#faf5ff]/45 to-transparent pointer-events-none"></div>
         </div>
       </div>
 
-      {/* TABS SECTION */}
-      <div className="w-full bg-white">
-        <div className="w-full min-h-[120px] sm:min-h-[150px] bg-gradient-to-b from-[#faf5ff] via-white to-[#fdf4ff] border-b border-purple-100 flex items-center justify-center">
-          <div className="w-full max-w-[1700px] mx-auto px-3 sm:px-6">
-            <div className="flex flex-nowrap sm:flex-wrap justify-start sm:justify-center gap-2 sm:gap-5 overflow-x-auto pb-3 sm:pb-0 hide-scrollbar">
-              {tabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button 
-                    key={tab.id} 
-                    onClick={() => { setActiveTab(tab.id); document.getElementById(tab.id)?.scrollIntoView({ behavior: "smooth" }); }} 
-                    className={`group flex items-center gap-2 sm:gap-3 px-3 sm:px-8 py-2 sm:py-4 rounded-xl sm:rounded-2xl font-semibold transition-all duration-300 border whitespace-nowrap ${
-                      isActive 
-                        ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white border-transparent shadow-lg scale-105" 
-                        : "bg-white text-gray-700 border-purple-100 hover:shadow-md hover:scale-105"
-                    }`}
-                  >
-                    <div className={`w-7 h-7 sm:w-11 sm:h-11 rounded-lg sm:rounded-xl flex items-center justify-center transition-all duration-300 ${
-                      isActive ? "bg-white/20" : "bg-purple-100 text-purple-600 group-hover:bg-purple-200"
-                    }`}>
-                      <Icon size={14} className="sm:w-5 sm:h-5" />
-                    </div>
-                    <span className="text-xs sm:text-[15px] md:text-base font-semibold">{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Content Start Anchor */}
+      <div id="content-start"></div>
 
-      {/* MAIN CONTENT */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
         
-        {/* FREE MATERIALS */}
-        <div id="notes" className="mb-16 sm:mb-24 scroll-mt-20">
-          <div className="text-center mb-8 sm:mb-14">
-            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Study Material</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Free Materials</h2>
-            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
-            <p className="text-green-600 mt-2 text-xs sm:text-sm">✓ Always free - No premium required</p>
-          </div>
-          
-          {notes.length > 0 && (
-            <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">Free Notes & PDFs</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
-                {notes.map((note, idx) => renderFreeCard(note, "note", FileText, idx))}
-              </div>
-            </>
-          )}
+        {currentStep > 1 && renderProgress()}
 
-          {freeVideos.length > 0 && (
-            <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">Free Video Lectures</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
-                {freeVideos.map((video, idx) => renderFreeVideoCard(video, idx))}
-              </div>
-            </>
-          )}
-
-          {freePapers.length > 0 && (
-            <>
-              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-800">Free Practice Papers</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {freePapers.map((paper, idx) => renderFreeCard(paper, "free-paper", Brain, idx))}
-              </div>
-            </>
-          )}
-
-          {notes.length === 0 && freeVideos.length === 0 && freePapers.length === 0 && (
-            <div className="text-center py-8 sm:py-12 text-gray-500 text-sm sm:text-base">No free content available yet.</div>
-          )}
+        <div className="step-container">
+          {currentStep === 1 && renderCategoryStep()}
+          {currentStep === 2 && (selectedCategory === "PYQs" ? renderYearStep() : renderLanguageStep())}
+          {currentStep === 3 && (selectedCategory === "PYQs" ? renderSubjectStep() : renderYearStep())}
+          {currentStep === 4 && (selectedCategory === "PYQs" ? renderUnitStep() : renderSubjectStep())}
+          {currentStep === 5 && renderUnitStep()}
         </div>
 
-        {/* HINDI PDFS */}
-        <div id="hindi-pdfs" className="mb-16 sm:mb-24 scroll-mt-20">
-          <div className="text-center mb-8 sm:mb-14">
-            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Premium Content</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Hindi Medium PDFs</h2>
-            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
-            <p className="text-gray-500 text-xs sm:text-sm mt-2">हिंदी में पूरा अध्ययन सामग्री - Click on any year card to view its PDFs</p>
+        {currentStep > 1 && (
+          <div className="text-center mt-10">
+            <button onClick={resetNavigation} className="text-gray-400 hover:text-gray-600 text-sm font-['Inter'] transition-colors duration-300 group flex items-center gap-2 mx-auto">
+              <span className="w-6 h-0.5 bg-gray-300 group-hover:bg-gray-500 transition-colors"></span>
+              Start Over
+              <span className="w-6 h-0.5 bg-gray-300 group-hover:bg-gray-500 transition-colors"></span>
+            </button>
           </div>
-          {renderYearSection(
-            "Year-wise PDFs", 
-            pdfsByYearHindi, 
-            "paid-pdf", 
-            (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), 
-            <GraduationCap size={20} className="sm:w-6 sm:h-6 text-purple-600" />, 
-            dpharmYears, 
-            "No Hindi premium PDFs available yet."
-          )}
-        </div>
-
-        {/* ENGLISH PDFS */}
-        <div id="english-pdfs" className="mb-16 sm:mb-24 scroll-mt-20">
-          <div className="text-center mb-8 sm:mb-14">
-            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[3px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Premium Content</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">English Medium PDFs</h2>
-            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
-            <p className="text-gray-500 text-xs sm:text-sm mt-2">Complete study material in English - Click on any year card to view its PDFs</p>
-          </div>
-          {renderYearSection(
-            "Year-wise PDFs", 
-            pdfsByYearEnglish, 
-            "paid-pdf", 
-            (item, type, idx) => renderPremiumCard(item, "paid-pdf", Lock, idx), 
-            <GraduationCap size={20} className="sm:w-6 sm:h-6 text-purple-600" />, 
-            dpharmYears, 
-            "No English premium PDFs available yet."
-          )}
-        </div>
-
-        {/* PREMIUM VIDEOS */}
-        <div id="videos" className="mb-16 sm:mb-24 scroll-mt-20">
-          <div className="text-center mb-8 sm:mb-14">
-            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Learning Resources</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Videos</h2>
-            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
-            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any year card to view its videos</p>
-          </div>
-          {renderYearSection(
-            "Year-wise Videos", 
-            videosByYear, 
-            "premium-video", 
-            (item, type, idx) => renderPremiumVideoCard(item, idx), 
-            <Video size={20} className="sm:w-6 sm:h-6 text-purple-600" />, 
-            dpharmYears, 
-            "No premium videos available yet."
-          )}
-        </div>
-
-        {/* PREMIUM PAPERS */}
-        <div id="papers" className="mb-16 sm:mb-24 scroll-mt-20">
-          <div className="text-center mb-8 sm:mb-14">
-            <p className="text-purple-600 font-semibold tracking-[2px] sm:tracking-[4px] uppercase mb-2 sm:mb-3 text-xs sm:text-sm">Exam Preparation</p>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-gray-900">Premium Papers</h2>
-            <div className="w-16 sm:w-24 h-1 bg-gradient-to-r from-purple-500 to-indigo-600 mx-auto rounded-full mt-3 sm:mt-4"></div>
-            <p className="text-gray-500 text-xs sm:text-sm mt-2">Click on any year to view its papers</p>
-          </div>
-          {renderYearSection(
-            "Year-wise Papers", 
-            papersByYear, 
-            "premium-paper", 
-            (item, type, idx) => renderPremiumCard(item, "premium-paper", Brain, idx), 
-            <Brain size={20} className="sm:w-6 sm:h-6 text-purple-600" />, 
-            dpharmYears, 
-            "No premium papers available yet."
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
