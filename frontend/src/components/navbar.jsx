@@ -461,7 +461,7 @@ const Navbar = () => {
       setOpenDropdown(null);
       setOpenSubmenuPath([]);
       setSubmenuPositions({});
-    }, 300);
+    }, 500);
   };
 
   const handleDropdownContainerMouseEnter = () => {
@@ -1191,12 +1191,12 @@ const Navbar = () => {
           if (smartDirection === "left") {
             submenuStyle.left = "auto";
             submenuStyle.right = "100%";
-            submenuStyle.marginRight = "6px";
+            submenuStyle.marginRight = "0px";
             submenuStyle.marginLeft = "0px";
           } else {
             submenuStyle.left = "100%";
             submenuStyle.right = "auto";
-            submenuStyle.marginLeft = "6px";
+            submenuStyle.marginLeft = "0px";
             submenuStyle.marginRight = "0px";
           }
         }
@@ -1239,7 +1239,7 @@ const Navbar = () => {
                       );
                     }
                   );
-                }, 250);
+                }, 500);
             }}
           >
             <div
@@ -1291,7 +1291,7 @@ const Navbar = () => {
 
                   marginLeft:
                     submenuStyle.marginLeft ??
-                    "6px",
+                    "0px",
 
                   marginRight:
                     submenuStyle.marginRight ??
@@ -1328,7 +1328,7 @@ const Navbar = () => {
                             )
                           )
                       );
-                    }, 250);
+                    }, 500);
                 }}
               >
                 <div
@@ -1775,9 +1775,8 @@ const Navbar = () => {
                       <div
                         className="
                           absolute
-                          top-6
+                          top-full
                           left-0
-                          mt-2
                           w-56
                           xl:w-64
                           bg-white

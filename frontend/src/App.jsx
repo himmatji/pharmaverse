@@ -8,9 +8,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 
 /* HOME COMPONENTS */
 import Banner from "./components/banner";
-import Icons from "./components/icons";
-import FeatureSection from "./components/featuresection";
 import QuickAccessSection from "./components/QuickAccessSection";
+import FeatureSection from "./components/featuresection";
+import Icons from "./components/icons";
 import StudentFeaturesSection from "./components/StudentFeaturesSection";
 import Premium from "./components/premium";
 
@@ -22,17 +22,25 @@ import PharmD from "./pages/PharmD";
 import PhD from "./pages/PhD";
 import Profile from "./pages/Profile";
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
+const API_BASE =
+  import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
 /* HOME PAGE */
 const Home = () => {
   return (
     <>
       <Banner />
-      <Icons />
-      <FeatureSection />
+
+      {/* QuickAccessSection ab Icons ki jagah */}
       <QuickAccessSection />
+
+      <FeatureSection />
+
+      {/* Icons ab QuickAccessSection ki jagah */}
+      <Icons />
+
       <StudentFeaturesSection />
+
       <Premium />
     </>
   );
@@ -62,6 +70,7 @@ function App() {
 
     if (existingScript) {
       const finish = () => setIsLoading(false);
+
       existingScript.addEventListener("load", finish);
       existingScript.addEventListener("error", finish);
 
@@ -72,9 +81,12 @@ function App() {
     }
 
     const script = document.createElement("script");
+
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
+
     script.onload = () => setIsLoading(false);
+
     script.onerror = () => {
       console.error("Failed to load Razorpay");
       setIsLoading(false);
@@ -96,7 +108,9 @@ function App() {
     const verifySession = async () => {
       const token =
         localStorage.getItem("userToken") || localStorage.getItem("token");
-      const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+
+      const isLoggedIn =
+        localStorage.getItem("isLoggedIn") === "true";
 
       if (!token || !isLoggedIn) return;
 
@@ -137,9 +151,13 @@ function App() {
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-4">
             <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+
             <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
           </div>
-          <p className="text-gray-600">Loading secure payment gateway...</p>
+
+          <p className="text-gray-600">
+            Loading secure payment gateway...
+          </p>
         </div>
       </div>
     );
