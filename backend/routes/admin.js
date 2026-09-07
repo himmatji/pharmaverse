@@ -282,8 +282,22 @@ router.post(
         title,
         description,
         isPremium,
-        type
+        type,
+        language
       } = req.body;
+
+      const normalizedLanguage = language
+        ? String(language).trim().toLowerCase()
+        : "";
+
+      if (String(branch || "").trim().toLowerCase() === "d.pharm") {
+        if (!["hindi", "english"].includes(normalizedLanguage)) {
+          return res.status(400).json({
+            success: false,
+            message: "Language is required for D.Pharm and must be Hindi or English"
+          });
+        }
+      }
 
       console.log(
         "📄 File Name:",
@@ -414,6 +428,11 @@ router.post(
           branch || "B.Pharm",
 
         category,
+
+        language:
+          String(branch || "").trim().toLowerCase() === "d.pharm"
+            ? normalizedLanguage
+            : (normalizedLanguage || undefined),
 
         semester:
           semesterNumber,
@@ -1406,8 +1425,13 @@ router.get("/public/notes", async (req, res) => {
       semester,
       subject,
       unit,
-      branch
+      branch,
+      language
     } = req.query;
+
+    const normalizedLanguage = language
+      ? String(language).trim().toLowerCase()
+      : "";
 
     console.log("Course:", course);
     console.log("Category:", category);
@@ -1415,6 +1439,7 @@ router.get("/public/notes", async (req, res) => {
     console.log("Subject:", subject);
     console.log("Unit:", unit);
     console.log("Branch:", branch);
+    console.log("Language:", normalizedLanguage);
 
     if (mongoose.connection.readyState !== 1) {
       console.error("❌ MongoDB is not connected");
@@ -1428,82 +1453,106 @@ router.get("/public/notes", async (req, res) => {
 
     if (category && category !== "") {
       query.category = {
-        $regex: `^${String(category).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $regex: `^${String(category).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
         $options: "i"
       };
     }
 
     if (semester !== undefined && semester !== "") {
       const semesterNumber = Number.parseInt(semester, 10);
+
       if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
         return res.status(400).json({
           success: false,
           message: "Invalid semester"
         });
       }
+
       query.semester = semesterNumber;
     }
 
     if (subject && subject !== "") {
       query.subject = {
-        $regex: `^${String(subject).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $regex: `^${String(subject).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
         $options: "i"
       };
     }
 
-    // Only add unit filter if specific unit is requested
     if (unit !== undefined && unit !== "") {
       const unitNumber = Number.parseInt(unit, 10);
-      if (Number.isInteger(unitNumber) && unitNumber > 0) {
-        query.unit = unitNumber;
+
+      if (!Number.isInteger(unitNumber) || unitNumber <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid unit"
+        });
       }
+
+      query.unit = unitNumber;
     }
 
     const selectedCourse = branch || course;
+
     if (selectedCourse && selectedCourse !== "") {
+      const escapedCourse = String(selectedCourse).replace(
+        /[.*+?^${}()|[\\]\\]/g,
+        "\\$&"
+      );
+
       query.$or = [
         {
           course: {
-            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $regex: `^${escapedCourse}$`,
             $options: "i"
           }
         },
         {
           branch: {
-            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $regex: `^${escapedCourse}$`,
             $options: "i"
           }
         }
       ];
     }
 
-    console.log("🔎 MongoDB Query:", JSON.stringify(query, null, 2));
+    const isDPharm =
+      String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
 
-    // Fetch all notes matching the query
+    if (isDPharm) {
+      if (!["hindi", "english"].includes(normalizedLanguage)) {
+        return res.status(400).json({
+          success: false,
+          message: "Language is required for D.Pharm"
+        });
+      }
+
+      query.language = normalizedLanguage;
+    } else if (normalizedLanguage) {
+      query.language = normalizedLanguage;
+    }
+
+    console.log(
+      "🔎 MongoDB Query:",
+      JSON.stringify(query, null, 2)
+    );
+
     const notes = await Note.find(query)
       .select("-fileData")
       .sort({ createdAt: -1 })
       .lean();
 
-    // Log each document's unit for debugging
-    console.log("📄 RAW DOCUMENTS FROM DB:");
-    notes.forEach((note, index) => {
-      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}, ID: ${note._id}`);
-    });
-
-    // Filter: Only keep documents with valid unit > 0
-    const filteredNotes = notes.filter(note => {
+    const filteredNotes = notes.filter((note) => {
       const unitVal = Number(note.unit);
       return Number.isInteger(unitVal) && unitVal > 0;
     });
 
     console.log(`📄 Total Documents Found: ${notes.length}`);
-    console.log(`📄 Valid Documents (unit > 0): ${filteredNotes.length}`);
+    console.log(`📄 Valid Documents: ${filteredNotes.length}`);
 
-    // Log valid documents
-    console.log("📄 VALID DOCUMENTS (unit > 0):");
     filteredNotes.forEach((note, index) => {
-      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}`);
+      console.log(
+        `  ${index + 1}. Language: ${note.language || "N/A"}, Unit: ${note.unit}, Subject: ${note.subject || "N/A"}, Title: ${note.title || "Untitled"}`
+      );
     });
 
     console.log("=================================\n");
@@ -1514,7 +1563,6 @@ router.get("/public/notes", async (req, res) => {
       count: filteredNotes.length,
       total: notes.length
     });
-
   } catch (error) {
     console.error("\n❌ PUBLIC NOTES ERROR:");
     console.error(error);
@@ -1695,59 +1743,32 @@ router.get(
   "/public/units",
   async (req, res) => {
     try {
-      console.log(
-        "\n================================="
-      );
-
-      console.log(
-        "📚 PUBLIC UNITS REQUEST"
-      );
-
-      console.log(
-        "================================="
-      );
+      console.log("\n=================================");
+      console.log("📚 PUBLIC UNITS REQUEST");
+      console.log("=================================");
 
       const {
         category,
         semester,
         subject,
         branch,
-        course
+        course,
+        language
       } = req.query;
 
-      console.log(
-        "Category:",
-        category
-      );
+      const normalizedLanguage = language
+        ? String(language).trim().toLowerCase()
+        : "";
 
-      console.log(
-        "Semester:",
-        semester
-      );
+      console.log("Category:", category);
+      console.log("Semester:", semester);
+      console.log("Subject:", subject);
+      console.log("Branch:", branch);
+      console.log("Course:", course);
+      console.log("Language:", normalizedLanguage);
 
-      console.log(
-        "Subject:",
-        subject
-      );
-
-      console.log(
-        "Branch:",
-        branch
-      );
-
-      console.log(
-        "Course:",
-        course
-      );
-
-      if (
-        mongoose.connection.readyState !==
-        1
-      ) {
-        console.error(
-          "❌ MongoDB is not connected"
-        );
-
+      if (mongoose.connection.readyState !== 1) {
+        console.error("❌ MongoDB is not connected");
         return res.status(500).json({
           success: false,
           message: "Database not connected"
@@ -1756,131 +1777,90 @@ router.get(
 
       const query = {};
 
-      if (
-        category !== undefined &&
-        category !== ""
-      ) {
+      if (category !== undefined && category !== "") {
         query.category = {
-          $regex:
-            `^${String(category).replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            )}$`,
+          $regex: `^${String(category).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
           $options: "i"
         };
       }
 
-      if (
-        semester !== undefined &&
-        semester !== ""
-      ) {
-        const semesterNumber =
-          Number.parseInt(
-            semester,
-            10
-          );
+      if (semester !== undefined && semester !== "") {
+        const semesterNumber = Number.parseInt(semester, 10);
 
-        if (
-          !Number.isInteger(
-            semesterNumber
-          )
-        ) {
+        if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
           return res.status(400).json({
             success: false,
             message: "Invalid semester"
           });
         }
 
-        query.semester =
-          semesterNumber;
+        query.semester = semesterNumber;
       }
 
-      if (
-        subject !== undefined &&
-        subject !== ""
-      ) {
+      if (subject !== undefined && subject !== "") {
         query.subject = {
-          $regex:
-            `^${String(subject).replace(
-              /[.*+?^${}()|[\]\\]/g,
-              "\\$&"
-            )}$`,
+          $regex: `^${String(subject).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
           $options: "i"
         };
       }
 
-      const selectedCourse =
-        branch ||
-        course;
+      const selectedCourse = branch || course;
 
-      if (
-        selectedCourse !== undefined &&
-        selectedCourse !== ""
-      ) {
+      if (selectedCourse !== undefined && selectedCourse !== "") {
+        const escapedCourse = String(selectedCourse).replace(
+          /[.*+?^${}()|[\\]\\]/g,
+          "\\$&"
+        );
+
         query.$or = [
           {
             course: {
-              $regex:
-                `^${String(
-                  selectedCourse
-                ).replace(
-                  /[.*+?^${}()|[\]\\]/g,
-                  "\\$&"
-                )}$`,
+              $regex: `^${escapedCourse}$`,
               $options: "i"
             }
           },
           {
             branch: {
-              $regex:
-                `^${String(
-                  selectedCourse
-                ).replace(
-                  /[.*+?^${}()|[\]\\]/g,
-                  "\\$&"
-                )}$`,
+              $regex: `^${escapedCourse}$`,
               $options: "i"
             }
           }
         ];
       }
 
+      const isDPharm =
+        String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+
+      if (isDPharm) {
+        if (!["hindi", "english"].includes(normalizedLanguage)) {
+          return res.status(400).json({
+            success: false,
+            message: "Language is required for D.Pharm"
+          });
+        }
+
+        query.language = normalizedLanguage;
+      } else if (normalizedLanguage) {
+        query.language = normalizedLanguage;
+      }
+
       console.log(
         "🔎 Mongo Query:",
-        JSON.stringify(
-          query,
-          null,
-          2
-        )
+        JSON.stringify(query, null, 2)
       );
 
-      const notes =
-        await Note.find(
-          query
-        )
-          .select(
-            "_id unit units"
-          )
-          .lean();
+      const notes = await Note.find(query)
+        .select("_id unit units language")
+        .lean();
 
-      console.log(
-        "📄 Documents Found:",
-        notes.length
-      );
+      console.log("📄 Documents Found:", notes.length);
 
-      const unitsSet =
-        new Set();
+      const unitsSet = new Set();
 
-      for (
-        const note of notes
-      ) {
-        const unitNumber =
-          Number(note?.unit);
+      for (const note of notes) {
+        const unitNumber = Number(note?.unit);
 
-        if (
-          Number.isInteger(unitNumber) &&
-          unitNumber > 0
-        ) {
+        if (Number.isInteger(unitNumber) && unitNumber > 0) {
           unitsSet.add(unitNumber);
         }
 
@@ -1888,76 +1868,38 @@ router.get(
           note.units.forEach((u) => {
             const id = Number(u?.id);
 
-            if (
-              Number.isInteger(id) &&
-              id > 0
-            ) {
+            if (Number.isInteger(id) && id > 0) {
               unitsSet.add(id);
             }
           });
         }
       }
 
-      const sortedUnits =
-        Array.from(
-          unitsSet
-        )
-          .sort(
-            (a, b) =>
-              a - b
-          )
-          .map(
-            (unitNumber) => ({
-              id:
-                unitNumber,
+      const sortedUnits = Array.from(unitsSet)
+        .sort((a, b) => a - b)
+        .map((unitNumber) => ({
+          id: unitNumber,
+          unit: unitNumber,
+          name: `Unit ${unitNumber}`,
+          title: `Unit ${unitNumber}`
+        }));
 
-              unit:
-                unitNumber,
-
-              name:
-                `Unit ${unitNumber}`,
-
-              title:
-                `Unit ${unitNumber}`
-            })
-          );
-
-      console.log(
-        "📚 Units:",
-        sortedUnits
-      );
-
-      console.log(
-        "=================================\n"
-      );
+      console.log("📚 Units:", sortedUnits);
+      console.log("=================================\n");
 
       return res.json({
         success: true,
-
-        data:
-          sortedUnits,
-
-        count:
-          sortedUnits.length
+        data: sortedUnits,
+        count: sortedUnits.length
       });
-
     } catch (error) {
-      console.error(
-        "\n❌ PUBLIC UNITS ERROR:"
-      );
-
-      console.error(
-        error
-      );
+      console.error("\n❌ PUBLIC UNITS ERROR:");
+      console.error(error);
 
       return res.status(500).json({
         success: false,
-
-        message:
-          "Failed to fetch units",
-
-        error:
-          error.message
+        message: "Failed to fetch units",
+        error: error.message
       });
     }
   }
