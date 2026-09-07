@@ -85,14 +85,78 @@ const categories = [
 
 // ========== SEMESTER COLORS ==========
 const semesterColors = [
-  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244, 63, 94, 0.3)", bg: "from-rose-50 to-pink-50" },
-  { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59, 130, 246, 0.3)", bg: "from-blue-50 to-cyan-50" },
-  { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16, 185, 129, 0.3)", bg: "from-emerald-50 to-teal-50" },
-  { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139, 92, 246, 0.3)", bg: "from-purple-50 to-indigo-50" },
-  { gradient: "from-orange-500 to-amber-500", glow: "rgba(251, 146, 60, 0.3)", bg: "from-orange-50 to-amber-50" },
-  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236, 72, 153, 0.3)", bg: "from-pink-50 to-rose-50" },
-  { gradient: "from-cyan-500 to-blue-500", glow: "rgba(6, 182, 212, 0.3)", bg: "from-cyan-50 to-blue-50" },
-  { gradient: "from-teal-500 to-emerald-500", glow: "rgba(20, 184, 166, 0.3)", bg: "from-teal-50 to-emerald-50" },
+  { 
+    gradient: "from-rose-500 to-pink-500", 
+    glow: "rgba(244, 63, 94, 0.5)", 
+    bg: "from-rose-50 to-pink-50", 
+    border: "border-rose-200", 
+    shadow: "shadow-rose-200/50",
+    darkBg: "from-rose-600 to-pink-600",
+    lightBg: "from-rose-100 to-pink-100"
+  },
+  { 
+    gradient: "from-blue-500 to-cyan-500", 
+    glow: "rgba(59, 130, 246, 0.5)", 
+    bg: "from-blue-50 to-cyan-50", 
+    border: "border-blue-200", 
+    shadow: "shadow-blue-200/50",
+    darkBg: "from-blue-600 to-cyan-600",
+    lightBg: "from-blue-100 to-cyan-100"
+  },
+  { 
+    gradient: "from-emerald-500 to-teal-500", 
+    glow: "rgba(16, 185, 129, 0.5)", 
+    bg: "from-emerald-50 to-teal-50", 
+    border: "border-emerald-200", 
+    shadow: "shadow-emerald-200/50",
+    darkBg: "from-emerald-600 to-teal-600",
+    lightBg: "from-emerald-100 to-teal-100"
+  },
+  { 
+    gradient: "from-purple-500 to-indigo-500", 
+    glow: "rgba(139, 92, 246, 0.5)", 
+    bg: "from-purple-50 to-indigo-50", 
+    border: "border-purple-200", 
+    shadow: "shadow-purple-200/50",
+    darkBg: "from-purple-600 to-indigo-600",
+    lightBg: "from-purple-100 to-indigo-100"
+  },
+  { 
+    gradient: "from-orange-500 to-amber-500", 
+    glow: "rgba(251, 146, 60, 0.5)", 
+    bg: "from-orange-50 to-amber-50", 
+    border: "border-orange-200", 
+    shadow: "shadow-orange-200/50",
+    darkBg: "from-orange-600 to-amber-600",
+    lightBg: "from-orange-100 to-amber-100"
+  },
+  { 
+    gradient: "from-pink-500 to-rose-500", 
+    glow: "rgba(236, 72, 153, 0.5)", 
+    bg: "from-pink-50 to-rose-50", 
+    border: "border-pink-200", 
+    shadow: "shadow-pink-200/50",
+    darkBg: "from-pink-600 to-rose-600",
+    lightBg: "from-pink-100 to-rose-100"
+  },
+  { 
+    gradient: "from-cyan-500 to-blue-500", 
+    glow: "rgba(6, 182, 212, 0.5)", 
+    bg: "from-cyan-50 to-blue-50", 
+    border: "border-cyan-200", 
+    shadow: "shadow-cyan-200/50",
+    darkBg: "from-cyan-600 to-blue-600",
+    lightBg: "from-cyan-100 to-blue-100"
+  },
+  { 
+    gradient: "from-teal-500 to-emerald-500", 
+    glow: "rgba(20, 184, 166, 0.5)", 
+    bg: "from-teal-50 to-emerald-50", 
+    border: "border-teal-200", 
+    shadow: "shadow-teal-200/50",
+    darkBg: "from-teal-600 to-emerald-600",
+    lightBg: "from-teal-100 to-emerald-100"
+  },
 ];
 
 // ========== SUBJECT COLORS ==========
@@ -125,15 +189,92 @@ const unitColors = [
   { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" },
 ];
 
-// ========== STATIC SUBJECTS FOR SEMESTER 1 ==========
-const SEMESTER_1_SUBJECTS = [
-  "Basics of Python Programming for Pharmaceutical Sciences",
-  "General Pharmacy",
-  "Healthcare Psychology and Communication Skills",
-  "Human Anatomy, Physiology and Pathophysiology I",
-  "Introduction to Pharmacognosy",
-  "Pharmaceutical Inorganic and Analytical Chemistry"
-];
+// ========== B.PHARM SUBJECTS BY SEMESTER ==========
+const BPHARM_SUBJECTS = {
+  1: [
+    "Basics of Python Programming for Pharmaceutical Sciences",
+    "General Pharmacy",
+    "Healthcare Psychology and Communication Skills",
+    "Human Anatomy, Physiology and Pathophysiology I",
+    "Introduction to Pharmacognosy",
+    "Pharmaceutical Inorganic and Analytical Chemistry"
+  ],
+  2: [
+    "Applied Biostatistics and Data Analytics for Pharmaceutical Sciences",
+    "Biochemistry",
+    "Human Anatomy, Physiology and Pathophysiology II",
+    "Pharmaceutical Organic Chemistry",
+    "Pharmacognosy and Phytochemistry",
+    "Physical Pharmaceutics"
+  ],
+  3: [
+    "Introduction to Machine Learning in Pharmaceutical Sciences",
+    "Environmental Sciences",
+    "Ethics and Universal Human Values",
+    "General Pharmacology",
+    "Heterocyclic Compounds and Stereochemistry",
+    "Pharmaceutical Dosage Forms I",
+    "Pharmaceutical Engineering",
+    "Pharmaceutical Microbiology"
+  ],
+  4: [
+    "Herbal Drug Technology",
+    "Medicinal Chemistry",
+    "Pharmaceutical Biotechnology",
+    "Social Pharmacy and Public Health",
+    "Systemic Pharmacology I"
+  ],
+  5: [
+    "Biomedicinal Chemistry",
+    "Industrial Pharmacognosy",
+    "Innovation and Startup Ecosystem",
+    "Pharmaceutical Dosage Form II",
+    "Pharmaceutical Quality Assurance",
+    "Systemic Pharmacology II"
+  ],
+  6: [
+    "Advanced Pharmacognosy",
+    "Biopharmaceutics and Pharmacokinetics",
+    "Intellectual Property Rights",
+    "AI Applications in Pharmaceutical Sciences",
+    "Pharmaceutical Analysis",
+    "Pharmaceutical Jurisprudence",
+    "Green Chemistry",
+    "Materiovigilance and Hemovigilance",
+    "Scientific Writing",
+    "Drug Store and Business Management",
+    "Career Building in Cultivation of Medicinal Plants",
+    "Active Pharmaceutical Ingredients and Excipient Sciences"
+  ],
+  7: [
+    "Biostatistics Research Methodology",
+    "Cosmetics and Cosmeceuticals",
+    "AI in Clinical Applications",
+    "Modern Analytical Techniques",
+    "Pharmacovigilance",
+    "Pharmacy Practice",
+    "Regulatory Affairs",
+    "Current Good Manufacturing Practices (cGMP)",
+    "Pharmaceutical Automation",
+    "Modern Techniques in Cellular Biology",
+    "Medical Devices",
+    "Transformation of Food Waste into Medicinal Products",
+    "Biosimilars, Vaccines & Macromolecules"
+  ],
+  8: [
+    "Ethical Considerations and Translational Applications of AI in Pharmacy",
+    "Clinical Pharmacotherapeutics",
+    "Industrial Pharmacy and Facility Design",
+    "Pharmaceutical Management",
+    "Sterile Dosage Forms and Novel Drug Delivery System",
+    "Pharmaceutical Packaging",
+    "Supply Chain Management",
+    "Industrial Safety and Waste Management",
+    "Traditional Healing Practices of India",
+    "Futuristic Pharma through AR/VR: Pharma 4.0",
+    "Herbal Cosmetics for Industry Perspective"
+  ]
+};
 
 const BPharm = () => {
   const location = useLocation();
@@ -163,10 +304,10 @@ const BPharm = () => {
 
   // ========== GET SUBJECTS FOR SELECTED SEMESTER ==========
   const getAvailableSubjects = () => {
-    if (selectedSemester === 1) {
-      return SEMESTER_1_SUBJECTS;
-    }
-    return [];
+    const semester = Number(selectedSemester);
+    return Array.isArray(BPHARM_SUBJECTS[semester])
+      ? BPHARM_SUBJECTS[semester]
+      : [];
   };
 
   // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
@@ -191,94 +332,44 @@ const BPharm = () => {
     contentAbortControllerRef.current = controller;
 
     try {
-      const requestParams = {
-        course: "B.Pharm",
-        branch: "B.Pharm",
-        category: selectedCategory,
-        semester: selectedSemester,
-        subject: selectedSubject
-      };
-
-      // Fetch documents and the unit structure separately.
-      // Unit cards must come from /public/units, not only from document.unit.
-      const [contentRes, unitsRes] = await Promise.all([
-        axios.get(`${API_BASE}/api/admin/public/notes`, {
-          params: requestParams,
-          signal: controller.signal
-        }),
-        axios.get(`${API_BASE}/api/admin/public/units`, {
-          params: requestParams,
-          signal: controller.signal
-        })
-      ]);
+      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+        params: {
+          course: "B.Pharm",
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject
+        },
+        signal: controller.signal
+      });
 
       if (requestId !== contentRequestIdRef.current) return;
 
-      const rawContent = Array.isArray(contentRes.data)
-        ? contentRes.data
-        : Array.isArray(contentRes.data?.data)
-          ? contentRes.data.data
+      const rawContent = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data?.data)
+          ? res.data.data
           : [];
-
-      const apiUnits = Array.isArray(unitsRes.data)
-        ? unitsRes.data
-        : Array.isArray(unitsRes.data?.data)
-          ? unitsRes.data.data
-          : [];
-
-      console.log("📄 RAW CONTENT FROM API:", rawContent);
-      console.log("📄 TOTAL DOCUMENTS:", rawContent.length);
-      console.log("📚 UNITS FROM API:", apiUnits);
 
       setUnitContent(rawContent);
 
-      // API units are authoritative. Content is used only as a fallback so
-      // old documents that do not have a units[] structure still work.
       const unitMap = new Map();
-
-      apiUnits.forEach((unit) => {
-        const id = Number(unit?.id);
-        if (!Number.isInteger(id) || id <= 0) return;
-
-        unitMap.set(id, {
-          id,
-          name: unit?.name || `Unit ${id}`,
-          topics: Array.isArray(unit?.topics) ? unit.topics : []
-        });
-      });
-
-      if (unitMap.size === 0) {
-        rawContent.forEach((item) => {
-          const id = Number(item?.unit);
-          if (!Number.isInteger(id) || id <= 0) return;
-
-          if (!unitMap.has(id)) {
-            unitMap.set(id, {
-              id,
-              name: `Unit ${id}`,
+      
+      rawContent.forEach((item) => {
+        const unitValue = Number(item?.unit);
+        
+        if (Number.isInteger(unitValue) && unitValue > 0) {
+          if (!unitMap.has(unitValue)) {
+            unitMap.set(unitValue, {
+              id: unitValue,
+              name: `Unit ${unitValue}`,
               topics: []
             });
           }
-
-          if (Array.isArray(item?.units)) {
-            item.units.forEach((u) => {
-              const unitId = Number(u?.id);
-              if (!Number.isInteger(unitId) || unitId <= 0) return;
-              if (!unitMap.has(unitId)) {
-                unitMap.set(unitId, {
-                  id: unitId,
-                  name: u?.name || `Unit ${unitId}`,
-                  topics: Array.isArray(u?.topics) ? u.topics : []
-                });
-              }
-            });
-          }
-        });
-      }
+        }
+      });
 
       const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
-
-      console.log("📚 FINAL UNIT CARDS:", derivedUnits);
+      
       setUnits(derivedUnits);
       
     } catch (error) {
@@ -396,6 +487,151 @@ const BPharm = () => {
         100% { transform: scale(1); opacity: 1; }
       }
       
+      /* ===== PREMIUM SEMESTER CARD ANIMATIONS ===== */
+      @keyframes premiumFloat {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-8px); }
+      }
+      
+      @keyframes premiumShine {
+        0% { background-position: -200% center; }
+        100% { background-position: 200% center; }
+      }
+      
+      @keyframes premiumPulse {
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
+      }
+      
+      @keyframes premiumGlow {
+        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
+        50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.4); }
+      }
+      
+      @keyframes premiumBorderFlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      
+      @keyframes premiumSparkle {
+        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+        50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+      }
+      
+      @keyframes premiumNumberPop {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1) rotate(-3deg); }
+        100% { transform: scale(1) rotate(0deg); }
+      }
+      
+      .premium-card {
+        animation: premiumFloat 4s ease-in-out infinite;
+        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+      }
+      
+      .premium-card::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 16px;
+        padding: 2px;
+        background: linear-gradient(90deg, 
+          rgba(99,102,241,0.3), 
+          rgba(168,85,247,0.3), 
+          rgba(236,72,153,0.3),
+          rgba(99,102,241,0.3)
+        );
+        background-size: 300% 100%;
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        animation: premiumBorderFlow 6s ease-in-out infinite;
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      
+      .premium-card .glow-ring {
+        position: absolute;
+        inset: -4px;
+        border-radius: 18px;
+        background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), 
+          rgba(255,255,255,0.15) 0%,
+          transparent 60%
+        );
+        opacity: 0.6;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      
+      .premium-card .shine-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: 14px;
+        background: linear-gradient(
+          135deg,
+          rgba(255,255,255,0.4) 0%,
+          rgba(255,255,255,0) 40%,
+          rgba(255,255,255,0) 60%,
+          rgba(255,255,255,0.2) 100%
+        );
+        background-size: 300% 100%;
+        animation: premiumShine 8s ease-in-out infinite;
+        pointer-events: none;
+      }
+      
+      .premium-card .sparkle-dot {
+        animation: premiumSparkle 3s ease-in-out infinite;
+      }
+      
+      .premium-card .number-glow {
+        animation: premiumNumberPop 3s ease-in-out infinite;
+      }
+      
+      .premium-card .status-pulse {
+        animation: premiumPulse 2s ease-in-out infinite;
+      }
+      
+      .premium-card:hover {
+        transform: translateY(-12px) scale(1.02);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      }
+      
+      .premium-card:hover .glow-ring {
+        opacity: 1;
+      }
+      
+      .premium-card .gradient-text {
+        background-size: 200% auto;
+        animation: premiumShine 4s ease-in-out infinite;
+      }
+      
+      .semester-card-1 { animation-delay: 0s; }
+      .semester-card-2 { animation-delay: 0.3s; }
+      .semester-card-3 { animation-delay: 0.6s; }
+      .semester-card-4 { animation-delay: 0.9s; }
+      .semester-card-5 { animation-delay: 1.2s; }
+      .semester-card-6 { animation-delay: 1.5s; }
+      .semester-card-7 { animation-delay: 1.8s; }
+      .semester-card-8 { animation-delay: 2.1s; }
+      
+      .category-card-1 { animation-delay: 0.1s; }
+      .category-card-2 { animation-delay: 0.2s; }
+      .category-card-3 { animation-delay: 0.3s; }
+      
+      .subject-card-1 { animation-delay: 0.06s; }
+      .subject-card-2 { animation-delay: 0.12s; }
+      .subject-card-3 { animation-delay: 0.18s; }
+      .subject-card-4 { animation-delay: 0.24s; }
+      .subject-card-5 { animation-delay: 0.3s; }
+      .subject-card-6 { animation-delay: 0.36s; }
+      
+      .unit-card-1 { animation-delay: 0.05s; }
+      .unit-card-2 { animation-delay: 0.1s; }
+      .unit-card-3 { animation-delay: 0.15s; }
+      .unit-card-4 { animation-delay: 0.2s; }
+      .unit-card-5 { animation-delay: 0.25s; }
+      
       .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
       .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-slide-down { animation: slideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -415,32 +651,6 @@ const BPharm = () => {
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
       }
-      
-      .category-card-1 { animation-delay: 0.1s; }
-      .category-card-2 { animation-delay: 0.2s; }
-      .category-card-3 { animation-delay: 0.3s; }
-      
-      .semester-card-1 { animation-delay: 0.05s; }
-      .semester-card-2 { animation-delay: 0.1s; }
-      .semester-card-3 { animation-delay: 0.15s; }
-      .semester-card-4 { animation-delay: 0.2s; }
-      .semester-card-5 { animation-delay: 0.25s; }
-      .semester-card-6 { animation-delay: 0.3s; }
-      .semester-card-7 { animation-delay: 0.35s; }
-      .semester-card-8 { animation-delay: 0.4s; }
-      
-      .subject-card-1 { animation-delay: 0.06s; }
-      .subject-card-2 { animation-delay: 0.12s; }
-      .subject-card-3 { animation-delay: 0.18s; }
-      .subject-card-4 { animation-delay: 0.24s; }
-      .subject-card-5 { animation-delay: 0.3s; }
-      .subject-card-6 { animation-delay: 0.36s; }
-      
-      .unit-card-1 { animation-delay: 0.05s; }
-      .unit-card-2 { animation-delay: 0.1s; }
-      .unit-card-3 { animation-delay: 0.15s; }
-      .unit-card-4 { animation-delay: 0.2s; }
-      .unit-card-5 { animation-delay: 0.25s; }
       
       @media (max-width: 768px) {
         .semester-grid { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
@@ -630,7 +840,7 @@ const BPharm = () => {
     const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
     const allSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
-    const hasData = (sem) => sem === 1;
+    const hasData = (sem) => allSemesters.includes(sem);
 
     return (
       <div className="animate-scale-in">
@@ -666,77 +876,113 @@ const BPharm = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-6 sm:gap-8 max-w-3xl mx-auto">
+        <div className="grid grid-cols-4 gap-5 sm:gap-6 max-w-4xl mx-auto">
           {allSemesters.map((sem, index) => {
             const isAvailable = hasData(sem);
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
+            const delayClass = `semester-card-${index + 1}`;
             
             return (
               <div
                 key={sem}
                 onClick={() => isAvailable && handleSemesterClick(sem)}
                 className={`group relative cursor-pointer ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={{ animationDelay: `${index * 0.06}s` }}
-                onMouseEnter={() => setHoveredCard(cardId)}
-                onMouseLeave={() => setHoveredCard(null)}
-                onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
                 {isAvailable && (
                   <div 
-                    className="absolute -inset-1.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                     style={{
-                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 68%)`
                     }}
                   ></div>
                 )}
 
-                <div className={`relative bg-gradient-to-br ${isAvailable ? colors.bg : 'from-gray-50 to-gray-100'} rounded-2xl p-6 sm:p-8 text-center transition-all duration-500 ${isAvailable ? 'border-2 border-white/80 hover:-translate-y-3 hover:shadow-2xl animate-border-pulse' : 'border-2 border-gray-200'} overflow-hidden`}>
-                  
-                  {isAvailable && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                  )}
+                <div
+                  className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass}
+                    ${isAvailable 
+                      ? `bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}` 
+                      : 'bg-gray-100 border-2 border-gray-200'
+                    }`}
+                  style={isAvailable ? {
+                    boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)`
+                  } : undefined}
+                >
 
                   {isAvailable && (
-                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                      <div className="absolute inset-0 rounded-2xl" style={{
-                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                        animation: 'rotateGlow 4s linear infinite'
-                      }}></div>
-                    </div>
+                    <>
+                      {/* Premium Glow Ring */}
+                      <div 
+                        className="glow-ring"
+                        style={{
+                          '--x': `${mousePositions[cardId]?.x || 50}%`,
+                          '--y': `${mousePositions[cardId]?.y || 50}%`
+                        }}
+                      ></div>
+                      
+                      {/* Shine Overlay */}
+                      <div className="shine-overlay"></div>
+                      
+                      {/* Border Animation */}
+                      <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
+                        <div className="absolute inset-0 rounded-2xl" style={{
+                          background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                          animation: 'rotateGlow 4s linear infinite'
+                        }}></div>
+                      </div>
+
+                      {/* Premium Sparkle Dots */}
+                      <div className="absolute top-2 right-2 sparkle-dot">
+                        <Sparkles size={12} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-70`} />
+                      </div>
+                      <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: '1.5s' }}>
+                        <Sparkles size={8} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-50`} />
+                      </div>
+                      
+                      {/* Inner Glass Effect */}
+                      <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
+                      
+                      {/* Floating Particles */}
+                      <div className="absolute top-1/4 right-1 w-2 h-2 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '1s' }}></div>
+                      <div className="absolute bottom-1/4 left-1 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
+                    </>
                   )}
 
                   <div className="relative z-10">
-                    <div className={`text-5xl sm:text-6xl md:text-7xl font-['Space_Grotesk'] font-extrabold ${isAvailable ? `bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent` : 'text-gray-400'} leading-none`}>
+                    <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold ${isAvailable ? `gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent` : 'text-gray-400'} leading-none number-glow`}>
                       {sem}
                     </div>
                     
-                    <div className={`text-xs sm:text-sm font-['Inter'] font-semibold uppercase tracking-widest mt-2 ${isAvailable ? 'text-gray-500 group-hover:text-gray-700' : 'text-gray-400'}`}>
+                    <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 ${isAvailable ? 'text-gray-500 group-hover:text-gray-700' : 'text-gray-400'}`}>
                       Semester
                     </div>
 
                     {isAvailable && (
-                      <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 animate-pop">
-                        <CheckCircle size={12} />
-                        Available
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                        <CheckCircle size={11} className="sm:size-3" />
+                        Open
                       </div>
                     )}
 
                     {!isAvailable && (
-                      <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-200 text-gray-500 text-[10px] font-['Inter'] font-bold">
-                        <Lock size={12} />
-                        Coming Soon
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
+                        <Lock size={11} className="sm:size-3" />
+                        Locked
                       </div>
                     )}
 
                     {isAvailable && (
-                      <div className={`mt-4 h-0.5 w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
-                    )}
-
-                    {isAvailable && (
-                      <div className="mt-3 text-xs font-['Inter'] font-medium text-gray-400">
-                        6 Subjects
-                      </div>
+                      <>
+                        <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
+                        <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">
+                          {BPHARM_SUBJECTS[sem]?.length || 0} Subjects
+                        </div>
+                        <div className="mt-1 flex items-center justify-center gap-1">
+                          <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
+                          <span className="text-[8px] sm:text-[9px] font-['Inter'] font-medium text-emerald-500">Available</span>
+                          <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -745,18 +991,22 @@ const BPharm = () => {
           })}
         </div>
 
-        <div className="mt-10 flex justify-center items-center gap-6 text-sm flex-wrap">
-          <div className="flex items-center gap-3 glass-effect px-5 py-3 rounded-2xl shadow-lg border border-white/50">
+        <div className="mt-10 flex justify-center items-center gap-4 text-sm flex-wrap">
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 animate-pulse"></div>
-              <span className="font-['Inter'] font-bold text-gray-700">1</span>
-              <span className="font-['Inter'] text-gray-500">Semester Available</span>
+              <span className="font-['Inter'] font-bold text-gray-700">8</span>
+              <span className="font-['Inter'] text-gray-500">Semesters Available</span>
             </div>
           </div>
-          <div className="flex items-center gap-3 glass-effect px-5 py-3 rounded-2xl shadow-lg border border-white/50">
-            <Sparkles size={18} className="text-emerald-500" />
-            <span className="font-['Inter'] font-bold text-emerald-600">Content Unlocked</span>
-            <Sparkles size={18} className="text-emerald-500" />
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
+            <Sparkles size={16} className="text-emerald-500" />
+            <span className="font-['Inter'] font-bold text-emerald-600">All Unlocked</span>
+            <Sparkles size={16} className="text-emerald-500" />
+          </div>
+          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50">
+            <Gem size={16} className="text-purple-500" />
+            <span className="font-['Inter'] font-bold text-purple-600">Premium Content</span>
           </div>
         </div>
       </div>
@@ -1087,8 +1337,6 @@ const BPharm = () => {
                           <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
                         </div>
                       )}
-
-
                     </div>
 
                     <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
