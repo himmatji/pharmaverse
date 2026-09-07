@@ -1065,22 +1065,38 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload and manage content for {branchName}</p>
         </div>
 
-        {/* ========== UPLOAD FORM ========== */}
+        {/* ========== SIMPLE UPLOAD FORM ========== */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-sky-50 to-blue-50">
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800 flex items-center gap-2">
-              <Upload size={20} className="text-sky-600" />
-              Upload New Content
-            </h3>
+          <div className="px-6 sm:px-8 py-5 border-b border-gray-100 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-md">
+                    <Upload size={18} />
+                  </div>
+                  <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800">Upload Content</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
+                  Select where the file belongs, then upload it.
+                </p>
+              </div>
+              {uploadForm.unit && uploadForm.subject && (
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-['Inter'] font-bold">
+                  <CheckCircle size={15} />
+                  Unit {uploadForm.unit}
+                </div>
+              )}
+            </div>
           </div>
+
           <div className="p-6 sm:p-8">
             {uploadProgress > 0 && uploadProgress < 100 && (
-              <div className="mb-6 bg-white rounded-2xl p-4 shadow-lg">
-                <div className="flex justify-between text-sm font-['Inter'] text-gray-600 mb-1">
-                  <span>Uploading...</span>
-                  <span>{uploadProgress}%</span>
+              <div className="mb-6 rounded-2xl bg-sky-50 border border-sky-100 p-4 animate-pulse">
+                <div className="flex justify-between text-xs sm:text-sm font-['Inter'] text-gray-600 mb-2">
+                  <span className="font-semibold">Uploading...</span>
+                  <span className="font-bold text-sky-600">{uploadProgress}%</span>
                 </div>
-                <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div className="w-full h-2.5 bg-white rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-sky-500 to-blue-600 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}
@@ -1089,231 +1105,125 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               </div>
             )}
 
-            <form onSubmit={handleUploadSubmit} className="space-y-6">
-              {/* Branch - Auto filled */}
-              <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Branch <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-sky-50 to-blue-50 rounded-xl border border-sky-200">
-                  <GraduationCap className="text-sky-600" size={20} />
-                  <span className="font-['Inter'] font-medium text-gray-800">{branchName}</span>
-                  <span className="text-xs text-gray-400 ml-auto">(Selected)</span>
+            <form onSubmit={handleUploadSubmit} className="space-y-5">
+              {/* Branch */}
+              <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-white shadow-sm text-sky-600">
+                    <GraduationCap size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400 font-['Inter'] font-bold">Branch</p>
+                    <p className="font-['Inter'] font-bold text-gray-800 truncate">{branchName}</p>
+                  </div>
                 </div>
+                <span className="text-[11px] font-['Inter'] font-semibold text-sky-600 bg-white px-2.5 py-1 rounded-full border border-sky-100">
+                  Auto selected
+                </span>
               </div>
 
-              {/* Category */}
+              {/* Step 1: Category */}
               <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Category <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">1</span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">What are you uploading?</label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
                       type="button"
                       onClick={() => setUploadForm(prev => ({ ...prev, category: cat.id }))}
-                      className={`p-4 rounded-xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] ${
+                      className={`group p-3.5 rounded-2xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] text-left ${
                         uploadForm.category === cat.id
-                          ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-105`
-                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                          ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-[1.02]`
+                          : "border-gray-200 bg-white hover:border-sky-300 hover:bg-sky-50 hover:-translate-y-0.5 text-gray-700"
                       }`}
                     >
-                      <span className={uploadForm.category === cat.id ? "text-white" : "text-gray-500"}>
+                      <span className={`p-2 rounded-xl ${uploadForm.category === cat.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500 group-hover:text-sky-600"}`}>
                         {cat.icon}
                       </span>
-                      <span className="font-medium text-sm">{cat.id}</span>
+                      <span className="font-semibold text-sm leading-tight">{cat.id}</span>
                       {uploadForm.category === cat.id && <CheckCircle size={16} className="ml-auto" />}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Semester */}
-              <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Semester <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
-                    <button
-                      key={sem}
-                      type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "", unit: "" }))}
-                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
-                        uploadForm.semester === sem
-                          ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"
-                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
-                      }`}
-                    >
-                      {sem}
-                    </button>
-                  ))}
+              {/* Step 2: Semester + Subject */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Semester</label>
+                  </div>
+                  <select
+                    value={uploadForm.semester}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50"
+                  >
+                    <option value="">Select semester</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((sem) => (
+                      <option key={sem} value={sem}>Semester {sem}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
+                  </div>
+                  <select
+                    value={uploadForm.subject}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
+                    disabled={!uploadForm.semester}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{uploadForm.semester ? "Select subject" : "Select semester first"}</option>
+                    {subjects.map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* ✅ FIX: UNIT SELECTION - ADD THIS SECTION */}
+              {/* Step 4: Unit */}
               <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Unit <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">4</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Unit</label>
+                  </div>
+                  {uploadForm.unit && (
+                    <span className="text-xs font-['Inter'] font-bold text-emerald-600">Unit {uploadForm.unit} selected</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((unitNum) => (
                     <button
                       key={unitNum}
                       type="button"
+                      disabled={!uploadForm.subject}
                       onClick={() => setUploadForm(prev => ({ ...prev, unit: unitNum }))}
-                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
+                      className={`py-3 px-2 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-bold text-sm ${
                         uploadForm.unit === unitNum
-                          ? "border-emerald-500 bg-emerald-500 text-white shadow-lg scale-105"
-                          : "border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
-                      }`}
+                          ? "border-emerald-500 bg-emerald-500 text-white shadow-lg scale-[1.03]"
+                          : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
+                      } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-200`}
                     >
                       Unit {unitNum}
                     </button>
                   ))}
                 </div>
-                {uploadForm.unit && (
-                  <p className="text-xs text-emerald-600 font-['Inter'] font-medium mt-2">
-                    ✅ Selected: Unit {uploadForm.unit}
-                  </p>
-                )}
               </div>
 
-              {/* Subject */}
+              {/* Step 5: File */}
               <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Subject <span className="text-red-500">*</span>
-                </label>
-                {uploadForm.semester ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto p-1">
-                    {subjects.map((subject) => (
-                      <button
-                        key={subject}
-                        type="button"
-                        onClick={() => setUploadForm(prev => ({ ...prev, subject }))}
-                        className={`p-3 rounded-xl border-2 transition-all duration-300 text-left font-['Inter'] text-sm ${
-                          uploadForm.subject === subject
-                            ? "border-purple-500 bg-purple-500 text-white shadow-lg scale-105"
-                            : "border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700"
-                      }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <BookOpen size={16} />
-                          <span className="truncate">{subject}</span>
-                          {uploadForm.subject === subject && <CheckCircle size={14} className="ml-auto" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-gray-100 rounded-xl text-gray-500 font-['Inter'] text-sm text-center">
-                    Please select a semester first
-                  </div>
-                )}
-              </div>
-
-              {/* Units & Topics - Optional */}
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="text-sm font-['Inter'] font-semibold text-gray-700">
-                    Units & Topics <span className="text-gray-400 text-xs">(Optional)</span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={addUnit}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] text-sm font-semibold hover:scale-105 transition-all duration-300 shadow-lg"
-                  >
-                    <Plus size={16} /> Add Unit
-                  </button>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">5</span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">Choose file</label>
                 </div>
-
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                  {uploadForm.units.map((unit, unitIndex) => (
-                    <div key={unitIndex} className="p-4 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200">
-                      <div className="flex items-center gap-3 mb-3">
-                        <input
-                          type="text"
-                          value={unit.name}
-                          onChange={(e) => handleUnitChange(unitIndex, "name", e.target.value)}
-                          className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
-                          placeholder="Unit name (e.g. Unit 1)"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeUnit(unitIndex)}
-                          className="p-2 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-['Inter'] font-medium text-gray-500">Topics</span>
-                          <button
-                            type="button"
-                            onClick={() => addTopic(unitIndex)}
-                            className="text-xs text-emerald-600 hover:text-emerald-700 font-['Inter'] font-semibold flex items-center gap-1"
-                          >
-                            <Plus size={14} /> Add Topic
-                          </button>
-                        </div>
-                        {unit.topics.map((topic, topicIndex) => (
-                          <div key={topicIndex} className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={topic}
-                              onChange={(e) => handleTopicChange(unitIndex, topicIndex, e.target.value)}
-                              className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200 outline-none font-['Inter'] text-sm transition-all"
-                              placeholder={`Topic ${topicIndex + 1}`}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeTopic(unitIndex, topicIndex)}
-                              className="p-1 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Title & Description */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Title</label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={uploadForm.title}
-                    onChange={handleUploadChange}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
-                    placeholder="Enter title (optional)"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">Description</label>
-                  <input
-                    type="text"
-                    name="description"
-                    value={uploadForm.description}
-                    onChange={handleUploadChange}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 outline-none font-['Inter'] text-sm transition-all"
-                    placeholder="Enter description (optional)"
-                  />
-                </div>
-              </div>
-
-              {/* File Upload */}
-              <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">
-                  Upload File <span className="text-red-500">*</span>
-                </label>
                 <div className="relative">
                   <input
                     id="upload-file-input"
@@ -1322,54 +1232,81 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
                   />
-                  <div className="p-6 border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-sky-400 transition-all duration-300 bg-gray-50/50">
-                    <Upload className="mx-auto text-gray-400 mb-2" size={32} />
-                    <p className="font-['Inter'] text-sm text-gray-600">
+                  <div className={`p-5 sm:p-6 border-2 border-dashed rounded-2xl text-center transition-all duration-300 ${
+                    uploadForm.file
+                      ? "border-emerald-300 bg-emerald-50/60"
+                      : "border-gray-300 bg-gray-50/60 hover:border-sky-400 hover:bg-sky-50/50"
+                  }`}>
+                    <div className={`mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-2 ${uploadForm.file ? "bg-emerald-100 text-emerald-600" : "bg-white text-sky-500 shadow-sm"}`}>
+                      {uploadForm.file ? <CheckCircle size={25} /> : <Upload size={25} />}
+                    </div>
+                    <p className="font-['Inter'] text-sm text-gray-700 font-medium">
                       {uploadForm.file ? (
-                        <span className="text-emerald-600 font-semibold">{uploadForm.file.name}</span>
+                        <span className="text-emerald-700 font-bold break-all">{uploadForm.file.name}</span>
                       ) : (
-                        <>
-                          <span className="font-semibold">Click to upload</span> or drag and drop
-                        </>
+                        <>Click to choose a file <span className="text-gray-400">or drag & drop</span></>
                       )}
                     </p>
-                    <p className="text-xs text-gray-400 font-['Inter'] mt-1">
-                      PDF, DOC, PPT, XLS, TXT (Max 50MB)
-                    </p>
+                    <p className="text-xs text-gray-400 font-['Inter'] mt-1">PDF, DOC, PPT, XLS, TXT • Max 50MB</p>
                   </div>
                 </div>
               </div>
 
-              {/* Premium Toggle */}
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="isPremium"
-                    checked={uploadForm.isPremium}
-                    onChange={handleUploadChange}
-                    className="w-5 h-5 rounded border-gray-300 text-sky-600 focus:ring-sky-400 focus:ring-2 cursor-pointer"
-                  />
-                  <span className="font-['Inter'] text-sm text-gray-700">
-                    Mark as Premium Content
-                    <span className="text-xs text-gray-400 block">Students will need to purchase to access</span>
-                  </span>
-                </label>
-              </div>
+              {/* Optional details */}
+              <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
+                <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
+                  <span>Optional details</span>
+                  <span className="text-xs text-gray-400 group-open:hidden">Title, description & premium</span>
+                  <span className="text-xs text-gray-400 hidden group-open:inline">Hide</span>
+                </summary>
+                <div className="px-4 pb-4 pt-1 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      name="title"
+                      value={uploadForm.title}
+                      onChange={handleUploadChange}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
+                      placeholder="Title (optional)"
+                    />
+                    <input
+                      type="text"
+                      name="description"
+                      value={uploadForm.description}
+                      onChange={handleUploadChange}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
+                      placeholder="Description (optional)"
+                    />
+                  </div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="isPremium"
+                      checked={uploadForm.isPremium}
+                      onChange={handleUploadChange}
+                      className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                    />
+                    <span className="font-['Inter'] text-sm text-gray-700">
+                      <span className="font-semibold">Premium content</span>
+                      <span className="text-xs text-gray-400 block">Students need to purchase it.</span>
+                    </span>
+                  </label>
+                </div>
+              </details>
 
-              {/* File Type */}
+              {/* File type */}
               <div>
-                <label className="block text-sm font-['Inter'] font-semibold text-gray-700 mb-2">File Type</label>
-                <div className="grid grid-cols-3 gap-3">
+                <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
+                <div className="grid grid-cols-3 gap-2.5">
                   {["note", "video", "paper"].map((type) => (
                     <button
                       key={type}
                       type="button"
                       onClick={() => setUploadForm(prev => ({ ...prev, type }))}
-                      className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-medium text-sm capitalize ${
+                      className={`py-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm capitalize ${
                         uploadForm.type === type
-                          ? "border-sky-500 bg-sky-500 text-white shadow-lg"
-                          : "border-gray-200 hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                          ? "border-sky-500 bg-sky-500 text-white shadow-md scale-[1.02]"
+                          : "border-gray-200 bg-white hover:border-sky-300 hover:bg-sky-50 text-gray-700"
                       }`}
                     >
                       {type}
@@ -1378,21 +1315,21 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={uploading}
-                className="w-full py-4 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-lg shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                className="w-full py-4 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-base sm:text-lg shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 {uploading ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Uploading...
+                    Uploading... {uploadProgress}%
                   </>
                 ) : (
                   <>
                     <Upload size={20} />
-                    Upload Content
+                    Upload to {uploadForm.unit ? `Unit ${uploadForm.unit}` : "Selected Unit"}
                   </>
                 )}
               </button>
