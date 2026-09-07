@@ -718,23 +718,45 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   };
 
   const handleUnitChange = (index, field, value) => {
-    const updatedUnits = [...uploadForm.units];
-    updatedUnits[index][field] = value;
-    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+    setUploadForm(prev => ({
+      ...prev,
+      units: prev.units.map((unit, i) =>
+        i === index ? { ...unit, [field]: value } : unit
+      )
+    }));
   };
 
   const handleTopicChange = (unitIndex, topicIndex, value) => {
-    const updatedUnits = [...uploadForm.units];
-    updatedUnits[unitIndex].topics[topicIndex] = value;
-    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+    setUploadForm(prev => ({
+      ...prev,
+      units: prev.units.map((unit, i) => {
+        if (i !== unitIndex) return unit;
+        return {
+          ...unit,
+          topics: unit.topics.map((topic, j) =>
+            j === topicIndex ? value : topic
+          )
+        };
+      })
+    }));
   };
 
   const addUnit = () => {
-    const newId = uploadForm.units.length + 1;
-    setUploadForm(prev => ({
-      ...prev,
-      units: [...prev.units, { id: newId, name: `Unit ${newId}`, topics: [""] }]
-    }));
+    setUploadForm(prev => {
+      const usedIds = prev.units
+        .map(unit => Number(unit?.id))
+        .filter(id => Number.isInteger(id) && id > 0);
+
+      const newId = usedIds.length > 0 ? Math.max(...usedIds) + 1 : 1;
+
+      return {
+        ...prev,
+        units: [
+          ...prev.units,
+          { id: newId, name: `Unit ${newId}`, topics: [""] }
+        ]
+      };
+    });
   };
 
   const removeUnit = (index) => {
@@ -742,24 +764,38 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("At least one unit is required");
       return;
     }
-    const updatedUnits = uploadForm.units.filter((_, i) => i !== index);
-    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+
+    setUploadForm(prev => ({
+      ...prev,
+      units: prev.units.filter((_, i) => i !== index)
+    }));
   };
 
   const addTopic = (unitIndex) => {
-    const updatedUnits = [...uploadForm.units];
-    updatedUnits[unitIndex].topics.push("");
-    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+    setUploadForm(prev => ({
+      ...prev,
+      units: prev.units.map((unit, i) =>
+        i === unitIndex
+          ? { ...unit, topics: [...unit.topics, ""] }
+          : unit
+      )
+    }));
   };
 
   const removeTopic = (unitIndex, topicIndex) => {
-    const updatedUnits = [...uploadForm.units];
-    if (updatedUnits[unitIndex].topics.length <= 1) {
+    if (uploadForm.units[unitIndex]?.topics?.length <= 1) {
       alert("At least one topic is required");
       return;
     }
-    updatedUnits[unitIndex].topics.splice(topicIndex, 1);
-    setUploadForm(prev => ({ ...prev, units: updatedUnits }));
+
+    setUploadForm(prev => ({
+      ...prev,
+      units: prev.units.map((unit, i) =>
+        i === unitIndex
+          ? { ...unit, topics: unit.topics.filter((_, j) => j !== topicIndex) }
+          : unit
+      )
+    }));
   };
 
   const getSubjectsForSemester = () => {
@@ -1103,7 +1139,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <button
                       key={sem}
                       type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "" }))}
+                      onClick={() => setUploadForm(prev => ({ ...prev, semester: sem, subject: "", unit: "" }))}
                       className={`p-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm ${
                         uploadForm.semester === sem
                           ? "border-sky-500 bg-sky-500 text-white shadow-lg scale-105"

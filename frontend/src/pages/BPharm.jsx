@@ -191,55 +191,94 @@ const BPharm = () => {
     contentAbortControllerRef.current = controller;
 
     try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-        params: {
-          course: "B.Pharm",
-          category: selectedCategory,
-          semester: selectedSemester,
-          subject: selectedSubject
-        },
-        signal: controller.signal
-      });
+      const requestParams = {
+        course: "B.Pharm",
+        branch: "B.Pharm",
+        category: selectedCategory,
+        semester: selectedSemester,
+        subject: selectedSubject
+      };
+
+      // Fetch documents and the unit structure separately.
+      // Unit cards must come from /public/units, not only from document.unit.
+      const [contentRes, unitsRes] = await Promise.all([
+        axios.get(`${API_BASE}/api/admin/public/notes`, {
+          params: requestParams,
+          signal: controller.signal
+        }),
+        axios.get(`${API_BASE}/api/admin/public/units`, {
+          params: requestParams,
+          signal: controller.signal
+        })
+      ]);
 
       if (requestId !== contentRequestIdRef.current) return;
 
-      const rawContent = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-          ? res.data.data
+      const rawContent = Array.isArray(contentRes.data)
+        ? contentRes.data
+        : Array.isArray(contentRes.data?.data)
+          ? contentRes.data.data
+          : [];
+
+      const apiUnits = Array.isArray(unitsRes.data)
+        ? unitsRes.data
+        : Array.isArray(unitsRes.data?.data)
+          ? unitsRes.data.data
           : [];
 
       console.log("📄 RAW CONTENT FROM API:", rawContent);
       console.log("📄 TOTAL DOCUMENTS:", rawContent.length);
+      console.log("📚 UNITS FROM API:", apiUnits);
 
       setUnitContent(rawContent);
 
+      // API units are authoritative. Content is used only as a fallback so
+      // old documents that do not have a units[] structure still work.
       const unitMap = new Map();
-      
-      rawContent.forEach((item) => {
-        const unitValue = Number(item?.unit);
-        console.log(`📄 Processing: Unit = ${unitValue}, Title = ${item.title || 'Untitled'}`);
-        
-        if (Number.isInteger(unitValue) && unitValue > 0) {
-          if (!unitMap.has(unitValue)) {
-            unitMap.set(unitValue, {
-              id: unitValue,
-              name: `Unit ${unitValue}`,
-              topics: []
-            });
-            console.log(`✅ Added Unit ${unitValue} to map`);
-          }
-        } else {
-          console.log(`❌ Skipping: Invalid unit = ${unitValue}`);
-        }
+
+      apiUnits.forEach((unit) => {
+        const id = Number(unit?.id);
+        if (!Number.isInteger(id) || id <= 0) return;
+
+        unitMap.set(id, {
+          id,
+          name: unit?.name || `Unit ${id}`,
+          topics: Array.isArray(unit?.topics) ? unit.topics : []
+        });
       });
 
-      console.log("📚 UNIT MAP:", Array.from(unitMap.entries()));
+      if (unitMap.size === 0) {
+        rawContent.forEach((item) => {
+          const id = Number(item?.unit);
+          if (!Number.isInteger(id) || id <= 0) return;
+
+          if (!unitMap.has(id)) {
+            unitMap.set(id, {
+              id,
+              name: `Unit ${id}`,
+              topics: []
+            });
+          }
+
+          if (Array.isArray(item?.units)) {
+            item.units.forEach((u) => {
+              const unitId = Number(u?.id);
+              if (!Number.isInteger(unitId) || unitId <= 0) return;
+              if (!unitMap.has(unitId)) {
+                unitMap.set(unitId, {
+                  id: unitId,
+                  name: u?.name || `Unit ${unitId}`,
+                  topics: Array.isArray(u?.topics) ? u.topics : []
+                });
+              }
+            });
+          }
+        });
+      }
 
       const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
-      
-      console.log("📚 DERIVED UNITS:", derivedUnits);
-      
+
+      console.log("📚 FINAL UNIT CARDS:", derivedUnits);
       setUnits(derivedUnits);
       
     } catch (error) {
