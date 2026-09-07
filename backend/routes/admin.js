@@ -385,19 +385,6 @@ router.post(
         });
       }
 
-      /*
-       * UNIT IS REQUIRED.
-       *
-       * Previously:
-       *
-       * unit: parseInt(unit) || 1
-       *
-       * was causing missing/invalid unit
-       * to silently become Unit 1.
-       *
-       * Now it will reject invalid unit.
-       */
-
       if (
         !Number.isInteger(
           unitNumber
@@ -433,20 +420,9 @@ router.post(
 
         subject,
 
-        /*
-         * THIS IS THE ACTUAL UNIT
-         * OF THIS DOCUMENT.
-         */
         unit:
           unitNumber,
 
-        /*
-         * Legacy metadata.
-         *
-         * It is stored only for compatibility.
-         * Public unit display will NOT use
-         * this field as authoritative.
-         */
         units:
           parsedUnits,
 
@@ -555,7 +531,6 @@ router.post(
 
       return res.status(500).json({
         success: false,
-
         message:
           "Upload failed: " +
           error.message
@@ -565,227 +540,102 @@ router.post(
 );
 
 /* =========================================================
-   MULTER ERROR HANDLER
+   ADMIN LOGIN ROUTE
 ========================================================= */
 
-router.use(
-  (err, req, res, next) => {
-    if (
-      err instanceof multer.MulterError
-    ) {
-      console.error(
-        "❌ Multer Error:",
-        err
-      );
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-      if (
-        err.code ===
-        "LIMIT_FILE_SIZE"
-      ) {
-        return res.status(413).json({
-          success: false,
-
-          message:
-            "File too large. Maximum allowed size is 50MB."
-        });
-      }
-
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
-
-        message:
-          err.message
+        message: "Email and password are required"
       });
     }
 
-    next(err);
-  }
-);
+    let admin = await Admin.findOne({ email }).select("+password");
 
-/* =========================================================
-   ADMIN LOGIN
-========================================================= */
-
-router.post(
-  "/login",
-  async (req, res) => {
-    try {
-      const {
-        email,
-        password
-      } = req.body;
-
-      if (
-        !email ||
-        !password
-      ) {
-        return res.status(400).json({
-          success: false,
-
-          message:
-            "Email and password are required"
-        });
-      }
-
-      let admin =
-        await Admin.findOne({
-          email,
+    if (!admin) {
+      if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+        admin = new Admin({
+          name: "Super Admin",
+          email: process.env.ADMIN_EMAIL,
+          password: process.env.ADMIN_PASSWORD,
+          role: "super_admin",
+          permissions: {
+            courses: ["B.Pharm", "D.Pharm", "M.Pharm", "Pharm.D", "PhD"]
+          },
           isActive: true
         });
-
-      if (
-        !admin &&
-        email ===
-          process.env.ADMIN_EMAIL &&
-        password ===
-          process.env.ADMIN_PASSWORD
-      ) {
-        admin =
-          await Admin.findOne({
-            role:
-              "super_admin"
-          });
-
-        if (!admin) {
-          admin =
-            new Admin({
-              name:
-                "Super Admin",
-
-              email:
-                process.env.ADMIN_EMAIL,
-
-              password:
-                process.env.ADMIN_PASSWORD,
-
-              role:
-                "super_admin",
-
-              permissions: {
-                courses: [
-                  "B.Pharm",
-                  "D.Pharm",
-                  "M.Pharm",
-                  "Pharm.D",
-                  "PhD"
-                ]
-              },
-
-              isActive:
-                true
-            });
-
-          await admin.save();
-        }
-      }
-
-      if (!admin) {
-        return res.status(401).json({
-          success: false,
-
-          message:
-            "Invalid credentials"
-        });
-      }
-
-      let isMatch =
-        false;
-
-      if (
-        admin.email ===
-          process.env.ADMIN_EMAIL &&
-        password ===
-          process.env.ADMIN_PASSWORD
-      ) {
-        isMatch =
-          true;
+        await admin.save();
       } else {
-        isMatch =
-          await admin.comparePassword(
-            password
-          );
-      }
-
-      if (!isMatch) {
         return res.status(401).json({
           success: false,
-
-          message:
-            "Invalid credentials"
+          message: "Invalid credentials"
         });
       }
+    }
 
-      admin.lastLogin =
-        new Date();
-
-      await admin.save();
-
-      const token =
-        jwt.sign(
-          {
-            adminId:
-              admin._id,
-
-            email:
-              admin.email,
-
-            role:
-              admin.role,
-
-            type:
-              "admin"
-          },
-
-          JWT_SECRET,
-
-          {
-            expiresIn:
-              "7d"
-          }
-        );
-
-      return res.json({
-        success:
-          true,
-
-        token,
-
-        user: {
-          id:
-            admin._id,
-
-          name:
-            admin.name,
-
-          email:
-            admin.email,
-
-          role:
-            admin.role,
-
-          permissions:
-            admin.permissions,
-
-          type:
-            "admin"
-        }
-      });
-
-    } catch (error) {
-      console.error(
-        "Admin login error:",
-        error
-      );
-
-      return res.status(500).json({
+    if (admin.isActive === false) {
+      return res.status(403).json({
         success: false,
-
-        message:
-          "Server Error"
+        message: "Admin account is inactive"
       });
     }
+
+    let isMatch = false;
+
+    if (admin.email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+      isMatch = true;
+    } else if (admin.comparePassword) {
+      isMatch = await admin.comparePassword(password);
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
+    }
+
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    const token = jwt.sign(
+      {
+        adminId: admin._id,
+        email: admin.email,
+        role: admin.role,
+        type: "admin"
+      },
+      JWT_SECRET,
+      {
+        expiresIn: "7d"
+      }
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+        type: "admin"
+      }
+    });
+
+  } catch (error) {
+    console.error("Admin login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error"
+    });
   }
-);
+});
 
 /* =========================================================
    DASHBOARD STATS
@@ -874,403 +724,808 @@ router.get(
 );
 
 /* =========================================================
-   COURSE PRICES
+   ADMIN DASHBOARD ANALYTICS
 ========================================================= */
 
 router.get(
-  "/course-prices",
+  "/popular-content",
   adminAuth,
   async (req, res) => {
     try {
-      let prices =
-        await CoursePrice.findOne();
+      const [
+        notes,
+        videos,
+        paidPDFs,
+        papers
+      ] = await Promise.all([
+        Note.find()
+          .select(
+            "_id title course viewCount createdAt"
+          )
+          .sort({
+            viewCount: -1
+          })
+          .limit(10)
+          .lean(),
 
-      if (!prices) {
-        const defaultPrices = {
-          BPharm: {
-            price: 99,
-            discount: 0
-          },
+        Video.find()
+          .select(
+            "_id title course viewCount createdAt"
+          )
+          .sort({
+            viewCount: -1
+          })
+          .limit(10)
+          .lean(),
 
-          DPharm: {
-            price: 79,
-            discount: 0
-          },
+        PaidPDF.find()
+          .select(
+            "_id title course viewCount createdAt"
+          )
+          .sort({
+            viewCount: -1
+          })
+          .limit(10)
+          .lean(),
 
-          MPharm: {
-            price: 149,
-            discount: 0
-          },
+        Paper.find()
+          .select(
+            "_id title course viewCount createdAt"
+          )
+          .sort({
+            viewCount: -1
+          })
+          .limit(10)
+          .lean()
+      ]);
 
-          PharmD: {
-            price: 129,
-            discount: 0
-          },
+      const combined =
+        [
+          ...notes,
+          ...videos,
+          ...paidPDFs,
+          ...papers
+        ]
+          .map(item => ({
+            ...item,
 
-          PhD: {
-            price: 199,
-            discount: 0
-          }
-        };
-
-        prices =
-          new CoursePrice({
-            prices:
-              defaultPrices
-          });
-
-        await prices.save();
-
-        return res.json({
-          "B.Pharm":
-            defaultPrices.BPharm,
-
-          "D.Pharm":
-            defaultPrices.DPharm,
-
-          "M.Pharm":
-            defaultPrices.MPharm,
-
-          "Pharm.D":
-            defaultPrices.PharmD,
-
-          "PhD":
-            defaultPrices.PhD
-        });
-      }
-
-      const p =
-        prices.prices;
-
-      res.json({
-        "B.Pharm":
-          p?.get
-            ? p.get("BPharm")
-            : p?.BPharm,
-
-        "D.Pharm":
-          p?.get
-            ? p.get("DPharm")
-            : p?.DPharm,
-
-        "M.Pharm":
-          p?.get
-            ? p.get("MPharm")
-            : p?.MPharm,
-
-        "Pharm.D":
-          p?.get
-            ? p.get("PharmD")
-            : p?.PharmD,
-
-        "PhD":
-          p?.get
-            ? p.get("PhD")
-            : p?.PhD
-      });
-
-    } catch (error) {
-      console.error(
-        "Error fetching course prices:",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          error.message
-      });
-    }
-  }
-);
-
-router.put(
-  "/course-prices",
-  adminAuth,
-  async (req, res) => {
-    try {
-      const {
-        prices
-      } = req.body;
-
-      if (!prices) {
-        return res.status(400).json({
-          error:
-            "Prices data is required"
-        });
-      }
-
-      const formattedPrices = {
-        BPharm:
-          prices.BPharm ||
-          prices["B.Pharm"] || {
-            price: 99,
-            discount: 0
-          },
-
-        DPharm:
-          prices.DPharm ||
-          prices["D.Pharm"] || {
-            price: 79,
-            discount: 0
-          },
-
-        MPharm:
-          prices.MPharm ||
-          prices["M.Pharm"] || {
-            price: 149,
-            discount: 0
-          },
-
-        PharmD:
-          prices.PharmD ||
-          prices["Pharm.D"] || {
-            price: 129,
-            discount: 0
-          },
-
-        PhD:
-          prices.PhD || {
-            price: 199,
-            discount: 0
-          }
-      };
-
-      let coursePrices =
-        await CoursePrice.findOne();
-
-      if (!coursePrices) {
-        coursePrices =
-          new CoursePrice({
-            prices:
-              formattedPrices
-          });
-      } else {
-        coursePrices.prices =
-          formattedPrices;
-      }
-
-      await coursePrices.save();
+            views:
+              Number(
+                item.viewCount ||
+                item.views ||
+                0
+              )
+          }))
+          .sort(
+            (a, b) =>
+              b.views -
+              a.views
+          )
+          .slice(
+            0,
+            10
+          );
 
       return res.json({
         success:
           true,
 
-        message:
-          "Course prices updated successfully",
-
-        prices:
-          formattedPrices
+        notes:
+          combined
       });
 
     } catch (error) {
       console.error(
-        "Error updating course prices:",
+        "Popular content error:",
         error
       );
 
-      return res.status(500).json({
+      return res.json({
         success:
-          false,
+          true,
 
-        message:
-          error.message
+        notes:
+          []
       });
     }
   }
 );
-/* =========================================================
-   PUBLIC NOTES
-========================================================= */
 
 router.get(
-  "/public/notes",
+  "/recent-activity",
+  adminAuth,
   async (req, res) => {
     try {
-      const {
-        course,
-        category,
-        semester,
-        subject,
-        unit
-      } = req.query;
-
-      const filter = {};
-
-      if (course) {
-        filter.course = course;
-      }
-
-      if (category) {
-        filter.category = category;
-      }
-
-      if (
-        semester !== undefined &&
-        semester !== ""
-      ) {
-        filter.semester =
-          Number(semester);
-      }
-
-      if (subject) {
-        filter.subject = subject;
-      }
-
-      /*
-       * UNIT FILTER
-       *
-       * If unit is provided,
-       * only that exact unit is returned.
-       */
-      if (
-        unit !== undefined &&
-        unit !== ""
-      ) {
-        filter.unit =
-          Number(unit);
-      }
-
-      console.log(
-        "📚 PUBLIC NOTES FILTER:",
-        filter
-      );
-
-      const notes =
-        await Note.find(filter)
-          .select("-fileData")
+      const [
+        notes,
+        videos,
+        paidPDFs,
+        papers,
+        users
+      ] = await Promise.all([
+        Note.find()
+          .select(
+            "title createdAt"
+          )
           .sort({
             createdAt: -1
-          });
+          })
+          .limit(10)
+          .lean(),
 
-      return res.json(
-        notes
-      );
+        Video.find()
+          .select(
+            "title createdAt"
+          )
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean(),
+
+        PaidPDF.find()
+          .select(
+            "title createdAt"
+          )
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean(),
+
+        Paper.find()
+          .select(
+            "title createdAt"
+          )
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean(),
+
+        User.find()
+          .select(
+            "name createdAt"
+          )
+          .sort({
+            createdAt: -1
+          })
+          .limit(10)
+          .lean()
+      ]);
+
+      const activities = [
+        ...notes.map(
+          x => ({
+            message:
+              `New note: ${
+                x.title ||
+                "Untitled"
+              }`,
+
+            time:
+              x.createdAt
+          })
+        ),
+
+        ...videos.map(
+          x => ({
+            message:
+              `New video: ${
+                x.title ||
+                "Untitled"
+              }`,
+
+            time:
+              x.createdAt
+          })
+        ),
+
+        ...paidPDFs.map(
+          x => ({
+            message:
+              `New paid PDF: ${
+                x.title ||
+                "Untitled"
+              }`,
+
+            time:
+              x.createdAt
+          })
+        ),
+
+        ...papers.map(
+          x => ({
+            message:
+              `New paper: ${
+                x.title ||
+                "Untitled"
+              }`,
+
+            time:
+              x.createdAt
+          })
+        ),
+
+        ...users.map(
+          x => ({
+            message:
+              `New user: ${
+                x.name ||
+                "User"
+              }`,
+
+            time:
+              x.createdAt
+          })
+        )
+      ]
+        .sort(
+          (a, b) =>
+            new Date(
+              b.time || 0
+            ) -
+            new Date(
+              a.time || 0
+            )
+        )
+        .slice(
+          0,
+          20
+        );
+
+      return res.json({
+        success:
+          true,
+
+        activities
+      });
 
     } catch (error) {
       console.error(
-        "❌ Public notes error:",
+        "Recent activity error:",
         error
       );
 
-      return res.status(500).json({
+      return res.json({
         success:
-          false,
+          true,
 
-        message:
-          "Failed to fetch notes"
+        activities:
+          []
       });
     }
   }
 );
-
-
-/* =========================================================
-   PUBLIC NOTE FILE
-========================================================= */
 
 router.get(
-  "/public/notes/:id/file",
+  "/revenue-stats",
+  adminAuth,
   async (req, res) => {
     try {
-      const {
-        id
-      } = req.params;
+      const totalDownloads =
+        await Promise.all([
+          Note.aggregate([
+            {
+              $group: {
+                _id: null,
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          id
-        )
-      ) {
-        return res.status(400).json({
-          success:
-            false,
+                total: {
+                  $sum: {
+                    $ifNull: [
+                      "$downloadCount",
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]),
 
-          message:
-            "Invalid note ID"
-        });
-      }
+          Video.aggregate([
+            {
+              $group: {
+                _id: null,
 
-      const note =
-        await Note.findById(id);
+                total: {
+                  $sum: {
+                    $ifNull: [
+                      "$downloadCount",
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]),
 
-      if (!note) {
-        return res.status(404).json({
-          success:
-            false,
+          PaidPDF.aggregate([
+            {
+              $group: {
+                _id: null,
 
-          message:
-            "Note not found"
-        });
-      }
+                total: {
+                  $sum: {
+                    $ifNull: [
+                      "$downloadCount",
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ]),
 
-      if (!note.fileData) {
-        return res.status(404).json({
-          success:
-            false,
+          Paper.aggregate([
+            {
+              $group: {
+                _id: null,
 
-          message:
-            "File data not found"
-        });
-      }
+                total: {
+                  $sum: {
+                    $ifNull: [
+                      "$downloadCount",
+                      0
+                    ]
+                  }
+                }
+              }
+            }
+          ])
+        ]);
 
-      const matches =
-        note.fileData.match(
-          /^data:(.+);base64,(.+)$/
+      const downloads =
+        totalDownloads.reduce(
+          (
+            sum,
+            result
+          ) =>
+            sum +
+            Number(
+              result?.[0]?.total ||
+              0
+            ),
+
+          0
         );
 
-      if (!matches) {
-        return res.status(500).json({
-          success:
-            false,
+      return res.json({
+        success:
+          true,
 
-          message:
-            "Invalid file data"
-        });
-      }
+        totalRevenue:
+          0,
 
-      const mimeType =
-        matches[1];
+        totalDownloads:
+          downloads,
 
-      const base64 =
-        matches[2];
+        activeUsers:
+          await User.countDocuments({
+            isActive: {
+              $ne: false
+            }
+          }),
 
-      const buffer =
-        Buffer.from(
-          base64,
-          "base64"
-        );
+        revenueGrowth:
+          0,
 
-      res.setHeader(
-        "Content-Type",
-        mimeType
-      );
-
-      res.setHeader(
-        "Content-Length",
-        buffer.length
-      );
-
-      return res.send(
-        buffer
-      );
+        downloadGrowth:
+          0
+      });
 
     } catch (error) {
       console.error(
-        "❌ Public note file error:",
+        "Revenue stats error:",
         error
       );
 
-      return res.status(500).json({
+      return res.json({
         success:
-          false,
+          true,
 
-        message:
-          "Failed to load file"
+        totalRevenue:
+          0,
+
+        totalDownloads:
+          0,
+
+        activeUsers:
+          0,
+
+        revenueGrowth:
+          0,
+
+        downloadGrowth:
+          0
       });
     }
   }
 );
 
+router.get(
+  "/weekly-performance",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const days = [
+        "Sun",
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri",
+        "Sat"
+      ];
+
+      const now =
+        new Date();
+
+      const data = [];
+
+      for (
+        let i = 6;
+        i >= 0;
+        i--
+      ) {
+        const date =
+          new Date(now);
+
+        date.setHours(
+          0,
+          0,
+          0,
+          0
+        );
+
+        date.setDate(
+          date.getDate() -
+          i
+        );
+
+        const next =
+          new Date(date);
+
+        next.setDate(
+          next.getDate() +
+          1
+        );
+
+        const [
+          views,
+          downloads
+        ] = await Promise.all([
+          Promise.all([
+            Note.aggregate([
+              {
+                $match: {
+                  createdAt: {
+                    $gte:
+                      date,
+
+                    $lt:
+                      next
+                  }
+                }
+              },
+
+              {
+                $group: {
+                  _id:
+                    null,
+
+                  total: {
+                    $sum: {
+                      $ifNull: [
+                        "$viewCount",
+                        0
+                      ]
+                    }
+                  }
+                }
+              }
+            ]),
+
+            Video.aggregate([
+              {
+                $match: {
+                  createdAt: {
+                    $gte:
+                      date,
+
+                    $lt:
+                      next
+                  }
+                }
+              },
+
+              {
+                $group: {
+                  _id:
+                    null,
+
+                  total: {
+                    $sum: {
+                      $ifNull: [
+                        "$viewCount",
+                        0
+                      ]
+                    }
+                  }
+                }
+              }
+            ])
+          ]),
+
+          Promise.all([
+            Note.aggregate([
+              {
+                $match: {
+                  createdAt: {
+                    $gte:
+                      date,
+
+                    $lt:
+                      next
+                  }
+                }
+              },
+
+              {
+                $group: {
+                  _id:
+                    null,
+
+                  total: {
+                    $sum: {
+                      $ifNull: [
+                        "$downloadCount",
+                        0
+                      ]
+                    }
+                  }
+                }
+              }
+            ]),
+
+            Video.aggregate([
+              {
+                $match: {
+                  createdAt: {
+                    $gte:
+                      date,
+
+                    $lt:
+                      next
+                  }
+                }
+              },
+
+              {
+                $group: {
+                  _id:
+                    null,
+
+                  total: {
+                    $sum: {
+                      $ifNull: [
+                        "$downloadCount",
+                        0
+                      ]
+                    }
+                  }
+                }
+              }
+            ])
+          ])
+        ]);
+
+        data.push({
+          day:
+            days[
+              date.getDay()
+            ],
+
+          views:
+            Number(
+              views[0]?.[0]
+                ?.total || 0
+            ) +
+            Number(
+              views[1]?.[0]
+                ?.total || 0
+            ),
+
+          downloads:
+            Number(
+              downloads[0]?.[0]
+                ?.total || 0
+            ) +
+            Number(
+              downloads[1]?.[0]
+                ?.total || 0
+            ),
+
+          revenue:
+            0
+        });
+      }
+
+      return res.json({
+        success:
+          true,
+
+        data
+      });
+
+    } catch (error) {
+      console.error(
+        "Weekly performance error:",
+        error
+      );
+
+      return res.json({
+        success:
+          true,
+
+        data:
+          [
+            "Mon",
+            "Tue",
+            "Wed",
+            "Thu",
+            "Fri",
+            "Sat",
+            "Sun"
+          ].map(
+            day => ({
+              day,
+              views: 0,
+              downloads: 0,
+              revenue: 0
+            })
+          )
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ✅ FIXED: PUBLIC NOTES - GET ALL NOTES FOR A SUBJECT
+   Now properly returns all documents with unit > 0
+   ========================================================= */
+
+router.get("/public/notes", async (req, res) => {
+  try {
+    console.log("\n=================================");
+    console.log("📚 PUBLIC NOTES REQUEST");
+    console.log("=================================");
+
+    const {
+      course,
+      category,
+      semester,
+      subject,
+      unit,
+      branch
+    } = req.query;
+
+    console.log("Course:", course);
+    console.log("Category:", category);
+    console.log("Semester:", semester);
+    console.log("Subject:", subject);
+    console.log("Unit:", unit);
+    console.log("Branch:", branch);
+
+    if (mongoose.connection.readyState !== 1) {
+      console.error("❌ MongoDB is not connected");
+      return res.status(500).json({
+        success: false,
+        message: "Database not connected"
+      });
+    }
+
+    const query = {};
+
+    if (category && category !== "") {
+      query.category = {
+        $regex: `^${String(category).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i"
+      };
+    }
+
+    if (semester !== undefined && semester !== "") {
+      const semesterNumber = Number.parseInt(semester, 10);
+      if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid semester"
+        });
+      }
+      query.semester = semesterNumber;
+    }
+
+    if (subject && subject !== "") {
+      query.subject = {
+        $regex: `^${String(subject).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i"
+      };
+    }
+
+    // Only add unit filter if specific unit is requested
+    if (unit !== undefined && unit !== "") {
+      const unitNumber = Number.parseInt(unit, 10);
+      if (Number.isInteger(unitNumber) && unitNumber > 0) {
+        query.unit = unitNumber;
+      }
+    }
+
+    const selectedCourse = branch || course;
+    if (selectedCourse && selectedCourse !== "") {
+      query.$or = [
+        {
+          course: {
+            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $options: "i"
+          }
+        },
+        {
+          branch: {
+            $regex: `^${String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+            $options: "i"
+          }
+        }
+      ];
+    }
+
+    console.log("🔎 MongoDB Query:", JSON.stringify(query, null, 2));
+
+    // Fetch all notes matching the query
+    const notes = await Note.find(query)
+      .select("-fileData")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Log each document's unit for debugging
+    console.log("📄 RAW DOCUMENTS FROM DB:");
+    notes.forEach((note, index) => {
+      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}, ID: ${note._id}`);
+    });
+
+    // Filter: Only keep documents with valid unit > 0
+    const filteredNotes = notes.filter(note => {
+      const unitVal = Number(note.unit);
+      return Number.isInteger(unitVal) && unitVal > 0;
+    });
+
+    console.log(`📄 Total Documents Found: ${notes.length}`);
+    console.log(`📄 Valid Documents (unit > 0): ${filteredNotes.length}`);
+
+    // Log valid documents
+    console.log("📄 VALID DOCUMENTS (unit > 0):");
+    filteredNotes.forEach((note, index) => {
+      console.log(`  ${index + 1}. Unit: ${note.unit}, Title: ${note.title || 'Untitled'}`);
+    });
+
+    console.log("=================================\n");
+
+    return res.json({
+      success: true,
+      data: filteredNotes,
+      count: filteredNotes.length,
+      total: notes.length
+    });
+
+  } catch (error) {
+    console.error("\n❌ PUBLIC NOTES ERROR:");
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch notes",
+      error: error.message
+    });
+  }
+});
 
 /* =========================================================
    PUBLIC NOTES DOWNLOAD
@@ -1290,11 +1545,8 @@ router.get(
         )
       ) {
         return res.status(400).json({
-          success:
-            false,
-
-          message:
-            "Invalid note ID"
+          success: false,
+          message: "Invalid note ID"
         });
       }
 
@@ -1303,21 +1555,15 @@ router.get(
 
       if (!note) {
         return res.status(404).json({
-          success:
-            false,
-
-          message:
-            "Note not found"
+          success: false,
+          message: "Note not found"
         });
       }
 
       if (!note.fileData) {
         return res.status(404).json({
-          success:
-            false,
-
-          message:
-            "File data not found"
+          success: false,
+          message: "File data not found"
         });
       }
 
@@ -1328,11 +1574,8 @@ router.get(
 
       if (!matches) {
         return res.status(500).json({
-          success:
-            false,
-
-          message:
-            "Invalid file data"
+          success: false,
+          message: "Invalid file data"
         });
       }
 
@@ -1388,16 +1631,12 @@ router.get(
       );
 
       return res.status(500).json({
-        success:
-          false,
-
-        message:
-          "Download failed"
+        success: false,
+        message: "Download failed"
       });
     }
   }
 );
-
 
 /* =========================================================
    PUBLIC NOTE VIEW COUNT
@@ -1417,11 +1656,8 @@ router.post(
         )
       ) {
         return res.status(400).json({
-          success:
-            false,
-
-          message:
-            "Invalid note ID"
+          success: false,
+          message: "Invalid note ID"
         });
       }
 
@@ -1435,8 +1671,7 @@ router.post(
       );
 
       return res.json({
-        success:
-          true
+        success: true
       });
 
     } catch (error) {
@@ -1446,133 +1681,1093 @@ router.post(
       );
 
       return res.status(500).json({
-        success:
-          false
+        success: false
       });
     }
   }
 );
 
-
 /* =========================================================
    PUBLIC UNITS
-   =========================================================
-   
-   VERY IMPORTANT:
-   
-   We use ONLY `note.unit` here.
-   
-   We DO NOT use:
-   
-   note.units
-   
-   because old `units` metadata can contain
-   wrong/stale values and create incorrect
-   Unit 1 / Unit 2 boxes.
 ========================================================= */
 
 router.get(
   "/public/units",
   async (req, res) => {
     try {
-      const { category, semester, subject, branch, course } = req.query;
+      console.log(
+        "\n================================="
+      );
+
+      console.log(
+        "📚 PUBLIC UNITS REQUEST"
+      );
+
+      console.log(
+        "================================="
+      );
+
+      const {
+        category,
+        semester,
+        subject,
+        branch,
+        course
+      } = req.query;
+
+      console.log(
+        "Category:",
+        category
+      );
+
+      console.log(
+        "Semester:",
+        semester
+      );
+
+      console.log(
+        "Subject:",
+        subject
+      );
+
+      console.log(
+        "Branch:",
+        branch
+      );
+
+      console.log(
+        "Course:",
+        course
+      );
+
+      if (
+        mongoose.connection.readyState !==
+        1
+      ) {
+        console.error(
+          "❌ MongoDB is not connected"
+        );
+
+        return res.status(500).json({
+          success: false,
+          message: "Database not connected"
+        });
+      }
 
       const query = {};
 
-      if (category) {
+      if (
+        category !== undefined &&
+        category !== ""
+      ) {
         query.category = {
-          $regex: `^${String(category).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $regex:
+            `^${String(category).replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            )}$`,
           $options: "i"
         };
       }
 
-      if (semester !== undefined && semester !== "") {
-        const semesterNumber = Number.parseInt(semester, 10);
-        if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        const semesterNumber =
+          Number.parseInt(
+            semester,
+            10
+          );
+
+        if (
+          !Number.isInteger(
+            semesterNumber
+          )
+        ) {
           return res.status(400).json({
             success: false,
             message: "Invalid semester"
           });
         }
-        query.semester = semesterNumber;
+
+        query.semester =
+          semesterNumber;
       }
 
-      if (subject) {
+      if (
+        subject !== undefined &&
+        subject !== ""
+      ) {
         query.subject = {
-          $regex: `^${String(subject).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $regex:
+            `^${String(subject).replace(
+              /[.*+?^${}()|[\]\\]/g,
+              "\\$&"
+            )}$`,
           $options: "i"
         };
       }
 
-      const selectedCourse = branch || course;
-      if (selectedCourse) {
-        const escapedCourse = String(selectedCourse).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const selectedCourse =
+        branch ||
+        course;
+
+      if (
+        selectedCourse !== undefined &&
+        selectedCourse !== ""
+      ) {
         query.$or = [
-          { course: { $regex: `^${escapedCourse}$`, $options: "i" } },
-          { branch: { $regex: `^${escapedCourse}$`, $options: "i" } }
+          {
+            course: {
+              $regex:
+                `^${String(
+                  selectedCourse
+                ).replace(
+                  /[.*+?^${}()|[\]\\]/g,
+                  "\\$&"
+                )}$`,
+              $options: "i"
+            }
+          },
+          {
+            branch: {
+              $regex:
+                `^${String(
+                  selectedCourse
+                ).replace(
+                  /[.*+?^${}()|[\]\\]/g,
+                  "\\$&"
+                )}$`,
+              $options: "i"
+            }
+          }
         ];
       }
 
-      console.log("📚 PUBLIC UNITS QUERY:", JSON.stringify(query));
+      console.log(
+        "🔎 Mongo Query:",
+        JSON.stringify(
+          query,
+          null,
+          2
+        )
+      );
 
-      const notes = await Note.find(query)
-        .select("unit units")
-        .sort({ createdAt: -1 })
-        .lean();
+      const notes =
+        await Note.find(
+          query
+        )
+          .select(
+            "_id unit units"
+          )
+          .lean();
 
-      const unitsSet = new Set();
+      console.log(
+        "📄 Documents Found:",
+        notes.length
+      );
 
-      notes.forEach((note) => {
-        // `unit` is always the actual unit of this uploaded document.
-        const actualUnit = Number(note?.unit);
-        if (Number.isInteger(actualUnit) && actualUnit > 0) {
-          unitsSet.add(actualUnit);
+      const unitsSet =
+        new Set();
+
+      for (
+        const note of notes
+      ) {
+        const unitNumber =
+          Number(note?.unit);
+
+        if (
+          Number.isInteger(unitNumber) &&
+          unitNumber > 0
+        ) {
+          unitsSet.add(unitNumber);
         }
 
-        // `units[]` contains the unit structure configured by Admin.
-        // Use only the IDs for card existence; never trust old custom names.
         if (Array.isArray(note?.units)) {
           note.units.forEach((u) => {
             const id = Number(u?.id);
-            if (Number.isInteger(id) && id > 0) {
+
+            if (
+              Number.isInteger(id) &&
+              id > 0
+            ) {
               unitsSet.add(id);
             }
           });
         }
-      });
+      }
 
-      const sortedUnits = Array.from(unitsSet)
-        .sort((a, b) => a - b)
-        .map((unitNumber) => ({
-          id: unitNumber,
-          unit: unitNumber,
-          name: `Unit ${unitNumber}`,
-          title: `Unit ${unitNumber}`
-        }));
+      const sortedUnits =
+        Array.from(
+          unitsSet
+        )
+          .sort(
+            (a, b) =>
+              a - b
+          )
+          .map(
+            (unitNumber) => ({
+              id:
+                unitNumber,
 
-      console.log(`✅ PUBLIC UNITS RETURNING: ${sortedUnits.length}`, sortedUnits);
+              unit:
+                unitNumber,
+
+              name:
+                `Unit ${unitNumber}`,
+
+              title:
+                `Unit ${unitNumber}`
+            })
+          );
+
+      console.log(
+        "📚 Units:",
+        sortedUnits
+      );
+
+      console.log(
+        "=================================\n"
+      );
 
       return res.json({
         success: true,
-        data: sortedUnits,
-        count: sortedUnits.length
+
+        data:
+          sortedUnits,
+
+        count:
+          sortedUnits.length
       });
+
     } catch (error) {
-      console.error("❌ PUBLIC UNITS ERROR:", error);
+      console.error(
+        "\n❌ PUBLIC UNITS ERROR:"
+      );
+
+      console.error(
+        error
+      );
+
       return res.status(500).json({
         success: false,
-        message: "Failed to fetch units: " + error.message
+
+        message:
+          "Failed to fetch units",
+
+        error:
+          error.message
       });
     }
   }
 );
 
 /* =========================================================
-   PUBLIC CONTENT - COMPATIBILITY ROUTE
+   PUBLIC VIDEOS
 ========================================================= */
 
 router.get(
-  "/public/content",
+  "/public/videos",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const videos =
+        await Video.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        videos
+      );
+
+    } catch (error) {
+      console.error(
+        "Public videos error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch videos"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   PUBLIC VIDEO FILE
+========================================================= */
+
+router.get(
+  "/public/videos/:id/file",
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid video ID"
+        });
+      }
+
+      const video =
+        await Video.findById(
+          id
+        );
+
+      if (!video) {
+        return res.status(404).json({
+          success: false,
+          message: "Video not found"
+        });
+      }
+
+      if (!video.fileData) {
+        return res.status(404).json({
+          success: false,
+          message: "Video file not found"
+        });
+      }
+
+      const matches =
+        video.fileData.match(
+          /^data:(.+);base64,(.+)$/
+        );
+
+      if (!matches) {
+        return res.status(500).json({
+          success: false,
+          message: "Invalid video data"
+        });
+      }
+
+      const mimeType =
+        matches[1];
+
+      const buffer =
+        Buffer.from(
+          matches[2],
+          "base64"
+        );
+
+      res.setHeader(
+        "Content-Type",
+        mimeType
+      );
+
+      res.setHeader(
+        "Content-Length",
+        buffer.length
+      );
+
+      return res.send(
+        buffer
+      );
+
+    } catch (error) {
+      console.error(
+        "Public video file error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to load video"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   PUBLIC PAPERS
+========================================================= */
+
+router.get(
+  "/public/papers",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const papers =
+        await Paper.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        papers
+      );
+
+    } catch (error) {
+      console.error(
+        "Public papers error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch papers"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   PUBLIC PAID PDFS
+========================================================= */
+
+router.get(
+  "/public/paid-pdfs",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const pdfs =
+        await PaidPDF.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        pdfs
+      );
+
+    } catch (error) {
+      console.error(
+        "Public paid PDFs error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch paid PDFs"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   PUBLIC FREE MATERIAL
+========================================================= */
+
+router.get(
+  "/public/free-material",
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const materials =
+        await FreeMaterial.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json(
+        materials
+      );
+
+    } catch (error) {
+      console.error(
+        "Public free material error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch free material"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ADMIN GET ALL NOTES
+========================================================= */
+
+router.get(
+  "/notes",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      if (
+        req.admin.role !==
+        "super_admin"
+      ) {
+        const allowedCourses =
+          req.admin.permissions
+            ?.courses || [];
+
+        filter.course = {
+          $in:
+            allowedCourses
+        };
+      }
+
+      const notes =
+        await Note.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success: true,
+
+        data:
+          notes
+      });
+
+    } catch (error) {
+      console.error(
+        "Admin notes error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch notes"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   GET SINGLE NOTE
+========================================================= */
+
+router.get(
+  "/notes/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid note ID"
+        });
+      }
+
+      const note =
+        await Note.findById(
+          id
+        ).select(
+          "-fileData"
+        );
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          message: "Note not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+
+        data:
+          note
+      });
+
+    } catch (error) {
+      console.error(
+        "Get note error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch note"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   DELETE NOTE
+========================================================= */
+
+router.delete(
+  "/notes/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid note ID"
+        });
+      }
+
+      const note =
+        await Note.findById(
+          id
+        );
+
+      if (!note) {
+        return res.status(404).json({
+          success: false,
+          message: "Note not found"
+        });
+      }
+
+      if (
+        req.admin.role !==
+        "super_admin"
+      ) {
+        const allowedCourses =
+          req.admin.permissions
+            ?.courses || [];
+
+        if (
+          !allowedCourses.includes(
+            note.course
+          )
+        ) {
+          return res.status(403).json({
+            success: false,
+
+            message:
+              "You do not have permission to delete this note"
+          });
+        }
+      }
+
+      await Note.findByIdAndDelete(
+        id
+      );
+
+      return res.json({
+        success: true,
+
+        message:
+          "Note deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete note error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to delete note"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ADMIN GET VIDEOS
+========================================================= */
+
+router.get(
+  "/videos",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        course,
+        category,
+        semester,
+        subject,
+        unit
+      } = req.query;
+
+      const filter = {};
+
+      if (course) {
+        filter.course =
+          course;
+      }
+
+      if (category) {
+        filter.category =
+          category;
+      }
+
+      if (
+        semester !== undefined &&
+        semester !== ""
+      ) {
+        filter.semester =
+          Number(semester);
+      }
+
+      if (subject) {
+        filter.subject =
+          subject;
+      }
+
+      if (
+        unit !== undefined &&
+        unit !== ""
+      ) {
+        filter.unit =
+          Number(unit);
+      }
+
+      const videos =
+        await Video.find(
+          filter
+        )
+          .select(
+            "-fileData"
+          )
+          .sort({
+            createdAt: -1
+          });
+
+      return res.json({
+        success: true,
+
+        data:
+          videos
+      });
+
+    } catch (error) {
+      console.error(
+        "Admin videos error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+
+        message:
+          "Failed to fetch videos"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   DELETE VIDEO
+========================================================= */
+
+router.delete(
+  "/videos/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid video ID"
+        });
+      }
+
+      const video =
+        await Video.findById(id);
+
+      if (!video) {
+        return res.status(404).json({
+          success: false,
+          message: "Video not found"
+        });
+      }
+
+      await Video.findByIdAndDelete(id);
+
+      return res.json({
+        success: true,
+        message:
+          "Video deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete video error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to delete video"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   ADMIN GET PAPERS
+========================================================= */
+
+router.get(
+  "/papers",
+  adminAuth,
   async (req, res) => {
     try {
       const {
@@ -1613,211 +2808,527 @@ router.get(
           Number(unit);
       }
 
-      console.log(
-        "📤 Public content query:",
-        filter
-      );
-
-      const notes =
-        await Note.find(filter)
+      const papers =
+        await Paper.find(filter)
           .select("-fileData")
           .sort({
             createdAt: -1
           });
 
-      console.log(
-        `✅ Found ${notes.length} content items`
-      );
-
       return res.json({
         success: true,
-        content: notes,
-        notes: notes
+        data: papers
       });
 
     } catch (error) {
       console.error(
-        "Public content error:",
+        "Admin papers error:",
         error
       );
 
       return res.status(500).json({
         success: false,
         message:
-          "Failed to load content"
+          "Failed to fetch papers"
       });
     }
   }
 );
 
-
 /* =========================================================
-   PUBLIC VIDEOS
+   DELETE PAPER
 ========================================================= */
 
-router.get(
-  "/public/videos",
+router.delete(
+  "/papers/:id",
+  adminAuth,
   async (req, res) => {
     try {
       const {
-        course
-      } = req.query;
+        id
+      } = req.params;
 
-      const filter = {
-        isPremium: true
-      };
-
-      if (course) {
-        filter.course = course;
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid paper ID"
+        });
       }
 
-      const videos =
-        await Video.find(filter)
-          .sort({
-            createdAt: -1
-          });
+      const paper =
+        await Paper.findById(id);
 
-      return res.json(videos);
+      if (!paper) {
+        return res.status(404).json({
+          success: false,
+          message: "Paper not found"
+        });
+      }
+
+      await Paper.findByIdAndDelete(id);
+
+      return res.json({
+        success: true,
+        message:
+          "Paper deleted successfully"
+      });
 
     } catch (error) {
       console.error(
-        "Public videos error:",
+        "Delete paper error:",
         error
       );
 
       return res.status(500).json({
+        success: false,
         message:
-          "Server Error"
+          "Failed to delete paper"
       });
     }
   }
 );
 
-
 /* =========================================================
-   PUBLIC FREE VIDEOS
+   ADMIN USERS
 ========================================================= */
 
 router.get(
-  "/public/free-videos",
+  "/users",
+  adminAuth,
   async (req, res) => {
     try {
-      const {
-        course
-      } = req.query;
-
-      const filter = {
-        isPremium: false
-      };
-
-      if (course) {
-        filter.course = course;
-      }
-
-      const videos =
-        await Video.find(filter)
+      const users =
+        await User.find()
+          .select("-password")
           .sort({
             createdAt: -1
           });
 
-      return res.json(videos);
+      return res.json({
+        success: true,
+        data: users
+      });
 
     } catch (error) {
       console.error(
-        "Public free videos error:",
+        "Users fetch error:",
         error
       );
 
       return res.status(500).json({
+        success: false,
         message:
-          "Server Error"
+          "Failed to fetch users"
       });
     }
   }
 );
 
-
 /* =========================================================
-   PUBLIC PAID PDFS
+   UPDATE USER
 ========================================================= */
 
-router.get(
-  "/public/paid-pdfs",
+router.put(
+  "/users/:id",
+  adminAuth,
   async (req, res) => {
     try {
       const {
-        course
-      } = req.query;
+        id
+      } = req.params;
 
-      const filter = {};
+      const {
+        name,
+        email,
+        isActive
+      } = req.body;
 
-      if (course) {
-        filter.course = course;
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID"
+        });
       }
 
-      const pdfs =
-        await PaidPDF.find(filter)
+      const updateData = {};
+
+      if (
+        name !== undefined
+      ) {
+        updateData.name = name;
+      }
+
+      if (
+        email !== undefined
+      ) {
+        updateData.email = email;
+      }
+
+      if (
+        isActive !== undefined
+      ) {
+        updateData.isActive =
+          isActive;
+      }
+
+      const user =
+        await User.findByIdAndUpdate(
+          id,
+          updateData,
+          {
+            new: true
+          }
+        ).select("-password");
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: user
+      });
+
+    } catch (error) {
+      console.error(
+        "Update user error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to update user"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   DELETE USER
+========================================================= */
+
+router.delete(
+  "/users/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid user ID"
+        });
+      }
+
+      const user =
+        await User.findById(id);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+
+      await User.findByIdAndDelete(id);
+
+      return res.json({
+        success: true,
+        message:
+          "User deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete user error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to delete user"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   NOTICES
+========================================================= */
+
+router.get(
+  "/notices",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const notices =
+        await Notice.find()
           .sort({
             createdAt: -1
           });
 
-      return res.json(pdfs);
+      return res.json({
+        success: true,
+        data: notices
+      });
 
     } catch (error) {
       console.error(
-        "Public paid PDFs error:",
+        "Notices error:",
         error
       );
 
       return res.status(500).json({
+        success: false,
         message:
-          "Server Error"
+          "Failed to fetch notices"
       });
     }
   }
 );
 
-
-/* =========================================================
-   PUBLIC PAPERS
-========================================================= */
-
-router.get(
-  "/public/papers",
+router.post(
+  "/notices",
+  adminAuth,
   async (req, res) => {
     try {
       const {
-        course
-      } = req.query;
+        title,
+        message,
+        course,
+        active
+      } = req.body;
 
-      const filter = {};
-
-      if (course) {
-        filter.course = course;
+      if (
+        !title ||
+        !message
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Title and message are required"
+        });
       }
 
-      const papers =
-        await Paper.find(filter)
+      const notice =
+        new Notice({
+          title,
+          message,
+          course:
+            course || "",
+          active:
+            active !== false,
+          createdAt:
+            new Date()
+        });
+
+      await notice.save();
+
+      return res.status(201).json({
+        success: true,
+        data: notice
+      });
+
+    } catch (error) {
+      console.error(
+        "Create notice error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to create notice"
+      });
+    }
+  }
+);
+
+router.delete(
+  "/notices/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid notice ID"
+        });
+      }
+
+      await Notice.findByIdAndDelete(id);
+
+      return res.json({
+        success: true,
+        message:
+          "Notice deleted successfully"
+      });
+
+    } catch (error) {
+      console.error(
+        "Delete notice error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to delete notice"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   PAYMENT LIST
+========================================================= */
+
+router.get(
+  "/payments",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const payments =
+        await Payment.find()
           .sort({
             createdAt: -1
           });
 
-      return res.json(papers);
+      return res.json({
+        success: true,
+        data: payments
+      });
 
     } catch (error) {
       console.error(
-        "Public papers error:",
+        "Payments error:",
         error
       );
 
       return res.status(500).json({
+        success: false,
         message:
-          "Server Error"
+          "Failed to fetch payments"
       });
     }
   }
 );
 
+/* =========================================================
+   PAYMENT BY ID
+========================================================= */
+
+router.get(
+  "/payments/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const {
+        id
+      } = req.params;
+
+      if (
+        !mongoose.Types.ObjectId.isValid(
+          id
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid payment ID"
+        });
+      }
+
+      const payment =
+        await Payment.findById(id);
+
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "Payment not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        data: payment
+      });
+
+    } catch (error) {
+      console.error(
+        "Payment error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message:
+          "Failed to fetch payment"
+      });
+    }
+  }
+);
+
+/* =========================================================
+   HEALTH CHECK
+========================================================= */
+
+router.get(
+  "/health",
+  async (req, res) => {
+    try {
+      return res.json({
+        success: true,
+
+        status: "ok",
+
+        database:
+          mongoose.connection.readyState ===
+          1
+            ? "connected"
+            : "disconnected",
+
+        timestamp:
+          new Date().toISOString()
+      });
+
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        status: "error"
+      });
+    }
+  }
+);
 
 /* =========================================================
    CONTENT MODEL HELPER
@@ -1863,7 +3374,6 @@ const getContentModel = (
 
   return null;
 };
-
 
 /* =========================================================
    SEND STORED FILE
@@ -1997,7 +3507,6 @@ const sendStoredFile = async (
   }
 };
 
-
 /* =========================================================
    PUBLIC PREVIEW
 ========================================================= */
@@ -2013,7 +3522,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    PUBLIC DOWNLOAD
 ========================================================= */
@@ -2028,7 +3536,6 @@ router.get(
     );
   }
 );
-
 
 /* =========================================================
    PUBLIC PRICE
@@ -2118,7 +3625,6 @@ router.get(
   }
 );
 
-
 /* =========================================================
    ADMIN PROFILE
 ========================================================= */
@@ -2159,7 +3665,6 @@ router.get(
     }
   }
 );
-
 
 /* =========================================================
    UPDATE ADMIN PROFILE
@@ -2257,7 +3762,6 @@ router.put(
   }
 );
 
-
 /* =========================================================
    TEST ROUTE
 ========================================================= */
@@ -2322,7 +3826,6 @@ router.get(
     });
   }
 );
-
 
 /* =========================================================
    FINAL EXPORT
