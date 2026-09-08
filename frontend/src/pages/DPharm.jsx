@@ -225,16 +225,21 @@ const DPharm = () => {
     contentAbortControllerRef.current = controller;
     setContentLoading(true);
 
-    const params = {
+    // Hindi uploads can exist with different stored language labels.
+    // English stays untouched; Hindi gets safe fallback labels only.
+    const languageCandidates =
+      category !== "PYQs" && language
+        ? String(language).toLowerCase() === "hindi"
+          ? ["Hindi", "हिंदी", "हिन्दी"]
+          : [language]
+        : [null];
+
+    const baseParams = {
       course: "D.Pharm",
       category,
       year,
       subject
     };
-
-    if (category !== "PYQs" && language) {
-      params.language = language;
-    }
 
     const getRawContent = (data) => {
       const candidates = [
@@ -307,52 +312,66 @@ const DPharm = () => {
 
     let lastError = null;
 
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const res = await axios.get(
-          `${API_BASE}/api/admin/public/notes`,
-          {
-            params,
-            signal: controller.signal,
-            timeout: 15000,
-            headers: { Accept: "application/json" }
+    // Try the selected language first. If Hindi returns no records, also
+    // try the common Hindi labels used by older/admin uploads.
+    for (const languageValue of languageCandidates) {
+      const params = { ...baseParams };
+      if (languageValue) params.language = languageValue;
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const res = await axios.get(
+            `${API_BASE}/api/admin/public/notes`,
+            {
+              params,
+              signal: controller.signal,
+              timeout: 15000,
+              headers: { Accept: "application/json" }
+            }
+          );
+
+          if (
+            controller.signal.aborted ||
+            requestId !== contentRequestIdRef.current
+          ) {
+            return;
           }
-        );
 
-        if (
-          controller.signal.aborted ||
-          requestId !== contentRequestIdRef.current
-        ) {
+          const rawContent = getRawContent(res.data);
+
+          // If Hindi label returned nothing, continue with the next Hindi
+          // label instead of showing a false "No Units" state.
+          if (rawContent.length === 0 && languageCandidates.length > 1) {
+            break;
+          }
+
+          const derivedUnits = buildUnits(rawContent);
+
+          const cachedData = {
+            content: rawContent,
+            units: derivedUnits
+          };
+
+          contentCacheRef.current.set(cacheKey, cachedData);
+
+          setUnitContent(rawContent);
+          setUnits(derivedUnits);
+          setContentLoading(false);
           return;
-        }
+        } catch (error) {
+          if (
+            error?.code === "ERR_CANCELED" ||
+            error?.name === "CanceledError" ||
+            controller.signal.aborted
+          ) {
+            return;
+          }
 
-        const rawContent = getRawContent(res.data);
-        const derivedUnits = buildUnits(rawContent);
+          lastError = error;
 
-        const cachedData = {
-          content: rawContent,
-          units: derivedUnits
-        };
-
-        contentCacheRef.current.set(cacheKey, cachedData);
-
-        setUnitContent(rawContent);
-        setUnits(derivedUnits);
-        setContentLoading(false);
-        return;
-      } catch (error) {
-        if (
-          error?.code === "ERR_CANCELED" ||
-          error?.name === "CanceledError" ||
-          controller.signal.aborted
-        ) {
-          return;
-        }
-
-        lastError = error;
-
-        if (attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 350));
+          if (attempt === 0) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+          }
         }
       }
     }
