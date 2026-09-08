@@ -46,21 +46,6 @@ const normalizeDPharmYear = (value) => {
   return raw;
 };
 
-const getDPharmYearNumber = (value) => {
-  const normalized = normalizeDPharmYear(value);
-  return normalized === "1st Year" ? 1 : normalized === "2nd Year" ? 2 : null;
-};
-
-const getDPharmYearStorageValue = (value) => {
-  const normalized = normalizeDPharmYear(value);
-  const yearPath = Note.schema.path("year");
-  if (yearPath && yearPath.instance === "Number") {
-    return getDPharmYearNumber(normalized);
-  }
-  return normalized;
-};
-
-
 const {
   authMiddleware,
   isAdmin,
@@ -499,9 +484,7 @@ router.post(
           isDPharm ? 1 : semesterNumber,
 
         year:
-          isDPharm
-            ? getDPharmYearStorageValue(normalizedYear)
-            : "",
+          isDPharm ? normalizedYear : "",
 
         subject,
 
@@ -1540,19 +1523,21 @@ router.get("/public/notes", async (req, res) => {
         });
       }
 
-      // D.Pharm data may exist in legacy formats:
-      // year: "1st Year" / year: 1 / semester: 1.
-      // Use MongoDB raw query here to avoid Mongoose cast errors.
-      const yearNumber = getDPharmYearNumber(normalizedYear);
+      // D.Pharm legacy-safe year matching.
+      // Older records may have year as 1/2, "Year 1/Year 2", or may
+      // have only semester=1/2. Use native Mongo below to avoid Mongoose
+      // casting errors between Number and String legacy schemas.
+      const yearValues = normalizedYear === "1st Year"
+        ? ["1st Year", "1", "Year 1", 1]
+        : ["2nd Year", "2", "Year 2", 2];
+
       query.$and = query.$and || [];
       query.$and.push({
         $or: [
-          { year: normalizedYear },
-          { year: yearNumber },
-          { semester: yearNumber }
+          { year: { $in: yearValues } },
+          { semester: Number(normalizedYear[0]) }
         ]
       });
-      delete query.year;
     } else if (semester !== undefined && semester !== "") {
       const semesterNumber = Number.parseInt(semester, 10);
 
@@ -1623,9 +1608,19 @@ router.get("/public/notes", async (req, res) => {
         });
       }
 
-      query.language = normalizedLanguage;
+      // Case-insensitive language match so old "English"/"Hindi"
+      // records work exactly like new lowercase records.
+      query.language = {
+        $regex: `^${normalizedLanguage}$`,
+        $options: "i"
+      };
     } else if (normalizedLanguage) {
-      query.language = normalizedLanguage;
+      // Case-insensitive language match so old "English"/"Hindi"
+      // records work exactly like new lowercase records.
+      query.language = {
+        $regex: `^${normalizedLanguage}$`,
+        $options: "i"
+      };
     }
 
     console.log(
@@ -1633,15 +1628,10 @@ router.get("/public/notes", async (req, res) => {
       JSON.stringify(query, null, 2)
     );
 
-    const notes = isDPharm
-      ? await Note.collection
-          .find(query, { projection: { fileData: 0 } })
-          .sort({ createdAt: -1 })
-          .toArray()
-      : await Note.find(query)
-          .select("-fileData")
-          .sort({ createdAt: -1 })
-          .lean();
+    const notes = await Note.collection
+      .find(query, { projection: { fileData: 0 } })
+      .sort({ createdAt: -1 })
+      .toArray();
 
     const filteredNotes = notes.filter((note) => {
       const unitVal = Number(note.unit);
@@ -1902,16 +1892,19 @@ router.get(
           });
         }
 
-        const yearNumber = getDPharmYearNumber(normalizedYear);
+        // D.Pharm legacy-safe year matching. Older records may have year
+        // as Number/String or may only have semester=1/2.
+        const yearValues = normalizedYear === "1st Year"
+          ? ["1st Year", "1", "Year 1", 1]
+          : ["2nd Year", "2", "Year 2", 2];
+
         query.$and = query.$and || [];
         query.$and.push({
           $or: [
-            { year: normalizedYear },
-            { year: yearNumber },
-            { semester: yearNumber }
+            { year: { $in: yearValues } },
+            { semester: Number(normalizedYear[0]) }
           ]
         });
-        delete query.year;
       } else if (semester !== undefined && semester !== "") {
         const semesterNumber = Number.parseInt(semester, 10);
 
@@ -1969,9 +1962,19 @@ router.get(
           });
         }
 
-        query.language = normalizedLanguage;
+        // Case-insensitive language match so old "English"/"Hindi"
+      // records work exactly like new lowercase records.
+      query.language = {
+        $regex: `^${normalizedLanguage}$`,
+        $options: "i"
+      };
       } else if (normalizedLanguage) {
-        query.language = normalizedLanguage;
+        // Case-insensitive language match so old "English"/"Hindi"
+      // records work exactly like new lowercase records.
+      query.language = {
+        $regex: `^${normalizedLanguage}$`,
+        $options: "i"
+      };
       }
 
       console.log(
@@ -1979,13 +1982,9 @@ router.get(
         JSON.stringify(query, null, 2)
       );
 
-      const notes = isDPharm
-        ? await Note.collection
-            .find(query, { projection: { _id: 1, unit: 1, units: 1, language: 1 } })
-            .toArray()
-        : await Note.find(query)
-            .select("_id unit units language")
-            .lean();
+      const notes = await Note.collection
+        .find(query, { projection: { _id: 1, unit: 1, units: 1, language: 1 } })
+        .toArray();
 
       console.log("📄 Documents Found:", notes.length);
 
