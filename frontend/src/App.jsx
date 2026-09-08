@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
+/* COMPONENTS */
 import Navbar from "./components/navbar";
 import Footer from "./components/Footer";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -9,10 +10,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 /* HOME COMPONENTS */
 import Banner from "./components/banner";
 import QuickAccessSection from "./components/QuickAccessSection";
-import FeatureSection from "./components/featuresection";
-import Icons from "./components/icons";
-import StudentFeaturesSection from "./components/StudentFeaturesSection";
-import Premium from "./components/premium";
 
 /* PAGES */
 import BPharm from "./pages/BPharm";
@@ -25,28 +22,26 @@ import Profile from "./pages/Profile";
 const API_BASE =
   import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
-/* HOME PAGE */
+/* =========================
+   HOME PAGE
+========================= */
+
 const Home = () => {
   return (
     <>
+      {/* HERO BANNER */}
       <Banner />
 
-      {/* QuickAccessSection ab Icons ki jagah */}
+      {/* QUICK ACCESS */}
       <QuickAccessSection />
-
-      <FeatureSection />
-
-      {/* Icons ab QuickAccessSection ki jagah */}
-      <Icons />
-
-      <StudentFeaturesSection />
-
-      <Premium />
     </>
   );
 };
 
-/* Remove all stale authentication data in one place. */
+/* =========================
+   CLEAR AUTH DATA
+========================= */
+
 const clearAuthStorage = () => {
   localStorage.removeItem("token");
   localStorage.removeItem("userToken");
@@ -54,10 +49,17 @@ const clearAuthStorage = () => {
   localStorage.removeItem("isLoggedIn");
 };
 
+/* =========================
+   APP
+========================= */
+
 function App() {
   const [isLoading, setIsLoading] = useState(true);
 
-  /* Load Razorpay once. Do not block the app forever if it fails. */
+  /* =========================
+     LOAD RAZORPAY
+  ========================= */
+
   useEffect(() => {
     if (window.Razorpay) {
       setIsLoading(false);
@@ -85,7 +87,9 @@ function App() {
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
 
-    script.onload = () => setIsLoading(false);
+    script.onload = () => {
+      setIsLoading(false);
+    };
 
     script.onerror = () => {
       console.error("Failed to load Razorpay");
@@ -94,25 +98,25 @@ function App() {
 
     document.body.appendChild(script);
 
-    return () => {
-      // Keep the Razorpay script available for the rest of the app.
-    };
+    return () => {};
   }, []);
 
-  /*
-   * Verify an existing session periodically.
-   * IMPORTANT: a stale/invalid JWT is cleared on ANY 401 so the app
-   * does not keep sending the same bad token every 5 seconds.
-   */
+  /* =========================
+     VERIFY SESSION
+  ========================= */
+
   useEffect(() => {
     const verifySession = async () => {
       const token =
-        localStorage.getItem("userToken") || localStorage.getItem("token");
+        localStorage.getItem("userToken") ||
+        localStorage.getItem("token");
 
       const isLoggedIn =
         localStorage.getItem("isLoggedIn") === "true";
 
-      if (!token || !isLoggedIn) return;
+      if (!token || !isLoggedIn) {
+        return;
+      }
 
       try {
         await axios.get(`${API_BASE}/api/auth/verify`, {
@@ -124,55 +128,78 @@ function App() {
         if (error.response?.status === 401) {
           clearAuthStorage();
 
-          // Stop the repeated 401 loop and send the user to Home.
           if (window.location.pathname !== "/") {
             window.location.replace("/");
           } else {
             window.location.reload();
           }
         } else if (import.meta.env.DEV) {
-          console.error("Session verification error:", error);
+          console.error(
+            "Session verification error:",
+            error
+          );
         }
       }
     };
 
-    // Verify once after the app starts.
+    /* Verify once when app starts */
     verifySession();
 
-    // Keep the existing session check behavior, but safely handle 401s.
-    const interval = setInterval(verifySession, 5000);
+    /* Verify every 5 seconds */
+    const interval = setInterval(
+      verifySession,
+      5000
+    );
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
+
+  /* =========================
+     LOADING SCREEN
+  ========================= */
 
   if (isLoading) {
     return (
       <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center z-50">
         <div className="text-center">
           <div className="relative w-20 h-20 mx-auto mb-4">
-            <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-gray-200 rounded-full" />
 
-            <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin"></div>
+            <div className="absolute inset-0 border-4 border-purple-600 rounded-full border-t-transparent animate-spin" />
           </div>
-
-          <p className="text-gray-600">
-            Loading secure payment gateway...
-          </p>
         </div>
       </div>
     );
   }
 
+  /* =========================
+     MAIN APP
+  ========================= */
+
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+
+        {/* NAVBAR */}
         <Navbar />
 
         <Routes>
-          {/* HOME - No auth required */}
-          <Route path="/" element={<Home />} />
 
-          {/* PROFILE - Auth protected */}
+          {/* =====================
+              HOME
+          ===================== */}
+
+          <Route
+            path="/"
+            element={<Home />}
+          />
+
+          {/* =====================
+              PROFILE
+          ===================== */}
+
           <Route
             path="/profile"
             element={
@@ -182,7 +209,10 @@ function App() {
             }
           />
 
-          {/* COURSE PAGES - Auth protected */}
+          {/* =====================
+              BPHARM
+          ===================== */}
+
           <Route
             path="/bpharm"
             element={
@@ -191,6 +221,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* =====================
+              DPHARM
+          ===================== */}
 
           <Route
             path="/dpharm"
@@ -201,6 +235,10 @@ function App() {
             }
           />
 
+          {/* =====================
+              MPHARM
+          ===================== */}
+
           <Route
             path="/mpharm"
             element={
@@ -209,6 +247,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* =====================
+              PHARMD
+          ===================== */}
 
           <Route
             path="/pharmd"
@@ -219,6 +261,10 @@ function App() {
             }
           />
 
+          {/* =====================
+              PHD
+          ===================== */}
+
           <Route
             path="/phd"
             element={
@@ -227,9 +273,12 @@ function App() {
               </ProtectedRoute>
             }
           />
+
         </Routes>
 
+        {/* FOOTER */}
         <Footer />
+
       </div>
     </BrowserRouter>
   );

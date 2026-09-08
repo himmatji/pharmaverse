@@ -158,6 +158,7 @@ const DPharm = () => {
   const [selectedSubject, setSelectedSubject] = useState(null);
   
   const [loading, setLoading] = useState(false);
+  const [contentLoading, setContentLoading] = useState(false);
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
@@ -172,6 +173,7 @@ const DPharm = () => {
   // ========== REQUEST CONTROL ==========
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
+  const contentCacheRef = useRef(new Map());
 
   // ========== GET SUBJECTS FOR SELECTED YEAR ==========
   const getAvailableSubjects = () => {
@@ -181,11 +183,30 @@ const DPharm = () => {
       : [];
   };
 
-  // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
-  const fetchUnitContent = async () => {
+  // ========== FAST + SAFE CONTENT FETCH ==========
+  const fetchUnitContent = async ({ force = false } = {}) => {
     if (!selectedCategory || !selectedYear || !selectedSubject) {
       setUnitContent([]);
       setUnits([]);
+      setContentLoading(false);
+      return;
+    }
+
+    const cacheKey = [
+      "D.Pharm",
+      selectedCategory,
+      selectedLanguage || "",
+      String(selectedYear),
+      selectedSubject
+    ].join("::");
+
+    // Show cached data immediately. This removes the "first click blank,
+    // refresh then works" feeling and avoids unnecessary API calls.
+    if (!force && contentCacheRef.current.has(cacheKey)) {
+      const cached = contentCacheRef.current.get(cacheKey);
+      setUnitContent(cached.content);
+      setUnits(cached.units);
+      setContentLoading(false);
       return;
     }
 
@@ -193,48 +214,40 @@ const DPharm = () => {
 
     if (contentAbortControllerRef.current) {
       contentAbortControllerRef.current.abort();
-      contentAbortControllerRef.current = null;
     }
-
-    setUnitContent([]);
-    setUnits([]);
 
     const controller = new AbortController();
     contentAbortControllerRef.current = controller;
+    setContentLoading(true);
 
-    try {
-      const params = {
-        course: "D.Pharm",
-        category: selectedCategory,
-        year: selectedYear,
-        subject: selectedSubject
-      };
+    const params = {
+      course: "D.Pharm",
+      category: selectedCategory,
+      year: selectedYear,
+      subject: selectedSubject
+    };
 
-      // Add language filter only for Notes & Exam Crash Course
-      if (selectedCategory !== "PYQs" && selectedLanguage) {
-        params.language = selectedLanguage;
-      }
+    // Language is relevant only to Notes and Exam Crash Course.
+    if (selectedCategory !== "PYQs" && selectedLanguage) {
+      params.language = selectedLanguage;
+    }
 
-      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-        params,
-        signal: controller.signal
-      });
+    const getRawContent = (data) => {
+      if (Array.isArray(data)) return data;
+      if (Array.isArray(data?.data)) return data.data;
+      if (Array.isArray(data?.notes)) return data.notes;
+      if (Array.isArray(data?.documents)) return data.documents;
+      if (Array.isArray(data?.results)) return data.results;
+      if (Array.isArray(data?.items)) return data.items;
+      return [];
+    };
 
-      if (requestId !== contentRequestIdRef.current) return;
-
-      const rawContent = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-          ? res.data.data
-          : [];
-
-      setUnitContent(rawContent);
-
+    const buildUnits = (content) => {
       const unitMap = new Map();
-      
-      rawContent.forEach((item) => {
+
+      content.forEach((item) => {
         const unitValue = Number(item?.unit);
-        
+
         if (Number.isInteger(unitValue) && unitValue > 0) {
           if (!unitMap.has(unitValue)) {
             unitMap.set(unitValue, {
@@ -243,25 +256,84 @@ const DPharm = () => {
               topics: []
             });
           }
+
+          // Preserve topics when API sends them.
+          const unit = unitMap.get(unitValue);
+          const topics = Array.isArray(item?.topics)
+            ? item.topics
+            : item?.topic
+              ? [item.topic]
+              : [];
+
+          topics.forEach((topic) => {
+            if (topic && !unit.topics.includes(topic)) {
+              unit.topics.push(topic);
+            }
+          });
         }
       });
 
-      const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
-      
-      setUnits(derivedUnits);
-      
-    } catch (error) {
-      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
-      if (requestId !== contentRequestIdRef.current) return;
+      return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
+    };
 
-      console.error("Failed to fetch subject content:", error);
-      setUnitContent([]);
-      setUnits([]);
-    } finally {
-      if (requestId === contentRequestIdRef.current) {
-        contentAbortControllerRef.current = null;
+    let lastError = null;
+
+    // Small retry handles transient API cold-start/network failures.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+          params,
+          signal: controller.signal,
+          timeout: 15000,
+          headers: {
+            Accept: "application/json"
+          }
+        });
+
+        if (requestId !== contentRequestIdRef.current) return;
+
+        const rawContent = getRawContent(res.data);
+        const derivedUnits = buildUnits(rawContent);
+
+        contentCacheRef.current.set(cacheKey, {
+          content: rawContent,
+          units: derivedUnits
+        });
+
+        setUnitContent(rawContent);
+        setUnits(derivedUnits);
+        setContentLoading(false);
+        return;
+      } catch (error) {
+        if (
+          error?.code === "ERR_CANCELED" ||
+          error?.name === "CanceledError" ||
+          controller.signal.aborted
+        ) {
+          return;
+        }
+
+        lastError = error;
+
+        if (attempt === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
       }
     }
+
+    if (requestId !== contentRequestIdRef.current) return;
+
+    console.error("Failed to fetch D.Pharm subject content:", lastError);
+    setContentLoading(false);
+
+    // Do NOT pretend that an API failure means there are no units.
+    // Keep any existing cached/visible data intact.
+    if (!contentCacheRef.current.has(cacheKey)) {
+      setUnitContent([]);
+      setUnits([]);
+    }
+
+    toast.error("Content load nahi ho paaya. Retry karein.");
   };
 
   // ========== EFFECT: Fetch documents when subject changes ==========
@@ -271,6 +343,7 @@ const DPharm = () => {
     } else {
       setUnits([]);
       setUnitContent([]);
+      setContentLoading(false);
     }
   }, [selectedCategory, selectedLanguage, selectedYear, selectedSubject]);
 
@@ -305,8 +378,26 @@ const DPharm = () => {
   const handleSubjectClick = (subject) => {
     setSelectedSubject(subject);
     setCurrentStep(5);
-    setUnits([]);
-    setUnitContent([]);
+    setContentLoading(true);
+
+    const cacheKey = [
+      "D.Pharm",
+      selectedCategory,
+      selectedLanguage || "",
+      String(selectedYear),
+      subject
+    ].join("::");
+
+    const cached = contentCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setUnitContent(cached.content);
+      setUnits(cached.units);
+      setContentLoading(false);
+    } else {
+      setUnits([]);
+      setUnitContent([]);
+    }
   };
 
   const goBack = () => {
@@ -1103,14 +1194,32 @@ const DPharm = () => {
           </p>
         </div>
 
-        {units.length === 0 ? (
+        {contentLoading ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-sky-100 to-blue-100 flex items-center justify-center mx-auto mb-5 shadow-inner">
+              <div className="w-11 h-11 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
+              Loading Units...
+            </h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">
+              Database se latest content fetch ho raha hai.
+            </p>
+          </div>
+        ) : units.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Units Available</h3>
             <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any content for this subject yet.</p>
             <p className="font-['Inter'] text-gray-400 text-sm mt-1">Units will appear here once content is uploaded.</p>
+            <button
+              onClick={() => fetchUnitContent({ force: true })}
+              className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-purple-600 text-white font-['Inter'] font-semibold text-sm hover:scale-105 transition-all shadow-lg"
+            >
+              Retry
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">

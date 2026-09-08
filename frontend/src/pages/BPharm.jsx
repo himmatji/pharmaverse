@@ -294,6 +294,8 @@ const BPharm = () => {
   // ========== API STATES ==========
   const [units, setUnits] = useState([]);
   const [unitContent, setUnitContent] = useState([]);
+  const [isContentLoading, setIsContentLoading] = useState(false);
+  const [contentError, setContentError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
@@ -301,6 +303,7 @@ const BPharm = () => {
   // ========== REQUEST CONTROL ==========
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
+  const contentCacheRef = useRef(new Map());
 
   // ========== GET SUBJECTS FOR SELECTED SEMESTER ==========
   const getAvailableSubjects = () => {
@@ -315,8 +318,17 @@ const BPharm = () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject) {
       setUnitContent([]);
       setUnits([]);
+      setIsContentLoading(false);
+      setContentError("");
       return;
     }
+
+    const cacheKey = [
+      "B.Pharm",
+      String(selectedCategory).trim(),
+      String(selectedSemester).trim(),
+      String(selectedSubject).trim()
+    ].join("||");
 
     const requestId = ++contentRequestIdRef.current;
 
@@ -325,62 +337,167 @@ const BPharm = () => {
       contentAbortControllerRef.current = null;
     }
 
-    setUnitContent([]);
-    setUnits([]);
+    // Show cached data immediately if this subject was already opened.
+    const cached = contentCacheRef.current.get(cacheKey);
+    if (cached) {
+      setUnitContent(cached.content);
+      setUnits(cached.units);
+    } else {
+      // Do NOT pretend that there are no units while the API is still loading.
+      setUnitContent([]);
+      setUnits([]);
+    }
+
+    setIsContentLoading(true);
+    setContentError("");
 
     const controller = new AbortController();
     contentAbortControllerRef.current = controller;
 
-    try {
-      const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-        params: {
-          course: "B.Pharm",
-          category: selectedCategory,
-          semester: selectedSemester,
-          subject: selectedSubject
-        },
-        signal: controller.signal
-      });
-
-      if (requestId !== contentRequestIdRef.current) return;
-
-      const rawContent = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data?.data)
-          ? res.data.data
-          : [];
-
-      setUnitContent(rawContent);
-
+    const buildUnits = (rawContent) => {
       const unitMap = new Map();
-      
+
       rawContent.forEach((item) => {
         const unitValue = Number(item?.unit);
-        
-        if (Number.isInteger(unitValue) && unitValue > 0) {
-          if (!unitMap.has(unitValue)) {
-            unitMap.set(unitValue, {
-              id: unitValue,
-              name: `Unit ${unitValue}`,
-              topics: []
-            });
-          }
+
+        if (!Number.isInteger(unitValue) || unitValue <= 0) return;
+
+        if (!unitMap.has(unitValue)) {
+          unitMap.set(unitValue, {
+            id: unitValue,
+            name: `Unit ${unitValue}`,
+            topics: []
+          });
+        }
+
+        const topic =
+          item?.topic ??
+          item?.topicName ??
+          item?.chapter ??
+          item?.chapterName;
+
+        if (topic && !unitMap.get(unitValue).topics.includes(String(topic))) {
+          unitMap.get(unitValue).topics.push(String(topic));
         }
       });
 
-      const derivedUnits = Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
-      
+      return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
+    };
+
+    const getRawContent = (data) => {
+      if (Array.isArray(data)) return data;
+
+      const candidates = [
+        data?.data,
+        data?.notes,
+        data?.documents,
+        data?.results,
+        data?.items
+      ];
+
+      for (const value of candidates) {
+        if (Array.isArray(value)) return value;
+      }
+
+      return [];
+    };
+
+    try {
+      let res;
+
+      // Small retry makes cold-start/transient API failures invisible to users.
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
+            params: {
+              course: "B.Pharm",
+              category: selectedCategory,
+              semester: selectedSemester,
+              subject: selectedSubject
+            },
+            signal: controller.signal,
+            timeout: 12000,
+            headers: {
+              Accept: "application/json",
+              "Cache-Control": "no-cache"
+            }
+          });
+          break;
+        } catch (error) {
+          if (
+            error?.code === "ERR_CANCELED" ||
+            error?.name === "CanceledError" ||
+            controller.signal.aborted
+          ) {
+            return;
+          }
+
+          if (attempt === 2) throw error;
+
+          await new Promise((resolve) => setTimeout(resolve, 350));
+        }
+      }
+
+      if (requestId !== contentRequestIdRef.current) return;
+
+      const rawContent = getRawContent(res?.data)
+        .filter(Boolean)
+        .filter((item) => {
+          const itemSemester = item?.semester;
+          const itemSubject = item?.subject;
+          const itemCategory = item?.category;
+
+          const semesterMatches =
+            itemSemester == null ||
+            String(itemSemester).trim() === String(selectedSemester).trim();
+
+          const subjectMatches =
+            itemSubject == null ||
+            String(itemSubject).trim() === String(selectedSubject).trim();
+
+          const categoryMatches =
+            itemCategory == null ||
+            String(itemCategory).trim() === String(selectedCategory).trim();
+
+          return semesterMatches && subjectMatches && categoryMatches;
+        });
+
+      const derivedUnits = buildUnits(rawContent);
+
+      contentCacheRef.current.set(cacheKey, {
+        content: rawContent,
+        units: derivedUnits,
+        timestamp: Date.now()
+      });
+
+      setUnitContent(rawContent);
       setUnits(derivedUnits);
-      
+      setContentError("");
     } catch (error) {
-      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError") return;
+      if (
+        error?.code === "ERR_CANCELED" ||
+        error?.name === "CanceledError" ||
+        controller.signal.aborted
+      ) {
+        return;
+      }
+
       if (requestId !== contentRequestIdRef.current) return;
 
       console.error("Failed to fetch subject content:", error);
-      setUnitContent([]);
-      setUnits([]);
+      setContentError(
+        error?.response?.data?.message ||
+        "Content load nahi ho paaya. Please try again."
+      );
+
+      // If cached data exists, keep showing it instead of blanking the page.
+      if (!cached) {
+        setUnitContent([]);
+        setUnits([]);
+      }
     } finally {
       if (requestId === contentRequestIdRef.current) {
+        setIsContentLoading(false);
         contentAbortControllerRef.current = null;
       }
     }
@@ -388,12 +505,14 @@ const BPharm = () => {
 
   // ========== EFFECT: Fetch documents when subject changes ==========
   useEffect(() => {
-    if (selectedCategory && selectedSemester && selectedSubject) {
-      fetchUnitContent();
-    } else {
-      setUnits([]);
-      setUnitContent([]);
-    }
+    fetchUnitContent();
+
+    return () => {
+      if (contentAbortControllerRef.current) {
+        contentAbortControllerRef.current.abort();
+        contentAbortControllerRef.current = null;
+      }
+    };
   }, [selectedCategory, selectedSemester, selectedSubject]);
 
   // ========== HANDLERS ==========
@@ -1212,16 +1331,51 @@ const BPharm = () => {
           </p>
         </div>
 
-        {units.length === 0 ? (
+        {isContentLoading && units.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
+              Loading Units...
+            </h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">
+              Content database se fast fetch ho raha hai...
+            </p>
+          </div>
+        ) : units.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Units Available</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any content for this subject yet.</p>
-            <p className="font-['Inter'] text-gray-400 text-sm mt-1">Units will appear here once content is uploaded.</p>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
+              {contentError ? "Content Load Failed" : "No Units Available"}
+            </h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">
+              {contentError || "Admin hasn't uploaded any content for this subject yet."}
+            </p>
+            {contentError && (
+              <button
+                type="button"
+                onClick={fetchUnitContent}
+                className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
+              >
+                Retry
+              </button>
+            )}
+            {!contentError && (
+              <p className="font-['Inter'] text-gray-400 text-sm mt-1">
+                Units will appear here once content is uploaded.
+              </p>
+            )}
           </div>
         ) : (
+          {isContentLoading && (
+            <div className="col-span-full flex items-center justify-center gap-2 mb-2 text-xs font-['Inter'] text-emerald-600">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Updating latest content...
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
             {units.map((unit, index) => {
               const colors = unitColors[index % unitColors.length];
