@@ -184,8 +184,14 @@ const DPharm = () => {
   };
 
   // ========== FAST + SAFE CONTENT FETCH ==========
-  const fetchUnitContent = async ({ force = false } = {}) => {
-    if (!selectedCategory || !selectedYear || !selectedSubject) {
+  const fetchUnitContent = async ({
+    force = false,
+    category = selectedCategory,
+    language = selectedLanguage,
+    year = selectedYear,
+    subject = selectedSubject
+  } = {}) => {
+    if (!category || !year || !subject) {
       setUnitContent([]);
       setUnits([]);
       setContentLoading(false);
@@ -194,14 +200,13 @@ const DPharm = () => {
 
     const cacheKey = [
       "D.Pharm",
-      selectedCategory,
-      selectedLanguage || "",
-      String(selectedYear),
-      selectedSubject
+      String(category),
+      String(language || ""),
+      String(year),
+      String(subject)
     ].join("::");
 
-    // Show cached data immediately. This removes the "first click blank,
-    // refresh then works" feeling and avoids unnecessary API calls.
+    // Show cached content instantly.
     if (!force && contentCacheRef.current.has(cacheKey)) {
       const cached = contentCacheRef.current.get(cacheKey);
       setUnitContent(cached.content);
@@ -222,55 +227,79 @@ const DPharm = () => {
 
     const params = {
       course: "D.Pharm",
-      category: selectedCategory,
-      year: selectedYear,
-      subject: selectedSubject
+      category,
+      year,
+      subject
     };
 
-    // Language is relevant only to Notes and Exam Crash Course.
-    if (selectedCategory !== "PYQs" && selectedLanguage) {
-      params.language = selectedLanguage;
+    if (category !== "PYQs" && language) {
+      params.language = language;
     }
 
     const getRawContent = (data) => {
-      if (Array.isArray(data)) return data;
-      if (Array.isArray(data?.data)) return data.data;
-      if (Array.isArray(data?.notes)) return data.notes;
-      if (Array.isArray(data?.documents)) return data.documents;
-      if (Array.isArray(data?.results)) return data.results;
-      if (Array.isArray(data?.items)) return data.items;
+      const candidates = [
+        data,
+        data?.data,
+        data?.notes,
+        data?.documents,
+        data?.results,
+        data?.items
+      ];
+
+      for (const value of candidates) {
+        if (Array.isArray(value)) return value;
+      }
+
       return [];
+    };
+
+    const getUnitNumber = (value) => {
+      if (typeof value === "number" && Number.isInteger(value) && value > 0) {
+        return value;
+      }
+
+      const text = String(value ?? "").trim();
+      if (!text) return null;
+
+      // Supports: 1, "1", "Unit 1", "unit-1", "UNIT: 1", etc.
+      const match = text.match(/\b(?:unit\s*[-:#]?\s*)?(\d+)\b/i);
+      if (!match) return null;
+
+      const number = Number(match[1]);
+      return Number.isInteger(number) && number > 0 ? number : null;
     };
 
     const buildUnits = (content) => {
       const unitMap = new Map();
 
       content.forEach((item) => {
-        const unitValue = Number(item?.unit);
+        const unitValue = getUnitNumber(
+          item?.unit ?? item?.unitNumber ?? item?.unitNo
+        );
 
-        if (Number.isInteger(unitValue) && unitValue > 0) {
-          if (!unitMap.has(unitValue)) {
-            unitMap.set(unitValue, {
-              id: unitValue,
-              name: `Unit ${unitValue}`,
-              topics: []
-            });
-          }
+        if (!unitValue) return;
 
-          // Preserve topics when API sends them.
-          const unit = unitMap.get(unitValue);
-          const topics = Array.isArray(item?.topics)
-            ? item.topics
-            : item?.topic
-              ? [item.topic]
-              : [];
-
-          topics.forEach((topic) => {
-            if (topic && !unit.topics.includes(topic)) {
-              unit.topics.push(topic);
-            }
+        if (!unitMap.has(unitValue)) {
+          unitMap.set(unitValue, {
+            id: unitValue,
+            name: `Unit ${unitValue}`,
+            topics: []
           });
         }
+
+        const unit = unitMap.get(unitValue);
+
+        const topicValues = [
+          ...(Array.isArray(item?.topics) ? item.topics : []),
+          ...(item?.topic ? [item.topic] : [])
+        ];
+
+        topicValues.forEach((topic) => {
+          const cleanTopic = String(topic ?? "").trim();
+          if (cleanTopic && !unit.topics.includes(cleanTopic)) {
+            unit.topics.push(cleanTopic);
+          }
+        });
       });
 
       return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
@@ -278,27 +307,34 @@ const DPharm = () => {
 
     let lastError = null;
 
-    // Small retry handles transient API cold-start/network failures.
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-          params,
-          signal: controller.signal,
-          timeout: 15000,
-          headers: {
-            Accept: "application/json"
+        const res = await axios.get(
+          `${API_BASE}/api/admin/public/notes`,
+          {
+            params,
+            signal: controller.signal,
+            timeout: 15000,
+            headers: { Accept: "application/json" }
           }
-        });
+        );
 
-        if (requestId !== contentRequestIdRef.current) return;
+        if (
+          controller.signal.aborted ||
+          requestId !== contentRequestIdRef.current
+        ) {
+          return;
+        }
 
         const rawContent = getRawContent(res.data);
         const derivedUnits = buildUnits(rawContent);
 
-        contentCacheRef.current.set(cacheKey, {
+        const cachedData = {
           content: rawContent,
           units: derivedUnits
-        });
+        };
+
+        contentCacheRef.current.set(cacheKey, cachedData);
 
         setUnitContent(rawContent);
         setUnits(derivedUnits);
@@ -321,16 +357,23 @@ const DPharm = () => {
       }
     }
 
-    if (requestId !== contentRequestIdRef.current) return;
+    if (
+      controller.signal.aborted ||
+      requestId !== contentRequestIdRef.current
+    ) {
+      return;
+    }
 
     console.error("Failed to fetch D.Pharm subject content:", lastError);
     setContentLoading(false);
 
-    // Do NOT pretend that an API failure means there are no units.
-    // Keep any existing cached/visible data intact.
-    if (!contentCacheRef.current.has(cacheKey)) {
-      setUnitContent([]);
-      setUnits([]);
+    // Never overwrite already visible content with an empty result after
+    // a failed request.
+    const cached = contentCacheRef.current.get(cacheKey);
+
+    if (cached) {
+      setUnitContent(cached.content);
+      setUnits(cached.units);
     }
 
     toast.error("Content load nahi ho paaya. Retry karein.");
@@ -339,7 +382,12 @@ const DPharm = () => {
   // ========== EFFECT: Fetch documents when subject changes ==========
   useEffect(() => {
     if (selectedCategory && selectedYear && selectedSubject) {
-      fetchUnitContent();
+      fetchUnitContent({
+        category: selectedCategory,
+        language: selectedLanguage,
+        year: selectedYear,
+        subject: selectedSubject
+      });
     } else {
       setUnits([]);
       setUnitContent([]);
@@ -349,6 +397,11 @@ const DPharm = () => {
 
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+    }
+
     setSelectedCategory(categoryId);
     setCurrentStep(2);
     setSelectedLanguage(null);
@@ -356,36 +409,60 @@ const DPharm = () => {
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setContentLoading(false);
   };
 
   const handleLanguageClick = (languageId) => {
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+    }
+
     setSelectedLanguage(languageId);
     setCurrentStep(3);
     setSelectedYear(null);
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setContentLoading(false);
   };
 
   const handleYearClick = (year) => {
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+    }
+
     setSelectedYear(year);
     setCurrentStep(4);
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setContentLoading(false);
   };
 
   const handleSubjectClick = (subject) => {
+    // IMPORTANT: use the current selection values directly instead of
+    // waiting for React state to update. This fixes first-click fetching.
+    const category = selectedCategory;
+    const language = selectedLanguage;
+    const year = selectedYear;
+
+    if (!category || !year || !subject) {
+      toast.error("Please select category, language/year and subject first.");
+      return;
+    }
+
     setSelectedSubject(subject);
     setCurrentStep(5);
     setContentLoading(true);
 
     const cacheKey = [
       "D.Pharm",
-      selectedCategory,
-      selectedLanguage || "",
-      String(selectedYear),
-      subject
+      String(category),
+      String(language || ""),
+      String(year),
+      String(subject)
     ].join("::");
 
     const cached = contentCacheRef.current.get(cacheKey);
@@ -394,10 +471,21 @@ const DPharm = () => {
       setUnitContent(cached.content);
       setUnits(cached.units);
       setContentLoading(false);
-    } else {
-      setUnits([]);
-      setUnitContent([]);
+      return;
     }
+
+    setUnits([]);
+    setUnitContent([]);
+
+    // Fetch immediately with the exact clicked subject instead of relying
+    // on the asynchronous selectedSubject state update.
+    fetchUnitContent({
+      category,
+      language,
+      year,
+      subject,
+      force: false
+    });
   };
 
   const goBack = () => {
@@ -989,7 +1077,7 @@ const DPharm = () => {
                       Open
                     </div>
 
-                    <div className="mt-3 h-0.5 w-16 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center"></div>
+                    <div className={`mt-3 h-0.5 w-16 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
                     <div className="mt-3 text-sm font-['Inter'] font-medium text-gray-400">
                       {DPHARM_SUBJECTS[year]?.length || 0} Subjects
                     </div>
