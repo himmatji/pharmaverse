@@ -14,6 +14,53 @@ const Notice = require("../models/Notice");
 const Payment = require("../models/Payment");
 const CoursePrice = require("../models/CoursePrice");
 
+/*
+ * D.Pharm safety:
+ * D.Pharm content is identified by Year + Language.
+ * Add these paths at runtime too, so an older Note.js schema
+ * cannot silently drop the new fields.
+ */
+if (!Note.schema.path("year")) {
+  Note.schema.add({
+    year: { type: String, default: "" }
+  });
+}
+
+if (!Note.schema.path("language")) {
+  Note.schema.add({
+    language: { type: String, default: "" }
+  });
+}
+
+const normalizeDPharmYear = (value) => {
+  const raw = String(value ?? "").trim();
+
+  if (raw === "1" || /^1st\s*year$/i.test(raw)) {
+    return "1st Year";
+  }
+
+  if (raw === "2" || /^2nd\s*year$/i.test(raw)) {
+    return "2nd Year";
+  }
+
+  return raw;
+};
+
+const getDPharmYearNumber = (value) => {
+  const normalized = normalizeDPharmYear(value);
+  return normalized === "1st Year" ? 1 : normalized === "2nd Year" ? 2 : null;
+};
+
+const getDPharmYearStorageValue = (value) => {
+  const normalized = normalizeDPharmYear(value);
+  const yearPath = Note.schema.path("year");
+  if (yearPath && yearPath.instance === "Number") {
+    return getDPharmYearNumber(normalized);
+  }
+  return normalized;
+};
+
+
 const {
   authMiddleware,
   isAdmin,
@@ -276,6 +323,7 @@ router.post(
         branch,
         category,
         semester,
+        year,
         subject,
         unit,
         units,
@@ -286,17 +334,44 @@ router.post(
         language
       } = req.body;
 
+      const isDPharm =
+        String(branch || "").trim().toLowerCase() === "d.pharm";
+
       const normalizedLanguage = language
         ? String(language).trim().toLowerCase()
         : "";
 
-      if (String(branch || "").trim().toLowerCase() === "d.pharm") {
-        if (!["hindi", "english"].includes(normalizedLanguage)) {
-          return res.status(400).json({
-            success: false,
-            message: "Language is required for D.Pharm and must be Hindi or English"
-          });
-        }
+      const normalizedYear = isDPharm
+        ? normalizeDPharmYear(year || semester)
+        : "";
+
+      // D.Pharm Notes / Exam Crash Course use Language.
+      // PYQs intentionally have no Language step.
+      const needsLanguage =
+        isDPharm &&
+        ["Notes", "Exam Crash Course"].includes(
+          String(category || "").trim()
+        );
+
+      if (
+        needsLanguage &&
+        !["hindi", "english"].includes(normalizedLanguage)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Language is required for D.Pharm Notes and Exam Crash Course"
+        });
+      }
+
+      if (
+        isDPharm &&
+        !["1st Year", "2nd Year"].includes(normalizedYear)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid D.Pharm Year is required"
+        });
       }
 
       console.log(
@@ -374,37 +449,21 @@ router.post(
          IMPORTANT UNIT FIX
          ===================================================== */
 
-      const semesterNumber =
-        Number.parseInt(
-          semester,
-          10
-        );
+      const semesterNumber = Number.parseInt(semester, 10);
+      const unitNumber = Number.parseInt(unit, 10);
 
-      const unitNumber =
-        Number.parseInt(
-          unit,
-          10
-        );
-
-      if (
-        !Number.isInteger(
-          semesterNumber
-        ) ||
-        semesterNumber <= 0
-      ) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid semester. Please select a valid semester."
-        });
+      // D.Pharm is year based. Other courses remain semester based.
+      if (!isDPharm) {
+        if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid semester. Please select a valid semester."
+          });
+        }
       }
 
-      if (
-        !Number.isInteger(
-          unitNumber
-        ) ||
-        unitNumber <= 0
-      ) {
+      if (!Number.isInteger(unitNumber) || unitNumber <= 0) {
         return res.status(400).json({
           success: false,
           message:
@@ -430,12 +489,19 @@ router.post(
         category,
 
         language:
-          String(branch || "").trim().toLowerCase() === "d.pharm"
+          isDPharm && needsLanguage
             ? normalizedLanguage
             : (normalizedLanguage || undefined),
 
+        // D.Pharm uses year; semester=1 is retained only for
+        // compatibility with older Note documents/schema.
         semester:
-          semesterNumber,
+          isDPharm ? 1 : semesterNumber,
+
+        year:
+          isDPharm
+            ? getDPharmYearStorageValue(normalizedYear)
+            : "",
 
         subject,
 
@@ -1423,6 +1489,7 @@ router.get("/public/notes", async (req, res) => {
       course,
       category,
       semester,
+      year,
       subject,
       unit,
       branch,
@@ -1432,6 +1499,8 @@ router.get("/public/notes", async (req, res) => {
     const normalizedLanguage = language
       ? String(language).trim().toLowerCase()
       : "";
+
+    const normalizedYear = normalizeDPharmYear(year);
 
     console.log("Course:", course);
     console.log("Category:", category);
@@ -1458,7 +1527,33 @@ router.get("/public/notes", async (req, res) => {
       };
     }
 
-    if (semester !== undefined && semester !== "") {
+    const selectedCourse = branch || course;
+
+    const isDPharm =
+      String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+
+    if (isDPharm) {
+      if (!["1st Year", "2nd Year"].includes(normalizedYear)) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid D.Pharm Year is required"
+        });
+      }
+
+      // D.Pharm data may exist in legacy formats:
+      // year: "1st Year" / year: 1 / semester: 1.
+      // Use MongoDB raw query here to avoid Mongoose cast errors.
+      const yearNumber = getDPharmYearNumber(normalizedYear);
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { year: normalizedYear },
+          { year: yearNumber },
+          { semester: yearNumber }
+        ]
+      });
+      delete query.year;
+    } else if (semester !== undefined && semester !== "") {
       const semesterNumber = Number.parseInt(semester, 10);
 
       if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
@@ -1491,8 +1586,6 @@ router.get("/public/notes", async (req, res) => {
       query.unit = unitNumber;
     }
 
-    const selectedCourse = branch || course;
-
     if (selectedCourse && selectedCourse !== "") {
       const escapedCourse = String(selectedCourse).replace(
         /[.*+?^${}()|[\\]\\]/g,
@@ -1515,14 +1608,18 @@ router.get("/public/notes", async (req, res) => {
       ];
     }
 
-    const isDPharm =
-      String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+    const needsLanguage =
+      isDPharm &&
+      ["Notes", "Exam Crash Course"].includes(
+        String(category || "").trim()
+      );
 
-    if (isDPharm) {
+    if (needsLanguage) {
       if (!["hindi", "english"].includes(normalizedLanguage)) {
         return res.status(400).json({
           success: false,
-          message: "Language is required for D.Pharm"
+          message:
+            "Language is required for D.Pharm Notes and Exam Crash Course"
         });
       }
 
@@ -1536,10 +1633,15 @@ router.get("/public/notes", async (req, res) => {
       JSON.stringify(query, null, 2)
     );
 
-    const notes = await Note.find(query)
-      .select("-fileData")
-      .sort({ createdAt: -1 })
-      .lean();
+    const notes = isDPharm
+      ? await Note.collection
+          .find(query, { projection: { fileData: 0 } })
+          .sort({ createdAt: -1 })
+          .toArray()
+      : await Note.find(query)
+          .select("-fileData")
+          .sort({ createdAt: -1 })
+          .lean();
 
     const filteredNotes = notes.filter((note) => {
       const unitVal = Number(note.unit);
@@ -1753,12 +1855,15 @@ router.get(
         subject,
         branch,
         course,
+        year,
         language
       } = req.query;
 
       const normalizedLanguage = language
         ? String(language).trim().toLowerCase()
         : "";
+
+      const normalizedYear = normalizeDPharmYear(year);
 
       console.log("Category:", category);
       console.log("Semester:", semester);
@@ -1784,7 +1889,30 @@ router.get(
         };
       }
 
-      if (semester !== undefined && semester !== "") {
+      const selectedCourse = branch || course;
+
+      const isDPharm =
+        String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+
+      if (isDPharm) {
+        if (!["1st Year", "2nd Year"].includes(normalizedYear)) {
+          return res.status(400).json({
+            success: false,
+            message: "Valid D.Pharm Year is required"
+          });
+        }
+
+        const yearNumber = getDPharmYearNumber(normalizedYear);
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { year: normalizedYear },
+            { year: yearNumber },
+            { semester: yearNumber }
+          ]
+        });
+        delete query.year;
+      } else if (semester !== undefined && semester !== "") {
         const semesterNumber = Number.parseInt(semester, 10);
 
         if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
@@ -1803,8 +1931,6 @@ router.get(
           $options: "i"
         };
       }
-
-      const selectedCourse = branch || course;
 
       if (selectedCourse !== undefined && selectedCourse !== "") {
         const escapedCourse = String(selectedCourse).replace(
@@ -1828,14 +1954,18 @@ router.get(
         ];
       }
 
-      const isDPharm =
-        String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+      const needsLanguage =
+        isDPharm &&
+        ["Notes", "Exam Crash Course"].includes(
+          String(category || "").trim()
+        );
 
-      if (isDPharm) {
+      if (needsLanguage) {
         if (!["hindi", "english"].includes(normalizedLanguage)) {
           return res.status(400).json({
             success: false,
-            message: "Language is required for D.Pharm"
+            message:
+              "Language is required for D.Pharm Notes and Exam Crash Course"
           });
         }
 
@@ -1849,9 +1979,13 @@ router.get(
         JSON.stringify(query, null, 2)
       );
 
-      const notes = await Note.find(query)
-        .select("_id unit units language")
-        .lean();
+      const notes = isDPharm
+        ? await Note.collection
+            .find(query, { projection: { _id: 1, unit: 1, units: 1, language: 1 } })
+            .toArray()
+        : await Note.find(query)
+            .select("_id unit units language")
+            .lean();
 
       console.log("📄 Documents Found:", notes.length);
 
