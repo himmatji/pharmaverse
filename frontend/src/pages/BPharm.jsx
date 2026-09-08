@@ -1282,7 +1282,8 @@ const BPharm = () => {
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Subjects Available</h3>
             <p className="font-['Inter'] text-gray-400 mt-2">Subjects for this semester are coming soon!</p>
-          </div>
+            </div>
+          </>
         )}
       </div>
     );
@@ -1370,13 +1371,14 @@ const BPharm = () => {
             )}
           </div>
         ) : (
-          {isContentLoading && (
+          <>
+            {isContentLoading && (
             <div className="col-span-full flex items-center justify-center gap-2 mb-2 text-xs font-['Inter'] text-emerald-600">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               Updating latest content...
             </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
             {units.map((unit, index) => {
               const colors = unitColors[index % unitColors.length];
               const cardId = `unit-${unit.id}`;
@@ -1523,7 +1525,8 @@ const BPharm = () => {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
     );
