@@ -1282,8 +1282,7 @@ const BPharm = () => {
             </div>
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Subjects Available</h3>
             <p className="font-['Inter'] text-gray-400 mt-2">Subjects for this semester are coming soon!</p>
-            </div>
-          </>
+          </div>
         )}
       </div>
     );
