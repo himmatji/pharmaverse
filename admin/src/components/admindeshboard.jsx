@@ -96,8 +96,7 @@ const COURSE_CONFIG = {
       { value: "2", label: "2nd Year" },
       { value: "3", label: "3rd Year" },
       { value: "4", label: "4th Year" },
-      { value: "5", label: "5th Year" },
-      { value: "6", label: "6th Year" }
+      { value: "5", label: "5th Year" }
     ],
     showLanguage: false,
     showMPharmBranch: false
@@ -316,7 +315,7 @@ const MPHARM_SUBJECTS = {
   }
 };
 
-// ========== PHARM.D SUBJECTS (YEAR-WISE) ==========
+// ========== PHARM.D SUBJECTS (YEAR-WISE — 5 YEARS ONLY) ==========
 const PHARMD_SUBJECTS = {
   1: [
     "Human Anatomy & Physiology",
@@ -356,14 +355,6 @@ const PHARMD_SUBJECTS = {
     "Pharmacoeconomics",
     "Clinical Pharmacokinetics",
     "Clerkship",
-    "Project Work"
-  ],
-  6: [
-    "Clinical Internship",
-    "Advanced Clinical Practice",
-    "Research Project",
-    "Clinical Case Studies",
-    "Hospital Training",
     "Project Work"
   ]
 };

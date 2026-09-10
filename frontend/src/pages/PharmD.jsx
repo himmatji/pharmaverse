@@ -63,7 +63,7 @@ const categories = [
     bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
     glowColor: "rgba(251, 146, 60, 0.3)",
     description: "Click below to view Exam Crash Course",
-    stats: "6 Years",
+    stats: "5 Years",
     badge: "🔥 Crash",
   },
   {
@@ -79,7 +79,7 @@ const categories = [
   },
 ];
 
-// ========== PHARM.D SUBJECTS (YEAR-WISE) ==========
+// ========== PHARM.D SUBJECTS (YEAR-WISE) — 5 YEARS ONLY ==========
 const PHARMD_SUBJECTS = {
   1: [
     "Human Anatomy & Physiology",
@@ -121,14 +121,6 @@ const PHARMD_SUBJECTS = {
     "Clerkship",
     "Project Work",
   ],
-  6: [
-    "Clinical Internship",
-    "Advanced Clinical Practice",
-    "Research Project",
-    "Clinical Case Studies",
-    "Hospital Training",
-    "Project Work",
-  ],
 };
 
 // ========== YEAR COLORS ==========
@@ -138,7 +130,6 @@ const yearColors = [
   { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16, 185, 129, 0.5)", bg: "from-emerald-50 to-teal-50", border: "border-emerald-200", shadow: "shadow-emerald-200/50" },
   { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139, 92, 246, 0.5)", bg: "from-purple-50 to-indigo-50", border: "border-purple-200", shadow: "shadow-purple-200/50" },
   { gradient: "from-orange-500 to-amber-500", glow: "rgba(251, 146, 60, 0.5)", bg: "from-orange-50 to-amber-50", border: "border-orange-200", shadow: "shadow-orange-200/50" },
-  { gradient: "from-cyan-500 to-blue-500", glow: "rgba(6, 182, 212, 0.5)", bg: "from-cyan-50 to-blue-50", border: "border-cyan-200", shadow: "shadow-cyan-200/50" },
 ];
 
 // ========== SUBJECT COLORS ==========
@@ -175,7 +166,6 @@ const PharmD = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ========== STEP NAVIGATION ==========
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
@@ -185,7 +175,6 @@ const PharmD = () => {
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
 
-  // ========== API STATES ==========
   const [units, setUnits] = useState([]);
   const [unitContent, setUnitContent] = useState([]);
   const [isContentLoading, setIsContentLoading] = useState(false);
@@ -194,12 +183,10 @@ const PharmD = () => {
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ========== REQUEST CONTROL ==========
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
 
-  // ========== HELPERS ==========
   const isPYQ = () => String(selectedCategory || "").trim().toLowerCase() === "pyqs";
 
   const getAvailableSubjects = () => {
@@ -207,7 +194,6 @@ const PharmD = () => {
     return Array.isArray(PHARMD_SUBJECTS[year]) ? PHARMD_SUBJECTS[year] : [];
   };
 
-  // ========== FETCH CONTENT FOR SUBJECT ==========
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedYear || !selectedSubject) {
       setUnitContent([]);
@@ -248,27 +234,17 @@ const PharmD = () => {
 
     const buildUnits = (rawContent) => {
       const unitMap = new Map();
-
       rawContent.forEach((item) => {
         const unitValue = Number(item?.unit ?? item?.chapter);
         if (!Number.isInteger(unitValue) || unitValue <= 0) return;
-
         if (!unitMap.has(unitValue)) {
-          unitMap.set(unitValue, {
-            id: unitValue,
-            name: `Unit ${unitValue}`,
-            topics: [],
-          });
+          unitMap.set(unitValue, { id: unitValue, name: `Unit ${unitValue}`, topics: [] });
         }
-
-        const topic =
-          item?.topic ?? item?.topicName ?? item?.chapterName;
-
+        const topic = item?.topic ?? item?.topicName ?? item?.chapterName;
         if (topic && !unitMap.get(unitValue).topics.includes(String(topic))) {
           unitMap.get(unitValue).topics.push(String(topic));
         }
       });
-
       return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
     };
 
@@ -283,7 +259,6 @@ const PharmD = () => {
 
     try {
       let res;
-
       for (let attempt = 1; attempt <= 2; attempt += 1) {
         try {
           res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
@@ -296,20 +271,11 @@ const PharmD = () => {
             },
             signal: controller.signal,
             timeout: 12000,
-            headers: {
-              Accept: "application/json",
-              "Cache-Control": "no-cache",
-            },
+            headers: { Accept: "application/json", "Cache-Control": "no-cache" },
           });
           break;
         } catch (error) {
-          if (
-            error?.code === "ERR_CANCELED" ||
-            error?.name === "CanceledError" ||
-            controller.signal.aborted
-          ) {
-            return;
-          }
+          if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
           if (attempt === 2) throw error;
           await new Promise((resolve) => setTimeout(resolve, 350));
         }
@@ -326,7 +292,7 @@ const PharmD = () => {
 
           const normalizeYear = (value) => {
             const raw = String(value ?? "").trim().toLowerCase();
-            const match = raw.match(/(?:year\s*)?([1-6])(?:st|nd|rd|th)?(?:\s*year)?/i);
+            const match = raw.match(/(?:year\s*)?([1-5])(?:st|nd|rd|th)?(?:\s*year)?/i);
             return match ? Number(match[1]) : null;
           };
 
@@ -335,18 +301,14 @@ const PharmD = () => {
 
           const yearMatches =
             itemYear == null ||
-            (itemYearNumber != null &&
-              selectedYearNumber != null &&
-              itemYearNumber === selectedYearNumber) ||
+            (itemYearNumber != null && selectedYearNumber != null && itemYearNumber === selectedYearNumber) ||
             String(itemYear).trim() === String(selectedYear).trim();
 
           const subjectMatches =
-            itemSubject == null ||
-            String(itemSubject).trim() === String(selectedSubject).trim();
+            itemSubject == null || String(itemSubject).trim() === String(selectedSubject).trim();
 
           const categoryMatches =
-            itemCategory == null ||
-            String(itemCategory).trim() === String(selectedCategory).trim();
+            itemCategory == null || String(itemCategory).trim() === String(selectedCategory).trim();
 
           return yearMatches && subjectMatches && categoryMatches;
         });
@@ -363,22 +325,10 @@ const PharmD = () => {
       setUnits(derivedUnits);
       setContentError("");
     } catch (error) {
-      if (
-        error?.code === "ERR_CANCELED" ||
-        error?.name === "CanceledError" ||
-        controller.signal.aborted
-      ) {
-        return;
-      }
-
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
       if (requestId !== contentRequestIdRef.current) return;
-
       console.error("Failed to fetch subject content:", error);
-      setContentError(
-        error?.response?.data?.message ||
-          "Content load nahi ho paaya. Please try again."
-      );
-
+      setContentError(error?.response?.data?.message || "Content load nahi ho paaya. Please try again.");
       if (!cached) {
         setUnitContent([]);
         setUnits([]);
@@ -401,7 +351,6 @@ const PharmD = () => {
     };
   }, [selectedCategory, selectedYear, selectedSubject]);
 
-  // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
     setCurrentStep(2);
@@ -518,6 +467,14 @@ const PharmD = () => {
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
       }
+      @keyframes heroFadeIn {
+        0% { opacity: 0; transform: translateY(30px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes heroParticleFloat {
+        0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.4; }
+        50% { transform: translateY(-20px) translateX(10px); opacity: 0.8; }
+      }
 
       .premium-card {
         animation: premiumFloat 4s ease-in-out infinite;
@@ -592,7 +549,6 @@ const PharmD = () => {
       .year-card-3 { animation-delay: 0.3s; }
       .year-card-4 { animation-delay: 0.45s; }
       .year-card-5 { animation-delay: 0.6s; }
-      .year-card-6 { animation-delay: 0.75s; }
 
       .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
       .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -601,6 +557,8 @@ const PharmD = () => {
       .animate-pop { animation: pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-float-text { animation: floatText 3s ease-in-out infinite; }
       .animate-gradient { animation: gradientMove 8s ease-in-out infinite; background-size: 200% 200%; }
+      .animate-hero-fade { animation: heroFadeIn 1s cubic-bezier(0.23, 1, 0.32, 1) both; }
+      .animate-hero-particle { animation: heroParticleFloat 6s ease-in-out infinite; }
 
       .glass-effect {
         background: rgba(255,255,255,0.7);
@@ -656,7 +614,6 @@ const PharmD = () => {
     });
   };
 
-  // ========== VIEW & DOWNLOAD ==========
   const handleView = (item) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
@@ -774,7 +731,7 @@ const PharmD = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryIcon = categories.find((c) => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
-    const years = [1, 2, 3, 4, 5, 6];
+    const years = [1, 2, 3, 4, 5];
 
     return (
       <div className="animate-scale-in">
@@ -863,7 +820,7 @@ const PharmD = () => {
                       {yr}
                     </div>
                     <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">
-                      {yr === 1 ? "1st Year" : yr === 2 ? "2nd Year" : yr === 3 ? "3rd Year" : `${yr}th Year`}
+                      {yr === 1 ? "1st Year" : yr === 2 ? "2nd Year" : yr === 3 ? "3rd Year" : yr === 4 ? "4th Year" : "5th Year"}
                     </div>
 
                     <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
@@ -890,7 +847,7 @@ const PharmD = () => {
     const subjects = getAvailableSubjects();
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryGradient = categories.find((c) => c.id === selectedCategory)?.gradient || "from-purple-500 to-pink-500";
-    const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : `${selectedYear}th Year`;
+    const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : selectedYear === 4 ? "4th Year" : "5th Year";
 
     return (
       <div className="animate-slide-down">
@@ -1020,10 +977,10 @@ const PharmD = () => {
     );
   };
 
-  // ========== RENDER CONTENT STEP (Units + PDFs, or direct PDFs for PYQs) ==========
+  // ========== RENDER CONTENT STEP ==========
   const renderContentStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
-    const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : `${selectedYear}th Year`;
+    const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : selectedYear === 4 ? "4th Year" : "5th Year";
     const pyq = isPYQ();
 
     return (
@@ -1082,7 +1039,6 @@ const PharmD = () => {
             <p className="font-['Inter'] text-gray-400 mt-2">Content database se fetch ho raha hai...</p>
           </div>
         ) : pyq ? (
-          // ===== PYQ MODE: Direct PDFs, no units =====
           unitContent.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
@@ -1170,7 +1126,6 @@ const PharmD = () => {
             </div>
           )
         ) : (
-          // ===== NOTES / CRASH COURSE MODE: Units =====
           units.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
@@ -1436,27 +1391,80 @@ const PharmD = () => {
         </div>
       )}
 
-      {/* HERO */}
-      <div className="w-screen bg-[#07192d] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
-        <div className="relative h-[300px] sm:h-[360px] md:h-[520px] w-full">
+      {/* ========== PREMIUM HERO BANNER ========== */}
+      <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
+          {/* Background Image */}
           <div
-            className="absolute right-0 top-0 w-[70%] h-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${bannerImg})`, backgroundPosition: "center 40%" }}
+            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
+            style={{
+              backgroundImage: `url(${bannerImg})`,
+              backgroundPosition: "center 30%",
+              backgroundSize: "cover",
+            }}
           >
-            <div className="absolute inset-0 bg-black/35"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#071426]/95 via-[#071426]/45 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#071426]/80 via-transparent to-transparent"></div>
           </div>
-          <div className="absolute left-0 top-0 h-full w-[62%] bg-[#04172c]" style={{ clipPath: "polygon(0 0, 78% 0, 58% 100%, 0% 100%)" }}></div>
-          <div className="absolute left-[18%] top-0 h-full w-[22%] bg-[#0a2747]/80 backdrop-blur-md" style={{ clipPath: "polygon(35% 0, 100% 0, 65% 100%, 0% 100%)" }}></div>
-          <div className="relative z-20 flex items-center h-full px-4 sm:px-6 md:px-20">
-            <div className="max-w-[520px]">
-              <h1 className="text-white text-3xl sm:text-4xl md:text-7xl font-extrabold leading-tight mb-3 sm:mb-5">
-                Doctor<br /><span className="text-sky-400">of Pharmacy</span>
+
+          {/* Animated Gradient Overlay */}
+          <div className="absolute left-0 top-0 h-full w-[55%] bg-gradient-to-r from-[#071426]/90 via-[#0f2847]/45 to-transparent pointer-events-none"></div>
+
+          {/* Animated Floating Particles */}
+          <div className="absolute top-16 right-10 w-2 h-2 rounded-full bg-blue-400/40 animate-hero-particle"></div>
+          <div className="absolute top-32 right-24 w-3 h-3 rounded-full bg-purple-400/30 animate-hero-particle" style={{ animationDelay: "1s" }}></div>
+          <div className="absolute bottom-24 right-16 w-1.5 h-1.5 rounded-full bg-cyan-400/40 animate-hero-particle" style={{ animationDelay: "2s" }}></div>
+          <div className="absolute top-1/2 right-40 w-2.5 h-2.5 rounded-full bg-sky-400/30 animate-hero-particle" style={{ animationDelay: "3s" }}></div>
+          <div className="absolute bottom-32 right-32 w-2 h-2 rounded-full bg-pink-400/30 animate-hero-particle" style={{ animationDelay: "4s" }}></div>
+
+          {/* Content */}
+          <div className="relative z-20 flex items-end h-full px-4 sm:px-8 md:px-16 lg:px-24 pb-10 sm:pb-12 md:pb-14 lg:pb-16">
+            <div className="max-w-2xl animate-hero-fade">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-500/20 to-purple-500/20 backdrop-blur-sm border border-white/10 mb-4 animate-float-text">
+                <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                <span className="text-xs font-['Inter'] font-semibold text-sky-300 tracking-widest uppercase">
+                  Pharm.D Program
+                </span>
+                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
+              </div>
+
+              {/* Title with Gradient */}
+              <h1 className="text-white font-['Space_Grotesk'] font-extrabold leading-[1.1]">
+                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: "0.3s" }}>
+                  Doctor of
+                </span>
+                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-sky-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
+                  Pharmacy
+                </span>
               </h1>
-              <p className="text-gray-300 text-xs sm:text-sm md:text-lg leading-relaxed mb-5 sm:mb-8 max-w-[500px]">
+
+              {/* Decorative Line */}
+              <div className="flex items-center gap-4 mt-4 mb-4">
+                <div className="h-1 w-16 bg-gradient-to-r from-sky-400 to-purple-400 rounded-full animate-gradient"></div>
+                <div className="h-1 w-8 bg-gradient-to-r from-purple-400 to-cyan-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: "0.5s" }}></div>
+                <div className="h-1 w-4 bg-gradient-to-r from-cyan-400 to-sky-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: "1s" }}></div>
+              </div>
+
+              {/* Description */}
+              <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: "0.6s" }}>
                 Complete Notes, Year-wise PDFs, Clinical Videos & Predictive Papers for Pharm.D Students.
               </p>
+
+              {/* CTA Button */}
+              <button
+                onClick={() => document.getElementById("content-start")?.scrollIntoView({ behavior: "smooth" })}
+                className="mt-6 group inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-semibold text-sm hover:shadow-2xl hover:shadow-sky-500/30 transition-all duration-300 hover:scale-105 animate-float-text"
+                style={{ animationDelay: "0.9s" }}
+              >
+                <span>Explore Content</span>
+                <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform duration-300" />
+              </button>
             </div>
           </div>
+
+          {/* Bottom Fade */}
+          <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-[#f0f7ff] via-[#f0f7ff]/45 to-transparent pointer-events-none"></div>
         </div>
       </div>
 
