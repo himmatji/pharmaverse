@@ -46,7 +46,7 @@ const InterviewPrep = () => {
                 <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-[1.1] mb-5">
                   Prepare for Your{" "}
                   <span className="bg-gradient-to-r from-sky-500 via-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Interview
+                   Job Interview
                   </span>
                 </h2>
 
@@ -55,20 +55,7 @@ const InterviewPrep = () => {
                   Complete interview preparation guide — questions, answers & tips all in one PDF. Built for pharmacy students.
                 </p>
 
-                {/* Feature chips */}
-                <div className="flex flex-wrap justify-center items-center gap-2.5 sm:gap-3 mb-9">
-                  {["Interview Questions", "Model Answers", "Expert Tips", "PDF Format"].map((item, i) => (
-                    <div
-                      key={i}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white border border-emerald-200 shadow-sm hover:shadow-md transition-shadow duration-300"
-                    >
-                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                      <span className="text-xs sm:text-sm font-['Inter'] font-semibold text-gray-700">
-                        {item}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+               
 
                 {/* CTA Button */}
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
