@@ -305,6 +305,7 @@ router.post(
       }
 
       const {
+        course,
         branch,
         category,
         semester,
@@ -465,11 +466,18 @@ router.post(
           description ||
           `${category} for ${subject}`,
 
+        // IMPORTANT: course and M.Pharm specialization/branch are separate.
+        // Store M.Pharm in `course` and the specialization in `branch`.
+        // This is required for strict Semester 3/4 filtering.
         course:
-          branch || "B.Pharm",
+          course ||
+          (isDPharm
+            ? "D.Pharm"
+            : (branch ? "M.Pharm" : "B.Pharm")),
 
         branch:
-          branch || "B.Pharm",
+          branch ||
+          (course || (isDPharm ? "D.Pharm" : "B.Pharm")),
 
         category,
 
