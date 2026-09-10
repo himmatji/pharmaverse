@@ -320,8 +320,20 @@ router.post(
         language
       } = req.body;
 
+      // M.Pharm uses course + specialization separately.
+      // Legacy courses continue to work when branch equals course.
+      const normalizedCourse = String(course || branch || "").trim();
+      const normalizedBranch = String(branch || course || "").trim();
+
       const isDPharm =
-        String(branch || "").trim().toLowerCase() === "d.pharm";
+        normalizedCourse.toLowerCase() === "d.pharm";
+
+      if (normalizedCourse.toLowerCase() === "m.pharm" && !normalizedBranch) {
+        return res.status(400).json({
+          success: false,
+          message: "M.Pharm specialization/branch is required"
+        });
+      }
 
       const normalizedLanguage = language
         ? String(language).trim().toLowerCase()
@@ -466,18 +478,11 @@ router.post(
           description ||
           `${category} for ${subject}`,
 
-        // IMPORTANT: course and M.Pharm specialization/branch are separate.
-        // Store M.Pharm in `course` and the specialization in `branch`.
-        // This is required for strict Semester 3/4 filtering.
         course:
-          course ||
-          (isDPharm
-            ? "D.Pharm"
-            : (branch ? "M.Pharm" : "B.Pharm")),
+          normalizedCourse || "B.Pharm",
 
         branch:
-          branch ||
-          (course || (isDPharm ? "D.Pharm" : "B.Pharm")),
+          normalizedBranch || "B.Pharm",
 
         category,
 
