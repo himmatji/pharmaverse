@@ -1292,11 +1292,22 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const showLanguage = COURSE_CONFIG[branchName]?.showLanguage || false;
     const showMPharmBranch = COURSE_CONFIG[branchName]?.showMPharmBranch || false;
 
-    const branchContent = notes.filter(n => {
+    const branchContent = notes.filter((n) => {
       if (branchName === "M.Pharm") {
-        return n.mpharmBranch && n.branch === n.mpharmBranch;
+        const itemCourse = String(n?.course || "").trim().toLowerCase();
+        const itemBranch = String(n?.branch || n?.mpharmBranch || "").trim();
+
+        // M.Pharm documents are stored as:
+        // course = "M.Pharm"
+        // branch = selected specialization
+        // (mpharmBranch is also supported for older/newer records)
+        return (
+          itemCourse === "m.pharm" &&
+          MPHARM_BRANCHES.some((b) => b.value === itemBranch)
+        );
       }
-      return n.branch === branchName || n.course === branchName;
+
+      return n?.branch === branchName || n?.course === branchName;
     });
 
     return (
@@ -1701,9 +1712,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         <h4 className="font-['Space_Grotesk'] font-bold text-gray-800 truncate">{item.title}</h4>
                         <div className="flex flex-wrap gap-1 mt-2">
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.category}</span>
-                          {item.mpharmBranch && (
+                          {(item.mpharmBranch || item.branch) && branchName === "M.Pharm" && (
                             <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
-                              {item.mpharmBranch}
+                              {item.mpharmBranch || item.branch}
                             </span>
                           )}
                           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">

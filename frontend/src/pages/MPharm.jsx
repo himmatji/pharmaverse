@@ -316,14 +316,6 @@ const MPharm = () => {
       return;
     }
 
-    if (isResearchWork(selectedSubject)) {
-      setUnitContent([]);
-      setUnits([]);
-      setIsContentLoading(false);
-      setContentError("");
-      return;
-    }
-
     const cacheKey = [
       "M.Pharm",
       String(selectedBranch).trim(),
@@ -446,11 +438,21 @@ const MPharm = () => {
             itemCategory == null ||
             String(itemCategory).trim() === String(selectedCategory).trim();
 
+          const courseMatches =
+            item?.course == null ||
+            String(item.course).trim().toLowerCase() === "m.pharm";
+
           const branchMatches =
             itemBranch == null ||
-            String(itemBranch).trim() === String(selectedBranch).trim();
+            String(itemBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase();
 
-          return semesterMatches && subjectMatches && categoryMatches && branchMatches;
+          return (
+            courseMatches &&
+            semesterMatches &&
+            subjectMatches &&
+            categoryMatches &&
+            branchMatches
+          );
         });
 
       const derivedUnits = buildUnits(rawContent);

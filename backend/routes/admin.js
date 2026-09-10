@@ -32,6 +32,14 @@ if (!Note.schema.path("language")) {
   });
 }
 
+// M.Pharm specialization is stored in branch and mirrored in mpharmBranch
+// so both old/new admin clients can read it safely.
+if (!Note.schema.path("mpharmBranch")) {
+  Note.schema.add({
+    mpharmBranch: { type: String, default: "" }
+  });
+}
+
 const normalizeDPharmYear = (value) => {
   const raw = String(value ?? "").trim();
 
@@ -483,6 +491,12 @@ router.post(
 
         branch:
           normalizedBranch || "B.Pharm",
+
+        // M.Pharm specialization mirror for admin/UI compatibility.
+        mpharmBranch:
+          normalizedCourse.toLowerCase() === "m.pharm"
+            ? normalizedBranch
+            : "",
 
         category,
 
