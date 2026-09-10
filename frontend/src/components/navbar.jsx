@@ -1023,6 +1023,18 @@ const Navbar = () => {
     },
   ];
 
+  /* =========================================================
+     INTERVIEW MATERIAL
+  ========================================================= */
+
+  const interviewMaterialDropdownItems = [
+    {
+      name: "Interview PDFs",
+      path: "/interview-prep",
+      hasSubmenu: false,
+    },
+  ];
+
   const navItems = [
     {
       name: "Home",
@@ -1036,6 +1048,12 @@ const Navbar = () => {
       isDropdown: true,
       dropdownItems: course.items,
     })),
+
+    {
+      name: "Interview Material",
+      isDropdown: true,
+      dropdownItems: interviewMaterialDropdownItems,
+    },
   ];
 
   /* =========================================================
@@ -2526,6 +2544,89 @@ const Navbar = () => {
                   </div>
                 )
               )}
+
+              {/* MOBILE INTERVIEW MATERIAL */}
+
+              {(() => {
+                const interviewDropdownIndex =
+                  courseDropdownItems.length;
+
+                return (
+                  <div>
+                    <button
+                      onClick={() => {
+                        if (
+                          openDropdown === interviewDropdownIndex
+                        ) {
+                          setOpenDropdown(null);
+                          setOpenSubmenuPath([]);
+                        } else {
+                          setOpenDropdown(interviewDropdownIndex);
+                          setOpenSubmenuPath([]);
+                        }
+                      }}
+                      className={`
+                        flex
+                        items-center
+                        justify-between
+                        w-full
+                        py-1.5
+                        sm:py-2
+                        px-2
+                        sm:px-3
+                        rounded-lg
+                        transition
+                        text-sm
+                        sm:text-base
+
+                        ${
+                          activeBanner === 1
+                            ? "text-black hover:bg-gray-100"
+                            : "text-white hover:bg-white/10"
+                        }
+                      `}
+                    >
+                      Interview Material
+
+                      <ChevronDown
+                        size={16}
+                        className={`
+                          transform
+                          transition-transform
+                          duration-200
+
+                          ${
+                            openDropdown === interviewDropdownIndex
+                              ? "rotate-180"
+                              : ""
+                          }
+                        `}
+                      />
+                    </button>
+
+                    {openDropdown === interviewDropdownIndex && (
+                      <div
+                        className="
+                          ml-3
+                          sm:ml-4
+                          mt-1
+                          sm:mt-2
+                          space-y-1
+                          sm:space-y-2
+                          border-l-2
+                          border-[#18c1b7]
+                          pl-2
+                          sm:pl-3
+                        "
+                      >
+                        {renderMobileItems(
+                          interviewMaterialDropdownItems
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* MOBILE USER */}
 

@@ -82,10 +82,7 @@ const InterviewPrep = () => {
                   </button>
                 </div>
 
-                {/* Small note */}
-                <p className="text-xs sm:text-sm font-['Inter'] text-gray-400 mt-6">
-                  Free access for all PharmaVerse students
-                </p>
+                
               </div>
             </div>
 

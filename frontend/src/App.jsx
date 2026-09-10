@@ -11,6 +11,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Banner from "./components/banner";
 import QuickAccessSection from "./components/QuickAccessSection";
 import InterviewPrepBanner from "./components/InterviewPrep";
+import DoubtSection from "./components/DoubtSection";
 
 /* PAGES */
 import BPharm from "./pages/BPharm";
@@ -34,6 +35,7 @@ const Home = () => {
       <Banner />
       <QuickAccessSection />
       <InterviewPrepBanner />
+      <DoubtSection />
     </>
   );
 };

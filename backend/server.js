@@ -7,24 +7,12 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth");
 const adminRoutesModule = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
+const doubtsRoutes = require("./routes/doubts");
 
 const app = express();
 
 /* ============================================================
    ADMIN ROUTER FIX
-   ============================================================
-
-   admin.js agar:
-       module.exports = router;
-
-   export karta hai to direct router milega.
-
-   Aur agar:
-       module.exports = { router, adminAuth };
-
-   export karta hai to object milega.
-
-   Dono ko support kar rahe hain.
    ============================================================ */
 
 const adminRoutes =
@@ -80,6 +68,11 @@ console.log(
   typeof paymentRoutes
 );
 
+console.log(
+  "doubtsRoutes  =",
+  typeof doubtsRoutes
+);
+
 console.log("=================================");
 console.log("");
 
@@ -117,6 +110,14 @@ if (typeof paymentRoutes !== "function") {
   process.exit(1);
 }
 
+if (typeof doubtsRoutes !== "function") {
+  console.error(
+    "❌ ERROR: ./routes/doubts.js is not exporting a router"
+  );
+
+  process.exit(1);
+}
+
 
 /* ============================================================
    TEST ROUTE
@@ -133,6 +134,7 @@ app.get("/", (req, res) => {
       auth: "/api/auth",
       admin: "/api/admin",
       payment: "/api/payment",
+      doubts: "/api/doubts",
       collections: "/api/collections"
     }
   });
@@ -240,6 +242,20 @@ console.log(
 
 
 /* ============================================================
+   DOUBTS ROUTE
+   ============================================================ */
+
+app.use(
+  "/api/doubts",
+  doubtsRoutes
+);
+
+console.log(
+  "✅ Doubts router mounted"
+);
+
+
+/* ============================================================
    404 HANDLER
    ============================================================ */
 
@@ -259,6 +275,8 @@ app.use((req, res) => {
       "/api/auth",
       "/api/admin",
       "/api/payment",
+      "/api/doubts",
+      "/api/doubts/test/health",
       "/api/collections"
     ]
 
@@ -354,6 +372,28 @@ mongoose
 
       }
 
+      if (
+        !collectionNames.includes(
+          "doubts"
+        )
+      ) {
+
+        console.log(
+          "ℹ️ doubts collection not found yet"
+        );
+
+        console.log(
+          "It will be created automatically when the first doubt is saved."
+        );
+
+      } else {
+
+        console.log(
+          "✅ doubts collection found"
+        );
+
+      }
+
     } catch (error) {
 
       console.error(
@@ -417,6 +457,14 @@ const server =
 
       console.log(
         `📍 Payment: http://localhost:${PORT}/api/payment`
+      );
+
+      console.log(
+        `📍 Doubts: http://localhost:${PORT}/api/doubts`
+      );
+
+      console.log(
+        `📍 Doubt Health: http://localhost:${PORT}/api/doubts/test/health`
       );
 
       console.log(
