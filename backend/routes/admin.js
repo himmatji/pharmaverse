@@ -54,6 +54,27 @@ const normalizeDPharmYear = (value) => {
   return raw;
 };
 
+const normalizePharmDYear = (value) => {
+  const raw = String(value ?? "").trim();
+
+  const match = raw.match(/^(?:year\s*)?([1-6])(?:st|nd|rd|th)?(?:\s*year)?$/i);
+  if (match) return `${match[1]}${Number(match[1]) === 1 ? "st" : Number(match[1]) === 2 ? "nd" : Number(match[1]) === 3 ? "rd" : "th"} Year`;
+
+  const spaced = raw.match(/^([1-6])\s*year$/i);
+  if (spaced) {
+    const n = Number(spaced[1]);
+    return `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"} Year`;
+  }
+
+  return raw;
+};
+
+const pharmDYearNumber = (value) => {
+  const normalized = normalizePharmDYear(value);
+  const match = normalized.match(/^([1-6])/);
+  return match ? Number(match[1]) : null;
+};
+
 const {
   authMiddleware,
   isAdmin,
@@ -333,10 +354,11 @@ router.post(
       const normalizedCourse = String(course || branch || "").trim();
       const normalizedBranch = String(branch || course || "").trim();
 
-      const isDPharm =
-        normalizedCourse.toLowerCase() === "d.pharm";
+      const courseKey = normalizedCourse.toLowerCase();
+      const isDPharm = courseKey === "d.pharm";
+      const isPharmD = courseKey === "pharm.d";
 
-      if (normalizedCourse.toLowerCase() === "m.pharm" && !normalizedBranch) {
+      if (courseKey === "m.pharm" && !normalizedBranch) {
         return res.status(400).json({
           success: false,
           message: "M.Pharm specialization/branch is required"
@@ -349,6 +371,8 @@ router.post(
 
       const normalizedYear = isDPharm
         ? normalizeDPharmYear(year || semester)
+        : isPharmD
+        ? normalizePharmDYear(year || semester)
         : "";
 
       // D.Pharm Notes / Exam Crash Course use Language.
@@ -377,6 +401,13 @@ router.post(
         return res.status(400).json({
           success: false,
           message: "Valid D.Pharm Year is required"
+        });
+      }
+
+      if (isPharmD && !pharmDYearNumber(normalizedYear)) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid Pharm.D Year is required (1st Year to 6th Year)"
         });
       }
 
@@ -458,8 +489,8 @@ router.post(
       const semesterNumber = Number.parseInt(semester, 10);
       const unitNumber = Number.parseInt(unit, 10);
 
-      // D.Pharm is year based. Other courses remain semester based.
-      if (!isDPharm) {
+      // D.Pharm and Pharm.D are year based. Other courses remain semester based.
+      if (!isDPharm && !isPharmD) {
         if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
           return res.status(400).json({
             success: false,
@@ -511,7 +542,7 @@ router.post(
           isDPharm ? 1 : semesterNumber,
 
         year:
-          isDPharm ? normalizedYear : "",
+          (isDPharm || isPharmD) ? normalizedYear : "",
 
         subject,
 
@@ -1544,8 +1575,11 @@ router.get("/public/notes", async (req, res) => {
     // and Research Work.
     const selectedCourse = course || branch;
 
-    const isDPharm =
-      String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+    const selectedCourseKey =
+      String(selectedCourse || "").trim().toLowerCase();
+
+    const isDPharm = selectedCourseKey === "d.pharm";
+    const isPharmD = selectedCourseKey === "pharm.d";
 
     if (isDPharm) {
       if (!["1st Year", "2nd Year"].includes(normalizedYear)) {
@@ -1568,6 +1602,35 @@ router.get("/public/notes", async (req, res) => {
         $or: [
           { year: { $in: yearValues } },
           { semester: Number(normalizedYear[0]) }
+        ]
+      });
+    } else if (isPharmD) {
+      const requestedYear = year || semester;
+      const normalizedPharmD = normalizePharmDYear(requestedYear);
+      const pharmDNumber = pharmDYearNumber(normalizedPharmD);
+
+      if (!pharmDNumber) {
+        return res.status(400).json({
+          success: false,
+          message: "Valid Pharm.D Year is required (1st Year to 6th Year)"
+        });
+      }
+
+      // Pharm.D is year-based. Match both the new `year` field and
+      // legacy documents that only stored the same value in `semester`.
+      const yearValues = [
+        normalizedPharmD,
+        String(pharmDNumber),
+        `${pharmDNumber} Year`,
+        `Year ${pharmDNumber}`,
+        pharmDNumber
+      ];
+
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { year: { $in: yearValues } },
+          { semester: pharmDNumber }
         ]
       });
     } else if (semester !== undefined && semester !== "") {
@@ -1915,10 +1978,13 @@ router.get(
         };
       }
 
-      const selectedCourse = branch || course;
+      const selectedCourse = course || branch;
 
-      const isDPharm =
-        String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
+      const selectedCourseKey =
+        String(selectedCourse || "").trim().toLowerCase();
+
+      const isDPharm = selectedCourseKey === "d.pharm";
+      const isPharmD = selectedCourseKey === "pharm.d";
 
       if (isDPharm) {
         if (!["1st Year", "2nd Year"].includes(normalizedYear)) {
@@ -1939,6 +2005,33 @@ router.get(
           $or: [
             { year: { $in: yearValues } },
             { semester: Number(normalizedYear[0]) }
+          ]
+        });
+      } else if (isPharmD) {
+        const requestedYear = year || semester;
+        const normalizedPharmD = normalizePharmDYear(requestedYear);
+        const pharmDNumber = pharmDYearNumber(normalizedPharmD);
+
+        if (!pharmDNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "Valid Pharm.D Year is required (1st Year to 6th Year)"
+          });
+        }
+
+        const yearValues = [
+          normalizedPharmD,
+          String(pharmDNumber),
+          `${pharmDNumber} Year`,
+          `Year ${pharmDNumber}`,
+          pharmDNumber
+        ];
+
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { year: { $in: yearValues } },
+            { semester: pharmDNumber }
           ]
         });
       } else if (semester !== undefined && semester !== "") {

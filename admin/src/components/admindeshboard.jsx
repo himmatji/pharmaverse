@@ -90,16 +90,14 @@ const COURSE_CONFIG = {
     showMPharmBranch: true
   },
   "Pharm.D": {
-    type: "semester",
+    type: "year",
     options: [
-      { value: "1", label: "Semester 1" },
-      { value: "2", label: "Semester 2" },
-      { value: "3", label: "Semester 3" },
-      { value: "4", label: "Semester 4" },
-      { value: "5", label: "Semester 5" },
-      { value: "6", label: "Semester 6" },
-      { value: "7", label: "Semester 7" },
-      { value: "8", label: "Semester 8" }
+      { value: "1", label: "1st Year" },
+      { value: "2", label: "2nd Year" },
+      { value: "3", label: "3rd Year" },
+      { value: "4", label: "4th Year" },
+      { value: "5", label: "5th Year" },
+      { value: "6", label: "6th Year" }
     ],
     showLanguage: false,
     showMPharmBranch: false
@@ -318,63 +316,55 @@ const MPHARM_SUBJECTS = {
   }
 };
 
-// ========== PHARM.D SUBJECTS ==========
+// ========== PHARM.D SUBJECTS (YEAR-WISE) ==========
 const PHARMD_SUBJECTS = {
   1: [
     "Human Anatomy & Physiology",
-    "Pharmaceutics",
-    "Pharmaceutical Chemistry",
-    "Pharmacognosy",
-    "Social Pharmacy"
+    "Pharmaceutics-I",
+    "Medicinal Biochemistry",
+    "Pharmaceutical Organic Chemistry",
+    "Pharmaceutical Inorganic Chemistry",
+    "Remedial Mathematics / Biology"
   ],
   2: [
-    "Pathology",
-    "Pharmacology",
-    "Clinical Pharmacy",
-    "Pharmaceutical Analysis",
-    "Pharmacy Practice"
+    "Pathophysiology",
+    "Pharmaceutical Microbiology",
+    "Pharmacognosy & Phytopharmaceuticals",
+    "Pharmacology-I",
+    "Community Pharmacy",
+    "Pharmacotherapeutics-I"
   ],
   3: [
-    "Pharmacotherapeutics",
-    "Hospital Pharmacy",
-    "Biopharmaceutics",
-    "Pharmacokinetics",
-    "Pharmaceutical Jurisprudence"
+    "Pharmacology-II",
+    "Pharmaceutical Analysis",
+    "Pharmacotherapeutics-II",
+    "Pharmaceutical Jurisprudence",
+    "Medicinal Chemistry",
+    "Pharmaceutical Formulations"
   ],
   4: [
-    "Clinical Pharmacotherapeutics",
-    "Pharmacovigilance",
-    "Pharmaceutical Management",
-    "Pharmaceutical Biotechnology",
-    "Drug Interactions"
+    "Pharmacotherapeutics-III",
+    "Hospital Pharmacy",
+    "Clinical Pharmacy",
+    "Biostatistics & Research Methodology",
+    "Biopharmaceutics & Pharmacokinetics",
+    "Clinical Toxicology"
   ],
   5: [
-    "Advanced Clinical Pharmacy",
+    "Clinical Research",
+    "Pharmacoepidemiology",
     "Pharmacoeconomics",
-    "Pharmaceutical Research",
-    "Ethics in Pharmacy",
-    "Public Health Pharmacy"
+    "Clinical Pharmacokinetics",
+    "Clerkship",
+    "Project Work"
   ],
   6: [
-    "Pharmacy Practice Residency",
-    "Clinical Research",
-    "Pharmaceutical Policy",
-    "Pharmaceutical Informatics",
-    "Pharmaceutical Quality"
-  ],
-  7: [
-    "Advanced Pharmacotherapeutics",
-    "Clinical Trials",
-    "Pharmaceutical Leadership",
-    "Pharmaceutical Marketing",
-    "Pharmaceutical Regulations"
-  ],
-  8: [
-    "Pharmacy Practice Management",
-    "Clinical Decision Making",
-    "Pharmaceutical Entrepreneurship",
-    "Pharmaceutical Innovation",
-    "Advanced Clinical Practice"
+    "Clinical Internship",
+    "Advanced Clinical Practice",
+    "Research Project",
+    "Clinical Case Studies",
+    "Hospital Training",
+    "Project Work"
   ]
 };
 
@@ -1144,6 +1134,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       formData.append("type", uploadForm.type);
       formData.append("file", uploadForm.file);
 
+      // ✅ Pharm.D ke liye year field bhi bhej do (backend compatibility)
+      if (branchName === "Pharm.D") {
+        formData.append("year", uploadForm.semester);
+      }
+
       const response = await axios.post(
         `${API_URL}/upload`,
         formData,
@@ -1297,14 +1292,15 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const itemCourse = String(n?.course || "").trim().toLowerCase();
         const itemBranch = String(n?.branch || n?.mpharmBranch || "").trim();
 
-        // M.Pharm documents are stored as:
-        // course = "M.Pharm"
-        // branch = selected specialization
-        // (mpharmBranch is also supported for older/newer records)
         return (
           itemCourse === "m.pharm" &&
           MPHARM_BRANCHES.some((b) => b.value === itemBranch)
         );
+      }
+
+      if (branchName === "Pharm.D") {
+        const itemCourse = String(n?.course || "").trim().toLowerCase();
+        return itemCourse === "pharm.d";
       }
 
       return n?.branch === branchName || n?.course === branchName;
@@ -1718,7 +1714,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                             </span>
                           )}
                           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                            {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester}` : `Sem ${item.semester}`}
+                            {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester || item.year}` : `Sem ${item.semester}`}
                           </span>
                           {item.language && (
                             <span className={`text-xs px-2 py-1 rounded-full ${
