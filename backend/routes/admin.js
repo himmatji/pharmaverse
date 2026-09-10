@@ -3733,7 +3733,15 @@ const sendStoredFile = async (
 
 router.get(
   "/public/preview/:type/:id",
-  async (req, res) => {
+  async (req, res, next) => {
+    // IMPORTANT:
+    // interview-pdf has its own dedicated route below.
+    // Skip the generic route so it does not return
+    // "Invalid content type".
+    if (req.params.type === "interview-pdf") {
+      return next();
+    }
+
     return sendStoredFile(
       req,
       res,
@@ -3748,7 +3756,15 @@ router.get(
 
 router.get(
   "/public/download/:type/:id",
-  async (req, res) => {
+  async (req, res, next) => {
+    // IMPORTANT:
+    // interview-pdf has its own dedicated route below.
+    // Skip the generic route so it does not return
+    // "Invalid content type".
+    if (req.params.type === "interview-pdf") {
+      return next();
+    }
+
     return sendStoredFile(
       req,
       res,
