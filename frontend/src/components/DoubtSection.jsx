@@ -16,6 +16,9 @@ import {
   Lock,
 } from "lucide-react";
 
+/* ✅ AUTH MODAL IMPORT */
+import AuthModal from "./AuthModal";
+
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
 const DoubtSection = () => {
@@ -28,17 +31,48 @@ const DoubtSection = () => {
   const [submittingReply, setSubmittingReply] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState({});
 
+  /* ✅ AUTH MODAL STATE */
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const chatEndRef = useRef(null);
 
-  const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-  const isLoggedIn = !!token && localStorage.getItem("isLoggedIn") === "true";
-  const user = (() => {
+  const getUser = () => {
     try {
       return JSON.parse(localStorage.getItem("user") || "{}");
     } catch {
       return {};
     }
-  })();
+  };
+
+  const user = getUser();
+
+  /* ✅ CHECK LOGIN STATUS */
+  const checkLoginStatus = () => {
+    const token =
+      localStorage.getItem("userToken") || localStorage.getItem("token");
+    const loggedIn =
+      !!token && localStorage.getItem("isLoggedIn") === "true";
+    setIsLoggedIn(loggedIn);
+    return { token, loggedIn };
+  };
+
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+
+  /* ✅ LOGIN SUCCESS → POORI WEBSITE UPDATE */
+  const handleLoginSuccess = () => {
+    setShowAuthModal(false);
+    toast.success("Welcome! You are now logged in.");
+    setTimeout(() => {
+      window.location.reload();
+    }, 600);
+  };
+
+  const handleCloseModal = () => {
+    setShowAuthModal(false);
+  };
 
   /* FETCH DOUBTS */
   const fetchDoubts = async (silent = false) => {
@@ -63,7 +97,10 @@ const DoubtSection = () => {
   /* POST DOUBT */
   const handlePostDoubt = async (e) => {
     e.preventDefault();
-    if (!isLoggedIn) {
+    const { token } = checkLoginStatus();
+
+    if (!token) {
+      setShowAuthModal(true);
       toast.error("Please login first to ask");
       return;
     }
@@ -86,6 +123,9 @@ const DoubtSection = () => {
         await fetchDoubts();
       }
     } catch (err) {
+      if (err?.response?.status === 401) {
+        setShowAuthModal(true);
+      }
       toast.error(err?.response?.data?.message || "Failed to post");
     } finally {
       setPosting(false);
@@ -94,7 +134,10 @@ const DoubtSection = () => {
 
   /* POST REPLY */
   const handlePostReply = async (doubtId) => {
-    if (!isLoggedIn) {
+    const { token } = checkLoginStatus();
+
+    if (!token) {
+      setShowAuthModal(true);
       toast.error("Please login first");
       return;
     }
@@ -118,6 +161,9 @@ const DoubtSection = () => {
         await fetchDoubts();
       }
     } catch (err) {
+      if (err?.response?.status === 401) {
+        setShowAuthModal(true);
+      }
       toast.error("Failed to reply");
     } finally {
       setSubmittingReply(false);
@@ -186,6 +232,13 @@ const DoubtSection = () => {
             },
           },
         }}
+      />
+
+      {/* ✅ AUTH MODAL — yahan open hoga */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={handleCloseModal}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 md:px-8">
@@ -285,14 +338,17 @@ const DoubtSection = () => {
                 <p className="text-sky-200/70 font-['Inter'] text-sm mb-5 max-w-md mx-auto">
                   Login to join the discussion and ask your doubts.
                 </p>
-                <a
-                  href="/login"
+
+                {/* ✅ CLICK → AUTH MODAL OPEN */}
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(true)}
                   className="group relative inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl bg-gradient-to-r from-sky-400 via-blue-500 to-purple-500 text-white font-['Inter'] font-bold text-sm shadow-[0_10px_40px_-10px_rgba(56,189,248,0.8)] hover:scale-[1.03] transition-all overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   <Sparkles size={16} />
                   Login to Ask
-                </a>
+                </button>
               </div>
             )}
           </div>
@@ -366,7 +422,7 @@ const DoubtSection = () => {
                         </div>
 
                         <div className="flex items-center gap-4 mt-3">
-                          {isLoggedIn && (
+                          {isLoggedIn ? (
                             <button
                               onClick={() => {
                                 setReplyingTo(
@@ -378,6 +434,14 @@ const DoubtSection = () => {
                             >
                               <Send size={12} />
                               Reply
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setShowAuthModal(true)}
+                              className="inline-flex items-center gap-1.5 text-sky-300/70 hover:text-sky-300 font-['Inter'] font-semibold text-xs transition-colors"
+                            >
+                              <Lock size={11} />
+                              Login to Reply
                             </button>
                           )}
 
