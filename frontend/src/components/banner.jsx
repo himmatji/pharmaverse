@@ -128,9 +128,9 @@ const Banner = () => {
               onClick={handleDPharmVideos}
               className="group bg-white/10 border border-white/30 backdrop-blur-md text-white px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg hover:bg-white/20 transition-all duration-300 flex items-center gap-2 w-full sm:w-auto justify-center"
             >
-              <Video size={18} className="sm:w-5 sm:h-5" />
-              Watch Practical Videos
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              
+              Scroll Down to Explore
+             
             </button>
           </div>
         </div>
@@ -183,9 +183,9 @@ const Banner = () => {
               onClick={handleBPharmVideos}
               className="group bg-white border-2 border-gray-200 hover:border-blue-400 text-gray-700 hover:text-blue-600 px-5 sm:px-8 py-2.5 sm:py-4 rounded-2xl font-bold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 flex items-center gap-2 w-full sm:w-auto justify-center"
             >
-              <Video size={18} className="sm:w-5 sm:h-5" />
-              Watch Practical Videos
-              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+             
+              Scroll Down to Explore
+             
             </button>
           </div>
         </div>

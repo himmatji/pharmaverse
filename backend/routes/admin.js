@@ -13,6 +13,7 @@ const FreeMaterial = require("../models/FreeMaterial");
 const Notice = require("../models/Notice");
 const Payment = require("../models/Payment");
 const CoursePrice = require("../models/CoursePrice");
+const InterviewMaterial = require("../models/InterviewMaterial");
 
 /*
  * D.Pharm safety:
@@ -4001,6 +4002,18 @@ router.get(
       publicDownloadRoute:
         "/api/admin/public/download/:type/:id",
 
+      interviewMaterialsRoute:
+        "/api/admin/interview-materials",
+
+      publicInterviewMaterialsRoute:
+        "/api/admin/public/interview-pdfs",
+
+      publicInterviewPreviewRoute:
+        "/api/admin/public/preview/interview-pdf/:id",
+
+      publicInterviewDownloadRoute:
+        "/api/admin/public/download/interview-pdf/:id",
+
       routes: [
         "POST /upload",
         "POST /login",
@@ -4029,6 +4042,12 @@ router.get(
         "GET /public/papers",
         "GET /public/preview/:type/:id",
         "GET /public/download/:type/:id",
+        "GET /interview-materials",
+        "POST /interview-materials",
+        "DELETE /interview-materials/:id",
+        "GET /public/interview-pdfs",
+        "GET /public/preview/interview-pdf/:id",
+        "GET /public/download/interview-pdf/:id",
         "GET /public-price"
       ]
     });

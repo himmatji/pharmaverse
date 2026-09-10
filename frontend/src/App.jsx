@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
 
@@ -10,6 +10,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 /* HOME COMPONENTS */
 import Banner from "./components/banner";
 import QuickAccessSection from "./components/QuickAccessSection";
+import InterviewPrepBanner from "./components/InterviewPrep";
 
 /* PAGES */
 import BPharm from "./pages/BPharm";
@@ -18,6 +19,7 @@ import MPharm from "./pages/MPharm";
 import PharmD from "./pages/PharmD";
 import PhD from "./pages/PhD";
 import Profile from "./pages/Profile";
+import InterviewPrepPage from "./pages/InterviewPrep";
 
 const API_BASE =
   import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
@@ -29,13 +31,31 @@ const API_BASE =
 const Home = () => {
   return (
     <>
-      {/* HERO BANNER */}
       <Banner />
-
-      {/* QUICK ACCESS */}
       <QuickAccessSection />
+      <InterviewPrepBanner />
     </>
   );
+};
+
+/* =========================
+   SCROLL TO TOP
+   Every route opens from top
+========================= */
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Always start new page from top
+    window.scrollTo(0, 0);
+
+    // Extra protection for browser scroll restoration
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [pathname]);
+
+  return null;
 };
 
 /* =========================
@@ -57,7 +77,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   /* =========================
-     LOAD RAZORPAY
+     RAZORPAY SCRIPT
   ========================= */
 
   useEffect(() => {
@@ -102,7 +122,7 @@ function App() {
   }, []);
 
   /* =========================
-     VERIFY SESSION
+     VERIFY USER SESSION
   ========================= */
 
   useEffect(() => {
@@ -142,18 +162,14 @@ function App() {
       }
     };
 
-    /* Verify once when app starts */
     verifySession();
 
-    /* Verify every 5 seconds */
     const interval = setInterval(
       verifySession,
       5000
     );
 
-    return () => {
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   /* =========================
@@ -185,21 +201,32 @@ function App() {
         {/* NAVBAR */}
         <Navbar />
 
+        {/* 
+          IMPORTANT:
+          Every time route changes,
+          page automatically scrolls to top.
+        */}
+        <ScrollToTop />
+
+        {/* =========================
+            ROUTES
+        ========================= */}
+
         <Routes>
 
-          {/* =====================
-              HOME
-          ===================== */}
-
+          {/* HOME */}
           <Route
             path="/"
             element={<Home />}
           />
 
-          {/* =====================
-              PROFILE
-          ===================== */}
+          {/* INTERVIEW PREP */}
+          <Route
+            path="/interview-prep"
+            element={<InterviewPrepPage />}
+          />
 
+          {/* PROFILE */}
           <Route
             path="/profile"
             element={
@@ -209,10 +236,7 @@ function App() {
             }
           />
 
-          {/* =====================
-              BPHARM
-          ===================== */}
-
+          {/* BPHARM */}
           <Route
             path="/bpharm"
             element={
@@ -222,10 +246,7 @@ function App() {
             }
           />
 
-          {/* =====================
-              DPHARM
-          ===================== */}
-
+          {/* DPHARM */}
           <Route
             path="/dpharm"
             element={
@@ -235,10 +256,7 @@ function App() {
             }
           />
 
-          {/* =====================
-              MPHARM
-          ===================== */}
-
+          {/* MPHARM */}
           <Route
             path="/mpharm"
             element={
@@ -248,10 +266,7 @@ function App() {
             }
           />
 
-          {/* =====================
-              PHARMD
-          ===================== */}
-
+          {/* PHARMD */}
           <Route
             path="/pharmd"
             element={
@@ -261,10 +276,7 @@ function App() {
             }
           />
 
-          {/* =====================
-              PHD
-          ===================== */}
-
+          {/* PHD */}
           <Route
             path="/phd"
             element={

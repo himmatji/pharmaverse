@@ -20,7 +20,8 @@ import {
   Pill,
   Microscope,
   FlaskRound,
-  HeartPulse
+  HeartPulse,
+  Briefcase,
 } from "lucide-react";
 
 const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
@@ -28,7 +29,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [isBranchOpen, setIsBranchOpen] = useState(false);
 
-  // Check if screen is mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
@@ -38,7 +38,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Close sidebar when clicking outside on mobile
   useEffect(() => {
     if (!isMobileOpen) return;
 
@@ -54,14 +53,12 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMobileOpen]);
 
-  // Close sidebar when tab changes on mobile
   useEffect(() => {
     if (isMobile && isMobileOpen) {
       setIsMobileOpen(false);
     }
   }, [activeTab]);
 
-  // Branch options
   const branches = [
     { id: "bpharm", label: "B.Pharm", icon: <GraduationCap size={18} />, color: "from-blue-500 to-cyan-500" },
     { id: "dpharm", label: "D.Pharm", icon: <Pill size={18} />, color: "from-emerald-500 to-teal-500" },
@@ -70,11 +67,11 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: "pharmd", label: "Pharm.D", icon: <HeartPulse size={18} />, color: "from-orange-500 to-amber-500" },
   ];
 
-  // ========== MENU ITEMS - REMOVED unwanted tabs ==========
+  // ========== MENU ITEMS ==========
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={22} /> },
     { id: "branch", label: "Branch", icon: <GitBranch size={22} />, isDropdown: true },
-    // Removed: Free Materials, Paid PDFs, Videos, Papers
+    { id: "interview-material", label: "Interview Material", icon: <Briefcase size={22} /> },
     { id: "users", label: "Users", icon: <Users size={22} /> },
     { id: "profile", label: "Profile", icon: <User size={22} /> },
     { id: "notice", label: "Notice", icon: <Bell size={22} /> },
@@ -101,19 +98,15 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   };
 
   const handleBranchClick = (branchId) => {
-    // Set active tab to branch
     setActiveTab(`branch-${branchId}`);
-    // Close branch dropdown
     setIsBranchOpen(false);
   };
 
-  // ========== SIDEBAR CONTENT (Reusable) ==========
+  // ========== SIDEBAR CONTENT ==========
   const SidebarContent = () => (
     <>
-      {/* MENU */}
       <div className="flex flex-col gap-1 flex-1">
         {menuItems.map((item) => {
-          // If it's a branch item, render dropdown
           if (item.isDropdown) {
             return (
               <div key={item.id} className="mb-1">
@@ -142,7 +135,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
                   {isBranchOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                 </button>
 
-                {/* Branch Submenu */}
                 {isBranchOpen && (
                   <div className="ml-6 mt-1 space-y-1 border-l-2 border-sky-300 pl-3">
                     {branches.map((branch) => {
@@ -185,7 +177,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
             );
           }
 
-          // Normal menu item
           return (
             <button
               key={item.id}
@@ -213,7 +204,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
         })}
       </div>
 
-      {/* LOGOUT BUTTON */}
       <button
         onClick={handleLogout}
         className="
@@ -247,7 +237,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
 
   return (
     <>
-      {/* ========== MOBILE TOGGLE BUTTON ========== */}
       <button
         id="mobile-toggle-btn"
         onClick={toggleSidebar}
@@ -256,20 +245,17 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* ========== MOBILE SIDEBAR (Overlay) ========== */}
       <div
         className={`
           lg:hidden fixed inset-0 z-40 transition-all duration-300
           ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
         `}
       >
-        {/* Backdrop */}
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => setIsMobileOpen(false)}
         ></div>
 
-        {/* Sidebar */}
         <div
           id="mobile-sidebar"
           className={`
@@ -280,7 +266,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
           `}
         >
           <div className="flex flex-col h-full">
-            {/* Mobile Logo */}
             <div className="mb-6 pb-4 border-b border-sky-200">
               <h1 className="text-xl font-bold text-sky-800">⚕️ PharmaVerse</h1>
               <p className="text-xs text-sky-600">Admin Panel</p>
@@ -290,7 +275,6 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
         </div>
       </div>
 
-      {/* ========== DESKTOP SIDEBAR ========== */}
       <div
         className="
           hidden lg:block

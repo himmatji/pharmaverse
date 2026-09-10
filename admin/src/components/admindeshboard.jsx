@@ -5,12 +5,12 @@ import AdminNavbar from "./navbar";
 import UsersComponent from "./user";
 import AdminProfile from "./AdminProfile";
 import AdminNotice from "./AdminNotice";
-import { 
-  FileText, 
-  CreditCard, 
-  Video, 
-  BookOpen, 
-  Users, 
+import {
+  FileText,
+  CreditCard,
+  Video,
+  BookOpen,
+  Users,
   Activity,
   GraduationCap,
   Brain,
@@ -43,7 +43,8 @@ import {
   CheckCircle,
   ArrowRight,
   Trash,
-  Pencil
+  Pencil,
+  Briefcase,
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -116,7 +117,6 @@ const COURSE_CONFIG = {
   }
 };
 
-// ========== M.PHARM BRANCHES ==========
 const MPHARM_BRANCHES = [
   { value: "Pharmaceutics", label: "Pharmaceutics" },
   { value: "Pharmacology", label: "Pharmacology" },
@@ -125,7 +125,6 @@ const MPHARM_BRANCHES = [
   { value: "Regulatory Affairs", label: "Regulatory Affairs" }
 ];
 
-// ========== B.PHARM SUBJECTS ==========
 const BPHARM_SUBJECTS = {
   1: [
     "Basics of Python Programming for Pharmaceutical Sciences",
@@ -212,7 +211,6 @@ const BPHARM_SUBJECTS = {
   ]
 };
 
-// ========== D.PHARM SUBJECTS ==========
 const DPHARM_SUBJECTS = {
   1: [
     "Pharmaceutics",
@@ -231,7 +229,6 @@ const DPHARM_SUBJECTS = {
   ]
 };
 
-// ========== M.PHARM SUBJECTS (BRANCH-WISE + SEMESTER-WISE) ==========
 const MPHARM_SUBJECTS = {
   "Pharmaceutics": {
     1: [
@@ -315,7 +312,6 @@ const MPHARM_SUBJECTS = {
   }
 };
 
-// ========== PHARM.D SUBJECTS (YEAR-WISE — 5 YEARS ONLY) ==========
 const PHARMD_SUBJECTS = {
   1: [
     "Human Anatomy & Physiology",
@@ -359,7 +355,6 @@ const PHARMD_SUBJECTS = {
   ]
 };
 
-// ========== PHD SUBJECTS ==========
 const PHD_SUBJECTS = {
   1: [
     "Research Methodology",
@@ -409,8 +404,294 @@ const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false, showMPharmBranch: false };
 };
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;             // 50MB (normal content)
+const MAX_INTERVIEW_FILE_SIZE = 300 * 1024 * 1024;  // 300MB (interview material)
 
+// ===================================================================
+// ================== INTERVIEW MATERIAL COMPONENT ===================
+// ===================================================================
+const InterviewMaterial = () => {
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    file: null,
+  });
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [materials, setMaterials] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const getToken = () => localStorage.getItem("adminToken");
+
+  const fetchMaterials = async () => {
+    try {
+      const token = getToken();
+      if (!token) return;
+      const res = await axios.get(`${API_URL}/interview-materials`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = res.data?.data || res.data || [];
+      setMaterials(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Fetch interview materials error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > MAX_INTERVIEW_FILE_SIZE) {
+      alert("❌ File 300MB se badi hai. Chhoti file choose karo.");
+      e.target.value = "";
+      return;
+    }
+    setForm((p) => ({ ...p, file }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.title.trim()) return alert("Title daalo");
+    if (!form.description.trim()) return alert("Description daalo");
+    if (!form.file) return alert("File choose karo");
+
+    setUploading(true);
+    setProgress(0);
+
+    try {
+      const token = getToken();
+      if (!token) {
+        alert("Login karo pehle");
+        setUploading(false);
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("title", form.title);
+      fd.append("description", form.description);
+      fd.append("file", form.file);
+
+      const res = await axios.post(`${API_URL}/interview-materials`, fd, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (e) => {
+          setProgress(Math.round((e.loaded * 100) / e.total));
+        },
+      });
+
+      if (res.data?.success !== false) {
+        alert("✅ Interview Material upload ho gaya!");
+        setForm({ title: "", description: "", file: null });
+        const fileInput = document.getElementById("interview-file-input");
+        if (fileInput) fileInput.value = "";
+        fetchMaterials();
+      } else {
+        alert("❌ " + (res.data?.message || "Upload failed"));
+      }
+    } catch (err) {
+      alert("❌ Upload failed: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUploading(false);
+      setProgress(0);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete karna hai?")) return;
+    try {
+      const token = getToken();
+      await axios.delete(`${API_URL}/interview-materials/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("✅ Delete ho gaya");
+      fetchMaterials();
+    } catch (err) {
+      alert("❌ Delete failed: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  return (
+    <div className="animate-fadeIn">
+      <div className="mb-8">
+        <h2 className="text-3xl sm:text-4xl font-['Space_Grotesk'] font-extrabold text-gray-900">
+          <span className="bg-gradient-to-r from-violet-500 to-purple-600 bg-clip-text text-transparent">
+            Interview Material
+          </span>
+        </h2>
+        <p className="text-gray-500 font-['Inter'] text-sm mt-2">
+          Upload interview prep files (PDF, DOC, Video — max 300MB)
+        </p>
+      </div>
+
+      <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-6 sm:p-8 mb-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div>
+            <label className="text-sm font-['Inter'] font-bold text-gray-800 block mb-2">
+              Title
+            </label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="e.g. Pharma Interview Q&A"
+              className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-50 outline-none font-['Inter'] text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-['Inter'] font-bold text-gray-800 block mb-2">
+              Description
+            </label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Short description..."
+              rows={3}
+              className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 focus:border-violet-400 focus:ring-4 focus:ring-violet-50 outline-none font-['Inter'] text-sm resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-['Inter'] font-bold text-gray-800 block mb-2">
+              File (max 300MB)
+            </label>
+            <div className="relative">
+              <input
+                id="interview-file-input"
+                type="file"
+                onChange={handleFile}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.mp4,.mkv,.mov,.zip,.rar"
+              />
+              <div
+                className={`p-6 border-2 border-dashed rounded-2xl text-center transition-all ${
+                  form.file
+                    ? "border-emerald-300 bg-emerald-50/60"
+                    : "border-gray-300 bg-gray-50/60 hover:border-violet-400 hover:bg-violet-50/50"
+                }`}
+              >
+                <div
+                  className={`mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-2 ${
+                    form.file
+                      ? "bg-emerald-100 text-emerald-600"
+                      : "bg-white text-violet-500 shadow-sm"
+                  }`}
+                >
+                  {form.file ? <CheckCircle size={25} /> : <Upload size={25} />}
+                </div>
+                <p className="font-['Inter'] text-sm text-gray-700 font-medium">
+                  {form.file ? (
+                    <span className="text-emerald-700 font-bold break-all">
+                      {form.file.name}
+                    </span>
+                  ) : (
+                    <>
+                      Click to choose file{" "}
+                      <span className="text-gray-400">or drag & drop</span>
+                    </>
+                  )}
+                </p>
+                <p className="text-xs text-gray-400 font-['Inter'] mt-1">
+                  PDF, DOC, PPT, Video, ZIP • Max 300MB
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {progress > 0 && progress < 100 && (
+            <div className="rounded-2xl bg-violet-50 border border-violet-100 p-4">
+              <div className="flex justify-between text-xs font-['Inter'] text-gray-600 mb-2">
+                <span className="font-semibold">Uploading...</span>
+                <span className="font-bold text-violet-600">{progress}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-white rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full transition-all"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={uploading}
+            className="w-full py-4 bg-gradient-to-r from-violet-500 via-purple-600 to-indigo-600 text-white rounded-2xl font-['Inter'] font-bold text-base shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+          >
+            {uploading ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Uploading... {progress}%
+              </>
+            ) : (
+              <>
+                <Upload size={20} />
+                Upload Interview Material
+              </>
+            )}
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Briefcase size={20} className="text-violet-600" />
+          Uploaded Materials ({materials.length})
+        </h3>
+
+        {loading ? (
+          <div className="text-center py-8 text-gray-400">Loading...</div>
+        ) : materials.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-gray-500">No interview material uploaded yet</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {materials.map((m) => (
+              <div
+                key={m._id}
+                className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 hover:shadow-xl transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-['Space_Grotesk'] font-bold text-gray-800 truncate">
+                      {m.title}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                      {m.description}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      📄 {m.fileName} • {m.fileSize}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(m._id)}
+                    className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors flex-shrink-0 ml-2"
+                  >
+                    <Trash size={16} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ===================================================================
+// ======================= ADMIN DASHBOARD ===========================
+// ===================================================================
 const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [adminName, setAdminName] = useState("Admin");
@@ -448,7 +729,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     { day: "Sun", views: 0, downloads: 0, revenue: 0 }
   ]);
 
-  // ========== COURSE PRICES STATE ==========
   const [coursePrices, setCoursePrices] = useState({
     "B.Pharm": { price: 99, discount: 0 },
     "D.Pharm": { price: 79, discount: 0 },
@@ -459,7 +739,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
 
-  // ========== UPLOAD FORM STATE ==========
   const [uploadForm, setUploadForm] = useState({
     branch: "B.Pharm",
     mpharmBranch: "",
@@ -477,7 +756,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   });
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // ========== CATEGORIES ==========
   const categories = [
     { id: "Notes", icon: <BookOpen size={18} />, color: "from-blue-500 to-indigo-500", bg: "from-blue-50 to-indigo-50" },
     { id: "Exam Crash Course", icon: <Zap size={18} />, color: "from-orange-500 to-amber-500", bg: "from-orange-50 to-amber-50" },
@@ -496,7 +774,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   }, []);
 
-  // ========== ADMIN PERMISSIONS ==========
   const getStoredAdmin = () => {
     try {
       const rawAdmin = localStorage.getItem("admin");
@@ -591,7 +868,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== DISCOUNT FUNCTIONS ==========
   const getDiscountedPrice = (price, discount) => {
     if (discount > 0) {
       const discounted = price - (price * discount / 100);
@@ -618,14 +894,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     };
   };
 
-  // ========== FETCH DATA ==========
   const fetchAllData = async () => {
     const token = localStorage.getItem("adminToken");
 
     if (!token || !isTokenValid()) {
       localStorage.removeItem("adminToken");
       localStorage.removeItem("admin");
-
       if (onLogout) onLogout();
       setLoading(false);
       return;
@@ -773,7 +1047,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     fetchAllData();
   }, []);
 
-  // ========== SAVE COURSE PRICES ==========
   const handleSaveCoursePrices = async () => {
     for (const [course, data] of Object.entries(coursePrices)) {
       if (data.price < 0) {
@@ -814,7 +1087,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== COMPRESS IMAGE ==========
   const compressImage = (file, maxWidth = 400, maxHeight = 400) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -849,7 +1121,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     });
   };
 
-  // ========== UPLOAD FORM HANDLERS ==========
   const handleUploadChange = (e) => {
     const { name, value, type, checked } = e.target;
     setUploadForm(prev => ({
@@ -951,7 +1222,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }));
   };
 
-  // ========== GET SUBJECTS BASED ON BRANCH ==========
   const getSubjectsForBranch = () => {
     const branchName = getBranchName();
     const semesterKey = uploadForm.semester;
@@ -977,7 +1247,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ========== GET SEMESTER/YEAR OPTIONS BASED ON BRANCH ==========
   const getBranchOptions = () => {
     const branchName = getBranchName();
     const config = COURSE_CONFIG[branchName];
@@ -991,24 +1260,24 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   const getSubjectsForSemester = () => {
     const branchName = getBranchName();
-    
+
     if (branchName === "D.Pharm") {
       return DPHARM_SUBJECTS[uploadForm.semester] || [];
     }
-    
+
     if (branchName === "M.Pharm") {
       if (!uploadForm.mpharmBranch) return [];
       return MPHARM_SUBJECTS[uploadForm.mpharmBranch]?.[uploadForm.semester] || [];
     }
-    
+
     if (branchName === "Pharm.D") {
       return PHARMD_SUBJECTS[uploadForm.semester] || [];
     }
-    
+
     if (branchName === "PhD") {
       return PHD_SUBJECTS[uploadForm.semester] || [];
     }
-    
+
     return BPHARM_SUBJECTS[uploadForm.semester] || [];
   };
 
@@ -1025,7 +1294,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     return branchNames[branchId] || "B.Pharm";
   };
 
-  // ========== DELETE CONTENT ==========
   const handleDeleteContent = async (id, type) => {
     if (!window.confirm("Are you sure you want to delete this content?")) return;
 
@@ -1059,7 +1327,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!uploadForm.category) {
       alert("Please select a category");
       return;
@@ -1071,12 +1339,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
-    
+
     if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
     }
-    
+
     if (!uploadForm.semester) {
       alert("Please select a semester/year");
       return;
@@ -1125,7 +1393,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       formData.append("type", uploadForm.type);
       formData.append("file", uploadForm.file);
 
-      // ✅ Pharm.D ke liye year field bhi bhej do (backend compatibility)
       if (branchName === "Pharm.D") {
         formData.append("year", uploadForm.semester);
       }
@@ -1269,7 +1536,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
-  // ========== RENDER UPLOAD TAB ==========
   const renderUploadTab = () => {
     const branchName = getBranchName();
     const subjects = getSubjectsForBranch();
@@ -1311,7 +1577,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           <p className="text-gray-500 font-['Inter'] text-sm mt-2">Upload and manage content for {branchName}</p>
         </div>
 
-        {/* ========== UPLOAD FORM ========== */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden mb-8">
           <div className="px-6 sm:px-8 py-5 border-b border-gray-100 bg-gradient-to-r from-sky-50 via-blue-50 to-indigo-50">
             <div className="flex items-center justify-between gap-4">
@@ -1356,7 +1621,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             )}
 
             <form onSubmit={handleUploadSubmit} className="space-y-5">
-              {/* Branch */}
               <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-xl bg-white shadow-sm text-sky-600">
@@ -1372,7 +1636,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </span>
               </div>
 
-              {/* Step 1: Category */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">1</span>
@@ -1400,7 +1663,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Step 1.5: Language (Only for D.Pharm) */}
               {showLanguage && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -1436,7 +1698,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* Step 1.7: M.Pharm Branch (Only for M.Pharm) */}
               {showMPharmBranch && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -1475,7 +1736,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* Step 2: Semester/Year */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
@@ -1500,7 +1760,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </select>
               </div>
 
-              {/* Step 3: Subject */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
@@ -1519,7 +1778,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </select>
               </div>
 
-              {/* Step 4: Unit */}
               <div>
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2">
@@ -1549,7 +1807,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Step 5: File */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">5</span>
@@ -1583,7 +1840,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Optional details */}
               <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
                 <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
                   <span>Optional details</span>
@@ -1625,7 +1881,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </details>
 
-              {/* File type */}
               <div>
                 <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -1646,7 +1901,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={uploading}
@@ -1668,7 +1922,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         </div>
 
-        {/* ========== UPLOADED CONTENT LIST ========== */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800 flex items-center gap-2">
@@ -1709,8 +1962,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                           </span>
                           {item.language && (
                             <span className={`text-xs px-2 py-1 rounded-full ${
-                              item.language === "hindi" 
-                                ? "bg-orange-100 text-orange-700" 
+                              item.language === "hindi"
+                                ? "bg-orange-100 text-orange-700"
                                 : "bg-blue-100 text-blue-700"
                             }`}>
                               {item.language === "hindi" ? "🇮🇳 Hindi" : "🇬🇧 English"}
@@ -1788,10 +2041,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
       <AdminNavbar />
       <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={onLogout} />
-      
+
       <div className="lg:ml-[250px] p-4 sm:p-6 md:p-8 mt-16 min-h-[calc(100vh-64px)]">
-        
-        {/* ========== DASHBOARD ========== */}
+
         {activeTab === "dashboard" && (
           <div className="animate-fadeIn">
             <div className="mb-8">
@@ -1945,20 +2197,18 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           </div>
         )}
 
-        {/* ========== BRANCH UPLOAD TAB ========== */}
         {isBranchTab() && renderUploadTab()}
 
-        {/* ========== USERS TAB ========== */}
+        {/* ========== INTERVIEW MATERIAL TAB ========== */}
+        {activeTab === "interview-material" && <InterviewMaterial />}
+
         {activeTab === "users" && <UsersComponent />}
 
-        {/* ========== PROFILE TAB ========== */}
         {activeTab === "profile" && <AdminProfile />}
 
-        {/* ========== NOTICE TAB ========== */}
         {activeTab === "notice" && <AdminNotice />}
       </div>
 
-      {/* ========== PRICE MANAGEMENT MODAL ========== */}
       {showPriceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -1967,8 +2217,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <DollarSign size={24} className="text-amber-500" />
                 Manage Course Prices
               </h3>
-              <button 
-                onClick={() => setShowPriceModal(false)} 
+              <button
+                onClick={() => setShowPriceModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
                 <X size={24} />
@@ -1986,7 +2236,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm text-gray-600 font-medium block mb-1">Price (₹)</label>
@@ -2058,7 +2308,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   disabled={savingPrices}
                   className="flex-1 min-w-[120px] bg-amber-500 text-white py-3 rounded-xl font-semibold hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save size={18} className="inline mr-2" /> 
+                  <Save size={18} className="inline mr-2" />
                   {savingPrices ? 'Saving...' : 'Save All Prices'}
                 </button>
                 <button
