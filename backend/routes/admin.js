@@ -1510,7 +1510,12 @@ router.get("/public/notes", async (req, res) => {
       };
     }
 
-    const selectedCourse = branch || course;
+    // IMPORTANT: course and branch are separate filters.
+    // M.Pharm MUST be filtered by specialization/branch as well as course.
+    // This is especially important for Semester 3 & 4 because every M.Pharm
+    // branch uses the same subject names: Research Methodology & Biostatistics
+    // and Research Work.
+    const selectedCourse = course || branch;
 
     const isDPharm =
       String(selectedCourse || "").trim().toLowerCase() === "d.pharm";
@@ -1571,26 +1576,30 @@ router.get("/public/notes", async (req, res) => {
       query.unit = unitNumber;
     }
 
-    if (selectedCourse && selectedCourse !== "") {
-      const escapedCourse = String(selectedCourse).replace(
+    // STRICT course + branch separation.
+    // Never use course OR branch here: that can mix M.Pharm branches.
+    if (course && String(course).trim() !== "") {
+      const escapedCourse = String(course).replace(
         /[.*+?^${}()|[\\]\\]/g,
         "\\$&"
       );
 
-      query.$or = [
-        {
-          course: {
-            $regex: `^${escapedCourse}$`,
-            $options: "i"
-          }
-        },
-        {
-          branch: {
-            $regex: `^${escapedCourse}$`,
-            $options: "i"
-          }
-        }
-      ];
+      query.course = {
+        $regex: `^${escapedCourse}$`,
+        $options: "i"
+      };
+    }
+
+    if (branch && String(branch).trim() !== "") {
+      const escapedBranch = String(branch).replace(
+        /[.*+?^${}()|[\\]\\]/g,
+        "\\$&"
+      );
+
+      query.branch = {
+        $regex: `^${escapedBranch}$`,
+        $options: "i"
+      };
     }
 
     const needsLanguage =
@@ -1925,26 +1934,30 @@ router.get(
         };
       }
 
-      if (selectedCourse !== undefined && selectedCourse !== "") {
-        const escapedCourse = String(selectedCourse).replace(
+      // STRICT course + branch separation.
+      // Never use course OR branch here: that can mix M.Pharm branches.
+      if (course && String(course).trim() !== "") {
+        const escapedCourse = String(course).replace(
           /[.*+?^${}()|[\\]\\]/g,
           "\\$&"
         );
 
-        query.$or = [
-          {
-            course: {
-              $regex: `^${escapedCourse}$`,
-              $options: "i"
-            }
-          },
-          {
-            branch: {
-              $regex: `^${escapedCourse}$`,
-              $options: "i"
-            }
-          }
-        ];
+        query.course = {
+          $regex: `^${escapedCourse}$`,
+          $options: "i"
+        };
+      }
+
+      if (branch && String(branch).trim() !== "") {
+        const escapedBranch = String(branch).replace(
+          /[.*+?^${}()|[\\]\\]/g,
+          "\\$&"
+        );
+
+        query.branch = {
+          $regex: `^${escapedBranch}$`,
+          $options: "i"
+        };
       }
 
       const needsLanguage =

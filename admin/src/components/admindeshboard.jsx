@@ -62,7 +62,8 @@ const COURSE_CONFIG = {
       { value: "7", label: "Semester 7" },
       { value: "8", label: "Semester 8" }
     ],
-    showLanguage: false
+    showLanguage: false,
+    showMPharmBranch: false
   },
   "D.Pharm": {
     type: "year",
@@ -74,7 +75,8 @@ const COURSE_CONFIG = {
     languageOptions: [
       { value: "hindi", label: "हिंदी (Hindi)" },
       { value: "english", label: "English" }
-    ]
+    ],
+    showMPharmBranch: false
   },
   "M.Pharm": {
     type: "semester",
@@ -84,7 +86,8 @@ const COURSE_CONFIG = {
       { value: "3", label: "Semester 3" },
       { value: "4", label: "Semester 4" }
     ],
-    showLanguage: false
+    showLanguage: false,
+    showMPharmBranch: true
   },
   "Pharm.D": {
     type: "semester",
@@ -98,7 +101,8 @@ const COURSE_CONFIG = {
       { value: "7", label: "Semester 7" },
       { value: "8", label: "Semester 8" }
     ],
-    showLanguage: false
+    showLanguage: false,
+    showMPharmBranch: false
   },
   "PhD": {
     type: "semester",
@@ -110,9 +114,19 @@ const COURSE_CONFIG = {
       { value: "5", label: "Semester 5" },
       { value: "6", label: "Semester 6" }
     ],
-    showLanguage: false
+    showLanguage: false,
+    showMPharmBranch: false
   }
 };
+
+// ========== M.PHARM BRANCHES ==========
+const MPHARM_BRANCHES = [
+  { value: "Pharmaceutics", label: "Pharmaceutics" },
+  { value: "Pharmacology", label: "Pharmacology" },
+  { value: "Pharmaceutical Chemistry", label: "Pharmaceutical Chemistry" },
+  { value: "Pharmacognosy", label: "Pharmacognosy" },
+  { value: "Regulatory Affairs", label: "Regulatory Affairs" }
+];
 
 // ========== B.PHARM SUBJECTS ==========
 const BPHARM_SUBJECTS = {
@@ -220,36 +234,88 @@ const DPHARM_SUBJECTS = {
   ]
 };
 
-// ========== M.PHARM SUBJECTS ==========
+// ========== M.PHARM SUBJECTS (BRANCH-WISE + SEMESTER-WISE) ==========
 const MPHARM_SUBJECTS = {
-  1: [
-    "Modern Pharmaceutics",
-    "Advanced Pharmacognosy",
-    "Pharmaceutical Analysis",
-    "Pharmacology & Toxicology",
-    "Pharmaceutical Regulatory Science"
-  ],
-  2: [
-    "Pharmaceutical Biotechnology",
-    "Clinical Pharmacy",
-    "Pharmaceutical Quality Assurance",
-    "Pharmaceutical Marketing",
-    "Pharmaceutical Nanotechnology"
-  ],
-  3: [
-    "Advanced Medicinal Chemistry",
-    "Pharmaceutical Validation",
-    "Pharmacoepidemiology",
-    "Pharmaceutical Packaging",
-    "Drug Discovery"
-  ],
-  4: [
-    "Pharmaceutical Management",
-    "Pharmaceutical Intellectual Property",
-    "Pharmaceutical Research",
-    "Pharmaceutical Ethics",
-    "Pharmaceutical Informatics"
-  ]
+  "Pharmaceutics": {
+    1: [
+      "Modern Pharmaceutical Analytical Techniques",
+      "Drug Delivery System",
+      "Modern Pharmaceutics",
+      "Regulatory Affair"
+    ],
+    2: [
+      "Molecular Pharmaceutics (Nano Tech and Targeted DDS)",
+      "Advanced Biopharmaceutics & Pharmacokinetics",
+      "Computer Aided Drug Delivery System",
+      "Cosmetic and Cosmeceuticals"
+    ],
+    3: ["Research Methodology & Biostatistics", "Research Work"],
+    4: ["Research Work"]
+  },
+  "Pharmacology": {
+    1: [
+      "Modern Pharmaceutical Analytical Techniques",
+      "Advanced Pharmacology-I",
+      "Pharmacological and Toxicological Screening Methods-I",
+      "Cellular and Molecular Pharmacology"
+    ],
+    2: [
+      "Advanced Pharmacology-II",
+      "Pharmacological and Toxicological Screening Methods-II",
+      "Principles of Drug Discovery",
+      "Experimental Pharmacology Practical-II"
+    ],
+    3: ["Research Methodology & Biostatistics", "Research Work"],
+    4: ["Research Work"]
+  },
+  "Pharmaceutical Chemistry": {
+    1: [
+      "Modern Pharmaceutical Analytical Techniques",
+      "Advanced Organic Chemistry-I",
+      "Advanced Medicinal Chemistry",
+      "Chemistry of Natural Products"
+    ],
+    2: [
+      "Advanced Spectral Analysis",
+      "Advanced Organic Chemistry-II",
+      "Computer Aided Drug Design",
+      "Pharmaceutical Process Chemistry"
+    ],
+    3: ["Research Methodology & Biostatistics", "Research Work"],
+    4: ["Research Work"]
+  },
+  "Pharmacognosy": {
+    1: [
+      "Modern Pharmaceutical Analytical Techniques",
+      "Advanced Pharmacognosy-I",
+      "Phytochemistry",
+      "Industrial Pharmacognostical Technology"
+    ],
+    2: [
+      "Medicinal Biotechnology",
+      "Advanced Pharmacognosy-II",
+      "Indian System of Medicine",
+      "Herbal Cosmetics"
+    ],
+    3: ["Research Methodology & Biostatistics", "Research Work"],
+    4: ["Research Work"]
+  },
+  "Regulatory Affairs": {
+    1: [
+      "Good Regulatory Practices",
+      "Documentation and Regulatory Writing",
+      "Clinical Research Regulations",
+      "Regulations and Legislation for Drugs & Cosmetics, Medical Devices, Biologicals & Herbals, and Food & Nutraceuticals in India and Intellectual Property Rights"
+    ],
+    2: [
+      "Regulatory Aspects of Drugs & Cosmetics",
+      "Regulatory Aspects of Herbal & Biologicals",
+      "Regulatory Aspects of Medical Devices",
+      "Regulatory Aspects of Food & Nutraceuticals"
+    ],
+    3: ["Research Methodology & Biostatistics", "Research Work"],
+    4: ["Research Work"]
+  }
 };
 
 // ========== PHARM.D SUBJECTS ==========
@@ -359,7 +425,7 @@ const PHD_SUBJECTS = {
 };
 
 const getCourseOptions = (course) => {
-  return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false };
+  return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false, showMPharmBranch: false };
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -415,11 +481,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   // ========== UPLOAD FORM STATE ==========
   const [uploadForm, setUploadForm] = useState({
     branch: "B.Pharm",
+    mpharmBranch: "",
     category: "",
     semester: "",
     subject: "",
     unit: "",
-    language: "", // ✅ NEW: Language field for D.Pharm
+    language: "",
     units: [{ id: 1, name: "Unit 1", topics: [""] }],
     title: "",
     description: "",
@@ -512,22 +579,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const allPapers = Array.isArray(papers) ? papers : [];
 
     return (
-      allNotes.reduce(
-        (total, item) => total + Number(item?.downloadCount || 0),
-        0
-      ) +
-      allVideos.reduce(
-        (total, item) => total + Number(item?.downloadCount || 0),
-        0
-      ) +
-      allPaidPDFs.reduce(
-        (total, item) => total + Number(item?.downloadCount || 0),
-        0
-      ) +
-      allPapers.reduce(
-        (total, item) => total + Number(item?.downloadCount || 0),
-        0
-      )
+      allNotes.reduce((total, item) => total + Number(item?.downloadCount || 0), 0) +
+      allVideos.reduce((total, item) => total + Number(item?.downloadCount || 0), 0) +
+      allPaidPDFs.reduce((total, item) => total + Number(item?.downloadCount || 0), 0) +
+      allPapers.reduce((total, item) => total + Number(item?.downloadCount || 0), 0)
     );
   };
 
@@ -640,13 +695,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (notesRes.status === "fulfilled") {
         const response = notesRes.value?.data;
-        setNotes(
-          Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : []
-        );
+        setNotes(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
         console.error("Notes API error:", notesRes.reason);
         setNotes([]);
@@ -654,13 +703,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (videosRes.status === "fulfilled") {
         const response = videosRes.value?.data;
-        setVideos(
-          Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : []
-        );
+        setVideos(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
         console.error("Videos API error:", videosRes.reason);
         setVideos([]);
@@ -668,13 +711,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (paidRes.status === "fulfilled") {
         const response = paidRes.value?.data;
-        setPaidPDFs(
-          Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : []
-        );
+        setPaidPDFs(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
         console.error("Paid PDFs API error:", paidRes.reason);
         setPaidPDFs([]);
@@ -682,13 +719,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (papersRes.status === "fulfilled") {
         const response = papersRes.value?.data;
-        setPapers(
-          Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : []
-        );
+        setPapers(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
         console.error("Papers API error:", papersRes.reason);
         setPapers([]);
@@ -696,11 +727,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (popularRes.status === "fulfilled") {
         const response = popularRes.value?.data;
-        setPopularContent(
-          Array.isArray(response?.notes)
-            ? response.notes
-            : []
-        );
+        setPopularContent(Array.isArray(response?.notes) ? response.notes : []);
       } else {
         console.error("Popular content API error:", popularRes.reason);
         setPopularContent([]);
@@ -708,11 +735,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (activityRes.status === "fulfilled") {
         const response = activityRes.value?.data;
-        setRecentActivities(
-          Array.isArray(response?.activities)
-            ? response.activities
-            : []
-        );
+        setRecentActivities(Array.isArray(response?.activities) ? response.activities : []);
       } else {
         console.error("Recent activity API error:", activityRes.reason);
         setRecentActivities([]);
@@ -742,11 +765,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       if (pricesRes.status === "fulfilled") {
         const response = pricesRes.value?.data;
-        if (
-          response &&
-          typeof response === "object" &&
-          !Array.isArray(response)
-        ) {
+        if (response && typeof response === "object" && !Array.isArray(response)) {
           setCoursePrices(response);
         }
       } else {
@@ -756,19 +775,14 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     } catch (error) {
       console.error("❌ Admin dashboard error:", error);
 
-      if (
-        error?.response?.status === 401 ||
-        error?.response?.status === 403
-      ) {
+      if (error?.response?.status === 401 || error?.response?.status === 403) {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("admin");
         if (onLogout) onLogout();
         return;
       }
 
-      setError(
-        "Failed to load dashboard data. Please refresh the page."
-      );
+      setError("Failed to load dashboard data. Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -963,13 +977,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
     if (!semesterKey) return [];
 
+    if (branchName === "M.Pharm") {
+      if (!uploadForm.mpharmBranch) return [];
+      return MPHARM_SUBJECTS[uploadForm.mpharmBranch]?.[semesterKey] || [];
+    }
+
     switch (branchName) {
       case "B.Pharm":
         return BPHARM_SUBJECTS[semesterKey] || [];
       case "D.Pharm":
         return DPHARM_SUBJECTS[semesterKey] || [];
-      case "M.Pharm":
-        return MPHARM_SUBJECTS[semesterKey] || [];
       case "Pharm.D":
         return PHARMD_SUBJECTS[semesterKey] || [];
       case "PhD":
@@ -980,28 +997,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   };
 
   // ========== GET SEMESTER/YEAR OPTIONS BASED ON BRANCH ==========
+  // ✅ FIXED: Ab COURSE_CONFIG se options aayenge, hardcoded 8 nahi
   const getBranchOptions = () => {
     const branchName = getBranchName();
     const config = COURSE_CONFIG[branchName];
-    
-    if (config?.type === "year") {
-      return [
-        { value: "1", label: "1st Year" },
-        { value: "2", label: "2nd Year" }
-      ];
+
+    if (!config || !Array.isArray(config.options)) {
+      return [];
     }
-    
-    // Default semester options
-    return [
-      { value: "1", label: "Semester 1" },
-      { value: "2", label: "Semester 2" },
-      { value: "3", label: "Semester 3" },
-      { value: "4", label: "Semester 4" },
-      { value: "5", label: "Semester 5" },
-      { value: "6", label: "Semester 6" },
-      { value: "7", label: "Semester 7" },
-      { value: "8", label: "Semester 8" }
-    ];
+
+    return config.options;
   };
 
   const getSubjectsForSemester = () => {
@@ -1012,7 +1017,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
     
     if (branchName === "M.Pharm") {
-      return MPHARM_SUBJECTS[uploadForm.semester] || [];
+      if (!uploadForm.mpharmBranch) return [];
+      return MPHARM_SUBJECTS[uploadForm.mpharmBranch]?.[uploadForm.semester] || [];
     }
     
     if (branchName === "Pharm.D") {
@@ -1078,9 +1084,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("Please select a category");
       return;
     }
+
+    const branchName = getBranchName();
+
+    // ✅ M.Pharm branch validation
+    if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
+      alert("Please select M.Pharm specialization (branch)");
+      return;
+    }
     
     // ✅ Language validation for D.Pharm
-    const branchName = getBranchName();
     if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
@@ -1115,12 +1128,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       }
 
       const formData = new FormData();
-      formData.append("branch", getBranchName());
+      // ✅ M.Pharm ke case mein branch = specialization bhej do
+      const branchValue = branchName === "M.Pharm"
+        ? uploadForm.mpharmBranch
+        : branchName;
+
+      formData.append("branch", branchValue);
+      formData.append("course", branchName);
+      formData.append("mpharmBranch", uploadForm.mpharmBranch || "");
       formData.append("category", uploadForm.category);
       formData.append("semester", uploadForm.semester);
       formData.append("subject", uploadForm.subject);
       formData.append("unit", uploadForm.unit);
-      formData.append("language", uploadForm.language || "english"); // ✅ Language send
+      formData.append("language", uploadForm.language || "english");
       formData.append("units", JSON.stringify(uploadForm.units));
       formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
       formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
@@ -1147,11 +1167,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         alert("✅ Upload successful!");
         setUploadForm({
           branch: getBranchName(),
+          mpharmBranch: "",
           category: "",
           semester: "",
           subject: "",
           unit: "",
-          language: "", // ✅ Reset language
+          language: "",
           units: [{ id: 1, name: "Unit 1", topics: [""] }],
           title: "",
           description: "",
@@ -1273,8 +1294,14 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const branchOptions = getBranchOptions();
     const isYearBased = COURSE_CONFIG[branchName]?.type === "year";
     const showLanguage = COURSE_CONFIG[branchName]?.showLanguage || false;
+    const showMPharmBranch = COURSE_CONFIG[branchName]?.showMPharmBranch || false;
 
-    const branchContent = notes.filter(n => n.branch === branchName || n.course === branchName);
+    const branchContent = notes.filter(n => {
+      if (branchName === "M.Pharm") {
+        return n.mpharmBranch && n.branch === n.mpharmBranch;
+      }
+      return n.branch === branchName || n.course === branchName;
+    });
 
     return (
       <div className="animate-fadeIn">
@@ -1302,7 +1329,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800">Upload Content</h3>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
-                  {isYearBased ? "Select Language, Year, Subject & Unit" : "Select Semester, Subject & Unit"}
+                  {branchName === "M.Pharm"
+                    ? "Select Branch, Semester, Subject & Unit"
+                    : isYearBased
+                    ? "Select Language, Year, Subject & Unit"
+                    : "Select Semester, Subject & Unit"}
                 </p>
               </div>
               {uploadForm.unit && uploadForm.subject && (
@@ -1338,7 +1369,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <GraduationCap size={20} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] uppercase tracking-wide text-gray-400 font-['Inter'] font-bold">Branch</p>
+                    <p className="text-[11px] uppercase tracking-wide text-gray-400 font-['Inter'] font-bold">Course</p>
                     <p className="font-['Inter'] font-bold text-gray-800 truncate">{branchName}</p>
                   </div>
                 </div>
@@ -1411,6 +1442,45 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
+              {/* Step 1.7: M.Pharm Branch (Only for M.Pharm) */}
+              {showMPharmBranch && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">1.7</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">M.Pharm Branch / Specialization</label>
+                    {uploadForm.mpharmBranch && (
+                      <span className="text-xs font-['Inter'] font-bold text-indigo-600">
+                        {uploadForm.mpharmBranch} selected
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {MPHARM_BRANCHES.map((b) => (
+                      <button
+                        key={b.value}
+                        type="button"
+                        onClick={() =>
+                          setUploadForm((prev) => ({
+                            ...prev,
+                            mpharmBranch: b.value,
+                            subject: "",
+                            unit: "",
+                          }))
+                        }
+                        className={`p-3.5 rounded-2xl border-2 transition-all duration-300 font-['Inter'] text-left flex items-center gap-2 ${
+                          uploadForm.mpharmBranch === b.value
+                            ? "border-indigo-500 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg scale-[1.02]"
+                            : "border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50 hover:-translate-y-0.5 text-gray-700"
+                        }`}
+                      >
+                        <span className="font-semibold text-sm">{b.label}</span>
+                        {uploadForm.mpharmBranch === b.value && <CheckCircle size={16} className="ml-auto" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Step 2: Semester/Year */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -1422,9 +1492,14 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <select
                   value={uploadForm.semester}
                   onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
-                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50"
+                  disabled={branchName === "M.Pharm" && !uploadForm.mpharmBranch}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select {isYearBased ? "year" : "semester"}</option>
+                  <option value="">
+                    {branchName === "M.Pharm" && !uploadForm.mpharmBranch
+                      ? "Select M.Pharm branch first"
+                      : `Select ${isYearBased ? "year" : "semester"}`}
+                  </option>
                   {branchOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
@@ -1630,6 +1705,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         <h4 className="font-['Space_Grotesk'] font-bold text-gray-800 truncate">{item.title}</h4>
                         <div className="flex flex-wrap gap-1 mt-2">
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{item.category}</span>
+                          {item.mpharmBranch && (
+                            <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                              {item.mpharmBranch}
+                            </span>
+                          )}
                           <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
                             {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester}` : `Sem ${item.semester}`}
                           </span>
