@@ -101,6 +101,17 @@ const upload = multer({
 });
 
 /* =========================================================
+   INTERVIEW MATERIAL UPLOAD
+   ========================================================= */
+
+const interviewUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 300 * 1024 * 1024
+  }
+});
+
+/* =========================================================
    ADMIN AUTH MIDDLEWARE
 ========================================================= */
 
@@ -3972,6 +3983,303 @@ router.put(
 );
 
 /* =========================================================
+   INTERVIEW MATERIALS
+   ========================================================= */
+
+// Admin: list uploaded interview materials
+router.get(
+  "/interview-materials",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const materials = await InterviewMaterial.find()
+        .select("-fileData")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.json({
+        success: true,
+        data: materials,
+        count: materials.length
+      });
+    } catch (error) {
+      console.error("Interview materials GET error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch interview materials",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Admin: upload interview material
+router.post(
+  "/interview-materials",
+  adminAuth,
+  interviewUpload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No file uploaded"
+        });
+      }
+
+      const title = String(
+        req.body?.title || req.file.originalname || "Interview Material"
+      ).trim();
+
+      const description = String(req.body?.description || "").trim();
+
+      const fileData =
+        `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
+
+      const material = await InterviewMaterial.create({
+        title,
+        description,
+        fileName: req.file.originalname,
+        fileType: req.file.mimetype || "application/octet-stream",
+        fileSize: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`,
+        fileData,
+        downloadCount: 0,
+        viewCount: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Interview material uploaded successfully",
+        data: {
+          _id: material._id,
+          id: material._id,
+          title: material.title,
+          description: material.description,
+          fileName: material.fileName,
+          fileType: material.fileType,
+          fileSize: material.fileSize,
+          createdAt: material.createdAt
+        }
+      });
+    } catch (error) {
+      console.error("Interview material upload error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Interview material upload failed",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Admin: delete interview material
+router.delete(
+  "/interview-materials/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid interview material ID"
+        });
+      }
+
+      const deleted = await InterviewMaterial.findByIdAndDelete(id);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "Interview material not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Interview material deleted successfully"
+      });
+    } catch (error) {
+      console.error("Interview material delete error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete interview material",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Public: list interview materials
+router.get(
+  "/public/interview-pdfs",
+  async (req, res) => {
+    try {
+      const materials = await InterviewMaterial.find()
+        .select("-fileData")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.json({
+        success: true,
+        data: materials,
+        count: materials.length
+      });
+    } catch (error) {
+      console.error("Public interview materials error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch interview materials",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Public: preview interview material
+router.get(
+  "/public/preview/interview-pdf/:id",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid interview material ID"
+        });
+      }
+
+      const material = await InterviewMaterial.findById(id);
+
+      if (!material || !material.fileData) {
+        return res.status(404).json({
+          success: false,
+          message: "Interview material file not found"
+        });
+      }
+
+      const match = String(material.fileData).match(
+        /^data:([^;]+);base64,(.+)$/
+      );
+
+      if (!match) {
+        return res.status(500).json({
+          success: false,
+          message: "Invalid stored interview material"
+        });
+      }
+
+      const mimeType =
+        match[1] ||
+        material.fileType ||
+        "application/octet-stream";
+
+      const buffer = Buffer.from(match[2], "base64");
+
+      const safeFileName =
+        String(material.fileName || "interview-material")
+          .replace(/[\r\n"]/g, "")
+          .trim() || "interview-material";
+
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Length", buffer.length);
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${safeFileName}"`
+      );
+
+      await InterviewMaterial.findByIdAndUpdate(
+        id,
+        { $inc: { viewCount: 1 } }
+      );
+
+      return res.end(buffer);
+    } catch (error) {
+      console.error("Interview material preview error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to preview interview material",
+        error: error.message
+      });
+    }
+  }
+);
+
+// Public: download interview material
+router.get(
+  "/public/download/interview-pdf/:id",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid interview material ID"
+        });
+      }
+
+      const material = await InterviewMaterial.findById(id);
+
+      if (!material || !material.fileData) {
+        return res.status(404).json({
+          success: false,
+          message: "Interview material file not found"
+        });
+      }
+
+      const match = String(material.fileData).match(
+        /^data:([^;]+);base64,(.+)$/
+      );
+
+      if (!match) {
+        return res.status(500).json({
+          success: false,
+          message: "Invalid stored interview material"
+        });
+      }
+
+      const mimeType =
+        match[1] ||
+        material.fileType ||
+        "application/octet-stream";
+
+      const buffer = Buffer.from(match[2], "base64");
+
+      const safeFileName =
+        String(material.fileName || "interview-material")
+          .replace(/[\r\n"]/g, "")
+          .trim() || "interview-material";
+
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Length", buffer.length);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeFileName}"`
+      );
+
+      await InterviewMaterial.findByIdAndUpdate(
+        id,
+        { $inc: { downloadCount: 1 } }
+      );
+
+      return res.end(buffer);
+    } catch (error) {
+      console.error("Interview material download error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to download interview material",
+        error: error.message
+      });
+    }
+  }
+);
+
+/* =========================================================
    TEST ROUTE
 ========================================================= */
 
@@ -4014,6 +4322,7 @@ router.get(
       publicInterviewDownloadRoute:
         "/api/admin/public/download/interview-pdf/:id",
 
+
       routes: [
         "POST /upload",
         "POST /login",
@@ -4048,6 +4357,7 @@ router.get(
         "GET /public/interview-pdfs",
         "GET /public/preview/interview-pdf/:id",
         "GET /public/download/interview-pdf/:id",
+
         "GET /public-price"
       ]
     });
