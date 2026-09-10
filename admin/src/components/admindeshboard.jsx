@@ -45,6 +45,11 @@ import {
   Trash,
   Pencil,
   Briefcase,
+  MessageSquare,
+  Loader2,
+  Send,
+  Mail,
+  Crown,
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -404,18 +409,14 @@ const getCourseOptions = (course) => {
   return COURSE_CONFIG[course] || { ...COURSE_CONFIG["B.Pharm"], showLanguage: false, showMPharmBranch: false };
 };
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024;             // 50MB (normal content)
-const MAX_INTERVIEW_FILE_SIZE = 300 * 1024 * 1024;  // 300MB (interview material)
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_INTERVIEW_FILE_SIZE = 300 * 1024 * 1024;
 
 // ===================================================================
 // ================== INTERVIEW MATERIAL COMPONENT ===================
 // ===================================================================
 const InterviewMaterial = () => {
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    file: null,
-  });
+  const [form, setForm] = useState({ title: "", description: "", file: null });
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [materials, setMaterials] = useState([]);
@@ -685,6 +686,255 @@ const InterviewMaterial = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// ===================================================================
+// ==================== ADMIN DOUBTS COMPONENT =======================
+// ===================================================================
+const AdminDoubts = () => {
+  const [doubts, setDoubts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [replyText, setReplyText] = useState({});
+  const [replying, setReplying] = useState(null);
+
+  const token = localStorage.getItem("adminToken");
+
+  const fetchDoubts = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/doubts`);
+      setDoubts(Array.isArray(res?.data?.doubts) ? res.data.doubts : []);
+    } catch (err) {
+      console.error("Fetch doubts error:", err);
+      setDoubts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDoubts();
+  }, []);
+
+  const handleDeleteDoubt = async (doubtId) => {
+    if (!window.confirm("Delete this doubt and all replies?")) return;
+    try {
+      await axios.delete(`${API_URL}/doubts/${doubtId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("✅ Doubt deleted");
+      fetchDoubts();
+    } catch (err) {
+      alert("❌ Failed to delete: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDeleteReply = async (doubtId, replyId) => {
+    if (!window.confirm("Delete this reply?")) return;
+    try {
+      await axios.delete(`${API_URL}/doubts/${doubtId}/reply/${replyId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert("✅ Reply deleted");
+      fetchDoubts();
+    } catch (err) {
+      alert("❌ Failed to delete reply: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleAdminReply = async (doubtId) => {
+    const msg = (replyText[doubtId] || "").trim();
+    if (!msg) {
+      alert("Write something first");
+      return;
+    }
+
+    setReplying(doubtId);
+    try {
+      await axios.post(
+        `${API_URL}/doubts/${doubtId}/admin-reply`,
+        { message: msg },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("✅ Reply posted");
+      setReplyText((prev) => ({ ...prev, [doubtId]: "" }));
+      fetchDoubts();
+    } catch (err) {
+      alert("❌ Failed to reply: " + (err.response?.data?.message || err.message));
+    } finally {
+      setReplying(null);
+    }
+  };
+
+  const formatTime = (date) => new Date(date).toLocaleString();
+
+  return (
+    <div className="animate-fadeIn">
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-3">
+            <MessageSquare className="text-sky-600" size={28} />
+            Doubts Management
+            <span className="text-sm bg-sky-100 text-sky-700 px-3 py-1 rounded-full font-semibold">
+              {doubts.length} total
+            </span>
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">
+            View, reply, and delete user doubts
+          </p>
+        </div>
+
+        <button
+          onClick={fetchDoubts}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-sky-400 transition-all"
+        >
+          <RefreshCw size={14} />
+          Refresh
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-16">
+          <Loader2 size={36} className="text-sky-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading doubts...</p>
+        </div>
+      ) : doubts.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+          <MessageSquare size={48} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">No doubts yet</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {doubts.map((doubt) => (
+            <div
+              key={doubt._id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-md overflow-hidden"
+            >
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+                      {(doubt.userName || "A").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="font-semibold text-gray-800 text-sm">
+                          {doubt.userName}
+                        </span>
+                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock size={11} />
+                          {formatTime(doubt.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                        {doubt.question}
+                      </p>
+                      {doubt.userEmail && (
+                        <p className="text-xs text-gray-400 mt-1 inline-flex items-center gap-1">
+                          <Mail size={11} />
+                          {doubt.userEmail}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleDeleteDoubt(doubt._id)}
+                    className="p-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0"
+                    title="Delete doubt"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+
+                {doubt.replies && doubt.replies.length > 0 && (
+                  <div className="ml-13 pl-4 border-l-2 border-sky-100 space-y-3 mt-4">
+                    {doubt.replies.map((reply) => (
+                      <div
+                        key={reply._id}
+                        className={`flex items-start justify-between gap-3 rounded-xl p-3 ${
+                          reply.isAdmin
+                            ? "bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100"
+                            : "bg-gray-50/60"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 ${
+                              reply.isAdmin
+                                ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                                : "bg-gradient-to-br from-emerald-500 to-teal-600"
+                            }`}
+                          >
+                            {reply.isAdmin ? (
+                              <Crown size={14} />
+                            ) : (
+                              (reply.userName || "A").charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                              <span className="font-semibold text-gray-800 text-xs">
+                                {reply.userName}
+                              </span>
+                              {reply.isAdmin && (
+                                <span className="text-[10px] bg-gradient-to-r from-amber-500 to-orange-600 text-white px-2 py-0.5 rounded-full font-bold inline-flex items-center gap-1">
+                                  <Crown size={8} />
+                                  TEAM
+                                </span>
+                              )}
+                              <span className="text-[10px] text-gray-400">
+                                {formatTime(reply.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 text-sm whitespace-pre-wrap">
+                              {reply.message}
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteReply(doubt._id, reply._id)}
+                          className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0"
+                          title="Delete reply"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t border-gray-100 flex gap-2">
+                  <input
+                    type="text"
+                    value={replyText[doubt._id] || ""}
+                    onChange={(e) =>
+                      setReplyText((prev) => ({ ...prev, [doubt._id]: e.target.value }))
+                    }
+                    placeholder="Reply as PharmaVerse Team..."
+                    className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 bg-white text-gray-800 text-sm outline-none focus:border-sky-400"
+                  />
+                  <button
+                    onClick={() => handleAdminReply(doubt._id)}
+                    disabled={replying === doubt._id}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white text-sm font-semibold hover:scale-[1.02] transition-all disabled:opacity-50"
+                  >
+                    {replying === doubt._id ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                    Reply
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -2201,6 +2451,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
         {/* ========== INTERVIEW MATERIAL TAB ========== */}
         {activeTab === "interview-material" && <InterviewMaterial />}
+
+        {/* ========== DOUBTS TAB ========== */}
+        {activeTab === "doubts" && <AdminDoubts />}
 
         {activeTab === "users" && <UsersComponent />}
 

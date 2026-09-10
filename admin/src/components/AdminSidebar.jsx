@@ -22,6 +22,7 @@ import {
   FlaskRound,
   HeartPulse,
   Briefcase,
+  MessageSquare,
 } from "lucide-react";
 
 const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
@@ -75,6 +76,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     { id: "users", label: "Users", icon: <Users size={22} /> },
     { id: "profile", label: "Profile", icon: <User size={22} /> },
     { id: "notice", label: "Notice", icon: <Bell size={22} /> },
+    { id: "doubts", label: "Doubt Section", icon: <MessageSquare size={22} /> },
   ];
 
   const handleLogout = () => {
