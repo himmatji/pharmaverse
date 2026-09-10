@@ -693,6 +693,8 @@ const InterviewMaterial = () => {
 // ===================================================================
 // ==================== ADMIN DOUBTS COMPONENT =======================
 // ===================================================================
+const DOUBTS_API = "https://api.pharmaverse.co.in/api/doubts";
+
 const AdminDoubts = () => {
   const [doubts, setDoubts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -704,7 +706,7 @@ const AdminDoubts = () => {
   const fetchDoubts = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/doubts`);
+      const res = await axios.get(`${DOUBTS_API}`);
       setDoubts(Array.isArray(res?.data?.doubts) ? res.data.doubts : []);
     } catch (err) {
       console.error("Fetch doubts error:", err);
@@ -721,7 +723,7 @@ const AdminDoubts = () => {
   const handleDeleteDoubt = async (doubtId) => {
     if (!window.confirm("Delete this doubt and all replies?")) return;
     try {
-      await axios.delete(`${API_URL}/doubts/${doubtId}`, {
+      await axios.delete(`${DOUBTS_API}/${doubtId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("✅ Doubt deleted");
@@ -734,7 +736,7 @@ const AdminDoubts = () => {
   const handleDeleteReply = async (doubtId, replyId) => {
     if (!window.confirm("Delete this reply?")) return;
     try {
-      await axios.delete(`${API_URL}/doubts/${doubtId}/reply/${replyId}`, {
+      await axios.delete(`${DOUBTS_API}/${doubtId}/reply/${replyId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       alert("✅ Reply deleted");
@@ -754,7 +756,7 @@ const AdminDoubts = () => {
     setReplying(doubtId);
     try {
       await axios.post(
-        `${API_URL}/doubts/${doubtId}/admin-reply`,
+        `${DOUBTS_API}/${doubtId}/admin-reply`,
         { message: msg },
         { headers: { Authorization: `Bearer ${token}` } }
       );
