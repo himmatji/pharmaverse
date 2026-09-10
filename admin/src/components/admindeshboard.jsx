@@ -997,7 +997,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   };
 
   // ========== GET SEMESTER/YEAR OPTIONS BASED ON BRANCH ==========
-  // ✅ FIXED: Ab COURSE_CONFIG se options aayenge, hardcoded 8 nahi
   const getBranchOptions = () => {
     const branchName = getBranchName();
     const config = COURSE_CONFIG[branchName];
@@ -1087,13 +1086,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
     const branchName = getBranchName();
 
-    // ✅ M.Pharm branch validation
     if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
     
-    // ✅ Language validation for D.Pharm
     if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
@@ -1128,7 +1125,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       }
 
       const formData = new FormData();
-      // ✅ M.Pharm ke case mein branch = specialization bhej do
       const branchValue = branchName === "M.Pharm"
         ? uploadForm.mpharmBranch
         : branchName;
