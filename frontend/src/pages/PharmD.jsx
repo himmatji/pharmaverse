@@ -44,83 +44,18 @@ const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in"
 
 // ========== CATEGORIES ==========
 const categories = [
-  {
-    id: "Notes",
-    label: "Notes",
-    icon: BookOpen,
-    gradient: "from-blue-600 via-indigo-600 to-purple-600",
-    bgGradient: "from-blue-50 via-indigo-50 to-purple-50",
-    glowColor: "rgba(99, 102, 241, 0.3)",
-    description: "Click below to view notes",
-    stats: "500+ PDFs",
-    badge: "Most Popular",
-  },
-  {
-    id: "Exam Crash Course",
-    label: "Exam Crash Course",
-    icon: Rocket,
-    gradient: "from-orange-500 via-amber-500 to-yellow-500",
-    bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
-    glowColor: "rgba(251, 146, 60, 0.3)",
-    description: "Click below to view Exam Crash Course",
-    stats: "5 Years",
-    badge: "🔥 Crash",
-  },
-  {
-    id: "PYQs",
-    label: "PYQs",
-    icon: Brain,
-    gradient: "from-rose-500 via-pink-500 to-purple-500",
-    bgGradient: "from-rose-50 via-pink-50 to-purple-50",
-    glowColor: "rgba(244, 63, 94, 0.3)",
-    description: "Click below to view PYQs",
-    stats: "1000+ Questions",
-    badge: "📝 Exam",
-  },
+  { id: "Notes", label: "Notes", icon: BookOpen, gradient: "from-blue-600 via-indigo-600 to-purple-600", bgGradient: "from-blue-50 via-indigo-50 to-purple-50", glowColor: "rgba(99, 102, 241, 0.3)", description: "Click below to view notes", stats: "500+ PDFs", badge: "Most Popular" },
+  { id: "Exam Crash Course", label: "Exam Crash Course", icon: Rocket, gradient: "from-orange-500 via-amber-500 to-yellow-500", bgGradient: "from-orange-50 via-amber-50 to-yellow-50", glowColor: "rgba(251, 146, 60, 0.3)", description: "Click below to view Exam Crash Course", stats: "5 Years", badge: "🔥 Crash" },
+  { id: "PYQs", label: "PYQs", icon: Brain, gradient: "from-rose-500 via-pink-500 to-purple-500", bgGradient: "from-rose-50 via-pink-50 to-purple-50", glowColor: "rgba(244, 63, 94, 0.3)", description: "Click below to view PYQs", stats: "1000+ Questions", badge: "📝 Exam" },
 ];
 
 // ========== PHARM.D SUBJECTS (YEAR-WISE) — 5 YEARS ONLY ==========
 const PHARMD_SUBJECTS = {
-  1: [
-    "Human Anatomy & Physiology",
-    "Pharmaceutics-I",
-    "Medicinal Biochemistry",
-    "Pharmaceutical Organic Chemistry",
-    "Pharmaceutical Inorganic Chemistry",
-    "Remedial Mathematics / Biology",
-  ],
-  2: [
-    "Pathophysiology",
-    "Pharmaceutical Microbiology",
-    "Pharmacognosy & Phytopharmaceuticals",
-    "Pharmacology-I",
-    "Community Pharmacy",
-    "Pharmacotherapeutics-I",
-  ],
-  3: [
-    "Pharmacology-II",
-    "Pharmaceutical Analysis",
-    "Pharmacotherapeutics-II",
-    "Pharmaceutical Jurisprudence",
-    "Medicinal Chemistry",
-    "Pharmaceutical Formulations",
-  ],
-  4: [
-    "Pharmacotherapeutics-III",
-    "Hospital Pharmacy",
-    "Clinical Pharmacy",
-    "Biostatistics & Research Methodology",
-    "Biopharmaceutics & Pharmacokinetics",
-    "Clinical Toxicology",
-  ],
-  5: [
-    "Clinical Research",
-    "Pharmacoepidemiology",
-    "Pharmacoeconomics",
-    "Clinical Pharmacokinetics",
-    "Clerkship",
-    "Project Work",
-  ],
+  1: ["Human Anatomy & Physiology", "Pharmaceutics-I", "Medicinal Biochemistry", "Pharmaceutical Organic Chemistry", "Pharmaceutical Inorganic Chemistry", "Remedial Mathematics / Biology"],
+  2: ["Pathophysiology", "Pharmaceutical Microbiology", "Pharmacognosy & Phytopharmaceuticals", "Pharmacology-I", "Community Pharmacy", "Pharmacotherapeutics-I"],
+  3: ["Pharmacology-II", "Pharmaceutical Analysis", "Pharmacotherapeutics-II", "Pharmaceutical Jurisprudence", "Medicinal Chemistry", "Pharmaceutical Formulations"],
+  4: ["Pharmacotherapeutics-III", "Hospital Pharmacy", "Clinical Pharmacy", "Biostatistics & Research Methodology", "Biopharmaceutics & Pharmacokinetics", "Clinical Toxicology"],
+  5: ["Clinical Research", "Pharmacoepidemiology", "Pharmacoeconomics", "Clinical Pharmacokinetics", "Clerkship", "Project Work"],
 };
 
 // ========== YEAR COLORS ==========
@@ -183,17 +118,26 @@ const PharmD = () => {
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
+  // ✅ Direct files for Crash Course / PYQs
+  const [directFiles, setDirectFiles] = useState([]);
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
+  const [directError, setDirectError] = useState("");
+
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
 
   const isPYQ = () => String(selectedCategory || "").trim().toLowerCase() === "pyqs";
 
+  const isDirectFilesCategory = () =>
+    selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
+
   const getAvailableSubjects = () => {
     const year = Number(selectedYear);
     return Array.isArray(PHARMD_SUBJECTS[year]) ? PHARMD_SUBJECTS[year] : [];
   };
 
+  // ========== FETCH NOTES (year → subject → units) ==========
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedYear || !selectedSubject) {
       setUnitContent([]);
@@ -203,13 +147,7 @@ const PharmD = () => {
       return;
     }
 
-    const cacheKey = [
-      "Pharm.D",
-      String(selectedCategory).trim(),
-      String(selectedYear).trim(),
-      String(selectedSubject).trim(),
-    ].join("||");
-
+    const cacheKey = ["Pharm.D", selectedCategory, selectedYear, selectedSubject].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -304,23 +242,15 @@ const PharmD = () => {
             (itemYearNumber != null && selectedYearNumber != null && itemYearNumber === selectedYearNumber) ||
             String(itemYear).trim() === String(selectedYear).trim();
 
-          const subjectMatches =
-            itemSubject == null || String(itemSubject).trim() === String(selectedSubject).trim();
-
-          const categoryMatches =
-            itemCategory == null || String(itemCategory).trim() === String(selectedCategory).trim();
+          const subjectMatches = itemSubject == null || String(itemSubject).trim() === String(selectedSubject).trim();
+          const categoryMatches = itemCategory == null || String(itemCategory).trim() === String(selectedCategory).trim();
 
           return yearMatches && subjectMatches && categoryMatches;
         });
 
       const derivedUnits = buildUnits(rawContent);
 
-      contentCacheRef.current.set(cacheKey, {
-        content: rawContent,
-        units: derivedUnits,
-        timestamp: Date.now(),
-      });
-
+      contentCacheRef.current.set(cacheKey, { content: rawContent, units: derivedUnits, timestamp: Date.now() });
       setUnitContent(rawContent);
       setUnits(derivedUnits);
       setContentError("");
@@ -341,8 +271,79 @@ const PharmD = () => {
     }
   };
 
+  // ✅ FETCH DIRECT FILES (Crash Course / PYQs)
+  const fetchDirectFiles = async () => {
+    if (!selectedCategory) return;
+
+    const cacheKey = ["Pharm.D", selectedCategory, "direct"].join("||");
+    const requestId = ++contentRequestIdRef.current;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
+    }
+
+    const cached = contentCacheRef.current.get(cacheKey);
+    if (cached) {
+      setDirectFiles(cached.files);
+    } else {
+      setDirectFiles([]);
+    }
+
+    setIsDirectLoading(true);
+    setDirectError("");
+
+    const controller = new AbortController();
+    contentAbortControllerRef.current = controller;
+
+    const getRawFiles = (data) => {
+      if (Array.isArray(data)) return data;
+      const candidates = [data?.data, data?.files, data?.documents, data?.results, data?.items];
+      for (const v of candidates) if (Array.isArray(v)) return v;
+      return [];
+    };
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
+        params: { course: "Pharm.D", category: selectedCategory },
+        signal: controller.signal,
+        timeout: 15000,
+        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      });
+
+      if (requestId !== contentRequestIdRef.current) return;
+
+      const files = getRawFiles(res?.data)
+        .filter(Boolean)
+        .filter((item) => {
+          const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
+          return catMatch;
+        });
+
+      contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
+      setDirectFiles(files);
+      setDirectError("");
+    } catch (error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
+      if (requestId !== contentRequestIdRef.current) return;
+      console.error("Direct files fetch error:", error);
+      setDirectError(error?.response?.data?.message || "Files load nahi ho paayi.");
+      if (!cached) setDirectFiles([]);
+    } finally {
+      if (requestId === contentRequestIdRef.current) {
+        setIsDirectLoading(false);
+        contentAbortControllerRef.current = null;
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchUnitContent();
+    if (isDirectFilesCategory()) {
+      fetchDirectFiles();
+    } else {
+      fetchUnitContent();
+    }
+
     return () => {
       if (contentAbortControllerRef.current) {
         contentAbortControllerRef.current.abort();
@@ -351,16 +352,30 @@ const PharmD = () => {
     };
   }, [selectedCategory, selectedYear, selectedSubject]);
 
+  // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+
     setSelectedCategory(categoryId);
-    setCurrentStep(2);
     setSelectedYear(null);
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
+
+    // Notes → Step 2 (year), Crash Course/PYQs → Step 4 (direct files)
+    if (categoryId === "Notes") {
+      setCurrentStep(2);
+    } else {
+      setCurrentStep(4);
+    }
   };
 
   const handleYearClick = (year) => {
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+
     setSelectedYear(year);
     setCurrentStep(3);
     setSelectedSubject(null);
@@ -383,10 +398,16 @@ const PharmD = () => {
       setCurrentStep(2);
       setSelectedYear(null);
     } else if (currentStep === 4) {
-      setCurrentStep(3);
-      setSelectedSubject(null);
-      setUnits([]);
-      setUnitContent([]);
+      if (isDirectFilesCategory()) {
+        setCurrentStep(1);
+        setSelectedCategory(null);
+        setDirectFiles([]);
+      } else {
+        setCurrentStep(3);
+        setSelectedSubject(null);
+        setUnits([]);
+        setUnitContent([]);
+      }
     }
   };
 
@@ -397,158 +418,52 @@ const PharmD = () => {
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
   // ========== STYLES ==========
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
-      @keyframes floatMedium {
-        0%, 100% { transform: translateY(0px) scale(1); }
-        50% { transform: translateY(-12px) scale(1.02); }
-      }
-      @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
-        50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); }
-      }
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(60px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-40px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.7) rotate(-5deg); }
-        to { opacity: 1; transform: scale(1) rotate(0deg); }
-      }
-      @keyframes rotateGlow {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes pop {
-        0% { transform: scale(0.8); opacity: 0; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-      }
-      @keyframes premiumFloat {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-8px); }
-      }
-      @keyframes premiumShine {
-        0% { background-position: -200% center; }
-        100% { background-position: 200% center; }
-      }
-      @keyframes premiumPulse {
-        0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.05); }
-      }
-      @keyframes premiumBorderFlow {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      @keyframes premiumSparkle {
-        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-        50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
-      }
-      @keyframes premiumNumberPop {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1) rotate(-3deg); }
-        100% { transform: scale(1) rotate(0deg); }
-      }
-      @keyframes floatText {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-6px); }
-      }
-      @keyframes gradientMove {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      @keyframes heroFadeIn {
-        0% { opacity: 0; transform: translateY(30px); }
-        100% { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes heroParticleFloat {
-        0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.4; }
-        50% { transform: translateY(-20px) translateX(10px); opacity: 0.8; }
-      }
+      @keyframes floatMedium { 0%, 100% { transform: translateY(0px) scale(1); } 50% { transform: translateY(-12px) scale(1.02); } }
+      @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); } 50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); } }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(60px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-40px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes scaleIn { from { opacity: 0; transform: scale(0.7) rotate(-5deg); } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+      @keyframes rotateGlow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes premiumFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+      @keyframes premiumShine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+      @keyframes premiumPulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+      @keyframes premiumBorderFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+      @keyframes premiumSparkle { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; } 50% { transform: scale(1.2) rotate(180deg); opacity: 1; } }
+      @keyframes premiumNumberPop { 0% { transform: scale(1); } 50% { transform: scale(1.1) rotate(-3deg); } 100% { transform: scale(1) rotate(0deg); } }
+      @keyframes floatText { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+      @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+      @keyframes heroFadeIn { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
+      @keyframes heroParticleFloat { 0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.4; } 50% { transform: translateY(-20px) translateX(10px); opacity: 0.8; } }
 
-      .premium-card {
-        animation: premiumFloat 4s ease-in-out infinite;
-        transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
-      }
+      .premium-card { animation: premiumFloat 4s ease-in-out infinite; transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1); }
       .premium-card::before {
-        content: '';
-        position: absolute;
-        inset: -2px;
-        border-radius: 16px;
-        padding: 2px;
-        background: linear-gradient(90deg,
-          rgba(99,102,241,0.3),
-          rgba(168,85,247,0.3),
-          rgba(236,72,153,0.3),
-          rgba(99,102,241,0.3)
-        );
+        content: ''; position: absolute; inset: -2px; border-radius: 16px; padding: 2px;
+        background: linear-gradient(90deg, rgba(99,102,241,0.3), rgba(168,85,247,0.3), rgba(236,72,153,0.3), rgba(99,102,241,0.3));
         background-size: 300% 100%;
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        animation: premiumBorderFlow 6s ease-in-out infinite;
-        opacity: 0.7;
-        pointer-events: none;
+        -webkit-mask-composite: xor; mask-composite: exclude;
+        animation: premiumBorderFlow 6s ease-in-out infinite; opacity: 0.7; pointer-events: none;
       }
-      .premium-card .glow-ring {
-        position: absolute;
-        inset: -4px;
-        border-radius: 18px;
-        background: radial-gradient(circle at var(--x, 50%) var(--y, 50%),
-          rgba(255,255,255,0.15) 0%,
-          transparent 60%
-        );
-        opacity: 0.6;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-      }
-      .premium-card .shine-overlay {
-        position: absolute;
-        inset: 0;
-        border-radius: 14px;
-        background: linear-gradient(
-          135deg,
-          rgba(255,255,255,0.4) 0%,
-          rgba(255,255,255,0) 40%,
-          rgba(255,255,255,0) 60%,
-          rgba(255,255,255,0.2) 100%
-        );
-        background-size: 300% 100%;
-        animation: premiumShine 8s ease-in-out infinite;
-        pointer-events: none;
-      }
+      .premium-card .glow-ring { position: absolute; inset: -4px; border-radius: 18px; background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.15) 0%, transparent 60%); opacity: 0.6; pointer-events: none; transition: opacity 0.3s ease; }
+      .premium-card .shine-overlay { position: absolute; inset: 0; border-radius: 14px; background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.2) 100%); background-size: 300% 100%; animation: premiumShine 8s ease-in-out infinite; pointer-events: none; }
       .premium-card .sparkle-dot { animation: premiumSparkle 3s ease-in-out infinite; }
       .premium-card .number-glow { animation: premiumNumberPop 3s ease-in-out infinite; }
       .premium-card .status-pulse { animation: premiumPulse 2s ease-in-out infinite; }
-      .premium-card:hover {
-        transform: translateY(-12px) scale(1.02);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-      }
+      .premium-card:hover { transform: translateY(-12px) scale(1.02); box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
       .premium-card:hover .glow-ring { opacity: 1; }
-      .premium-card .gradient-text {
-        background-size: 200% auto;
-        animation: premiumShine 4s ease-in-out infinite;
-      }
+      .premium-card .gradient-text { background-size: 200% auto; animation: premiumShine 4s ease-in-out infinite; }
 
-      .category-card-1 { animation-delay: 0.1s; }
-      .category-card-2 { animation-delay: 0.2s; }
-      .category-card-3 { animation-delay: 0.3s; }
-
-      .year-card-1 { animation-delay: 0s; }
-      .year-card-2 { animation-delay: 0.15s; }
-      .year-card-3 { animation-delay: 0.3s; }
-      .year-card-4 { animation-delay: 0.45s; }
-      .year-card-5 { animation-delay: 0.6s; }
+      .category-card-1 { animation-delay: 0.1s; } .category-card-2 { animation-delay: 0.2s; } .category-card-3 { animation-delay: 0.3s; }
+      .year-card-1 { animation-delay: 0s; } .year-card-2 { animation-delay: 0.15s; } .year-card-3 { animation-delay: 0.3s; }
+      .year-card-4 { animation-delay: 0.45s; } .year-card-5 { animation-delay: 0.6s; }
 
       .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
       .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -560,15 +475,7 @@ const PharmD = () => {
       .animate-hero-fade { animation: heroFadeIn 1s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-hero-particle { animation: heroParticleFloat 6s ease-in-out infinite; }
 
-      .glass-effect {
-        background: rgba(255,255,255,0.7);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-      }
-
-      @media (max-width: 768px) {
-        .year-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
-      }
+      .glass-effect { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
     `;
     document.head.appendChild(styleSheet);
     return () => document.head.removeChild(styleSheet);
@@ -576,8 +483,7 @@ const PharmD = () => {
 
   useEffect(() => {
     const link = document.createElement("link");
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap";
     link.rel = "stylesheet";
     document.head.appendChild(link);
     return () => document.head.removeChild(link);
@@ -775,11 +681,7 @@ const PharmD = () => {
             const subjectCount = PHARMD_SUBJECTS[yr]?.length || 0;
 
             return (
-              <div
-                key={yr}
-                onClick={() => handleYearClick(yr)}
-                className="group relative cursor-pointer"
-              >
+              <div key={yr} onClick={() => handleYearClick(yr)} className="group relative cursor-pointer">
                 <div
                   className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
@@ -793,13 +695,7 @@ const PharmD = () => {
                     boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)`,
                   }}
                 >
-                  <div
-                    className="glow-ring"
-                    style={{
-                      "--x": `${mousePositions[cardId]?.x || 50}%`,
-                      "--y": `${mousePositions[cardId]?.y || 50}%`,
-                    }}
-                  ></div>
+                  <div className="glow-ring" style={{ "--x": `${mousePositions[cardId]?.x || 50}%`, "--y": `${mousePositions[cardId]?.y || 50}%` }}></div>
                   <div className="shine-overlay"></div>
                   <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-2xl" style={{
@@ -807,12 +703,8 @@ const PharmD = () => {
                       animation: "rotateGlow 4s linear infinite",
                     }}></div>
                   </div>
-                  <div className="absolute top-2 right-2 sparkle-dot">
-                    <Sparkles size={12} className="text-white opacity-70" />
-                  </div>
-                  <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: "1.5s" }}>
-                    <Sparkles size={8} className="text-white opacity-50" />
-                  </div>
+                  <div className="absolute top-2 right-2 sparkle-dot"><Sparkles size={12} className="text-white opacity-70" /></div>
+                  <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: "1.5s" }}><Sparkles size={8} className="text-white opacity-50" /></div>
                   <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
 
                   <div className="relative z-10">
@@ -824,14 +716,11 @@ const PharmD = () => {
                     </div>
 
                     <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                      <CheckCircle size={11} className="sm:size-3" />
-                      Open
+                      <CheckCircle size={11} className="sm:size-3" />Open
                     </div>
 
                     <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
-                    <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">
-                      {subjectCount} Subjects
-                    </div>
+                    <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{subjectCount} Subjects</div>
                   </div>
                 </div>
               </div>
@@ -936,15 +825,13 @@ const PharmD = () => {
 
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                        {isPYQ() ? "Click to view PYQ papers" : "Click to view units"}
-                      </span>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view units</span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
 
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-purple-600 transition-colors duration-300 flex items-center gap-1">
-                        {isPYQ() ? "View Papers" : "Explore Subject"}
+                        Explore Subject
                         <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
                       </span>
                       <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
@@ -954,10 +841,6 @@ const PharmD = () => {
                   </div>
 
                   <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
-
-                  <div className="absolute top-4 right-4">
-                    <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gradient-to-r ${colors.gradient} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
-                  </div>
                 </div>
               </div>
             );
@@ -977,11 +860,172 @@ const PharmD = () => {
     );
   };
 
-  // ========== RENDER CONTENT STEP ==========
+  // ========== RENDER DIRECT FILES (Crash Course / PYQs) ==========
+  const renderDirectFilesStep = () => {
+    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
+    const categoryData = categories.find((c) => c.id === selectedCategory);
+    const Icon = categoryData?.icon || FileText;
+
+    return (
+      <div className="animate-slide-up">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button
+            onClick={goBack}
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
+          >
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+            Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categoryData?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
+              <Icon className="text-white" size={18} />
+            </div>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 mb-5 shadow-inner animate-float-text">
+            <Sparkles className="text-amber-600" size={18} />
+            <span className="text-xs font-['Inter'] font-bold text-amber-700 tracking-widest uppercase">Direct Files</span>
+            <Trophy className="text-amber-600" size={18} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            <span className={`bg-gradient-to-r ${categoryData?.gradient} bg-clip-text text-transparent animate-gradient`}>
+              {categoryLabel}
+            </span>
+          </h2>
+          <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryData?.gradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            {directFiles.length > 0 ? `${directFiles.length} Files Available` : "No files available yet"}
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
+          </p>
+        </div>
+
+        {isDirectLoading && directFiles.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Files...</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">Fetching content from database...</p>
+          </div>
+        ) : directError ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <FolderOpen className="text-rose-400" size={48} />
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Load Failed</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">{directError}</p>
+            <button
+              onClick={fetchDirectFiles}
+              className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
+            >
+              Retry
+            </button>
+          </div>
+        ) : directFiles.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <FolderOpen className="text-gray-400" size={48} />
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Files Available</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any files for this section yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            {directFiles.map((item, index) => {
+              const colors = unitColors[index % unitColors.length];
+              const cardId = `direct-${item._id || index}`;
+              return (
+                <div
+                  key={item._id || index}
+                  className="group relative cursor-pointer animate-pop"
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                >
+                  <div
+                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    style={{
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
+                    }}
+                  ></div>
+
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
+                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 rounded-2xl" style={{
+                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                        animation: "rotateGlow 4s linear infinite",
+                      }}></div>
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${colors.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        <FileText className="text-white" size={26} />
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2 line-clamp-2 leading-tight">
+                        {item.title || item.fileName || "Untitled File"}
+                      </h3>
+
+                      {item.description && (
+                        <p className="text-xs font-['Inter'] text-gray-500 leading-relaxed mb-4 line-clamp-3">{item.description}</p>
+                      )}
+
+                      {item.fileSize && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-xs font-['Inter'] font-medium text-gray-400 bg-white/70 px-2.5 py-1 rounded-full border border-white/60">
+                            📄 {item.fileSize}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleView(item);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                        >
+                          <Eye size={14} />Preview
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownload(item);
+                          }}
+                          className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                        >
+                          <Download size={14} />Download
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gradient-to-r ${colors.gradient} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ========== RENDER CONTENT STEP (Units for Notes) ==========
   const renderContentStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : selectedYear === 4 ? "4th Year" : "5th Year";
-    const pyq = isPYQ();
 
     return (
       <div className="animate-slide-up">
@@ -1006,27 +1050,19 @@ const PharmD = () => {
         </div>
 
         <div className="text-center mb-12">
-          <div className={`inline-flex items-center gap-3 px-6 py-3 rounded-full mb-5 shadow-inner animate-float-text ${pyq ? "bg-gradient-to-r from-rose-100 to-pink-100" : "bg-gradient-to-r from-emerald-100 to-teal-100"}`}>
-            <Sparkles className={pyq ? "text-rose-600" : "text-emerald-600"} size={18} />
-            <span className={`text-xs font-['Inter'] font-bold tracking-widest uppercase ${pyq ? "text-rose-700" : "text-emerald-700"}`}>
-              {pyq ? "Question Papers" : "Select Unit"}
-            </span>
-            <Trophy className={pyq ? "text-rose-600" : "text-emerald-600"} size={18} />
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner animate-float-text">
+            <Sparkles className="text-emerald-600" size={18} />
+            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Select Unit</span>
+            <Trophy className="text-emerald-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
-            {pyq ? (
-              <>View <span className="bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 bg-clip-text text-transparent animate-gradient">PYQs</span></>
-            ) : (
-              <>Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Unit</span></>
-            )}
+            Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Unit</span>
           </h2>
-          <div className={`w-24 h-1.5 mx-auto rounded-full mt-4 animate-gradient ${pyq ? "bg-gradient-to-r from-rose-500 via-pink-500 to-purple-500" : "bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500"}`}></div>
+          <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
-            <span className={`inline-block w-2 h-2 rounded-full animate-pulse ${pyq ? "bg-rose-500" : "bg-emerald-500"}`}></span>
-            {pyq
-              ? (unitContent.length > 0 ? `${unitContent.length} Papers Available` : "No papers available yet")
-              : (units.length > 0 ? `${units.length} Units Available` : "No units available yet")}
-            <span className={`inline-block w-2 h-2 rounded-full animate-pulse ${pyq ? "bg-rose-500" : "bg-emerald-500"}`} style={{ animationDelay: "0.5s" }}></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {units.length > 0 ? `${units.length} Units Available` : "No units available yet"}
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
           </p>
         </div>
 
@@ -1035,261 +1071,157 @@ const PharmD = () => {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
               <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Content...</h3>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Units...</h3>
             <p className="font-['Inter'] text-gray-400 mt-2">Content database se fetch ho raha hai...</p>
           </div>
-        ) : pyq ? (
-          unitContent.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
-                <FolderOpen className="text-gray-400" size={48} />
-              </div>
-              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
-                {contentError ? "Content Load Failed" : "No PYQs Available"}
-              </h3>
-              <p className="font-['Inter'] text-gray-400 mt-2">
-                {contentError || "Admin hasn't uploaded any PYQ papers for this subject yet."}
-              </p>
-              {contentError && (
-                <button
-                  type="button"
-                  onClick={fetchUnitContent}
-                  className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
-                >
-                  Retry
-                </button>
-              )}
+        ) : units.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+              <FolderOpen className="text-gray-400" size={48} />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
-              {unitContent.map((item, index) => {
-                const colors = unitColors[index % unitColors.length];
-                return (
-                  <div
-                    key={item._id}
-                    className="group relative animate-pop"
-                    style={{ animationDelay: `${index * 0.06}s` }}
-                  >
-                    <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
-                      <div className="relative z-10">
-                        <div className="flex items-center gap-2 mb-3">
-                          <FileText size={18} className="text-rose-600 shrink-0" />
-                          <span className="text-xs font-['Inter'] font-bold text-rose-600 uppercase tracking-wide">
-                            {item.paperType || "PYQ Paper"}
-                          </span>
-                        </div>
-                        <h3 className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold text-gray-800 mb-3 leading-tight">
-                          {item.title || item.fileName || "Question Paper"}
-                        </h3>
-                        {item.year && (
-                          <div className="flex flex-wrap gap-1.5 mb-3">
-                            <span className="text-xs bg-white/70 text-gray-700 px-2.5 py-1 rounded-full border border-white/50">
-                              Year {item.year}
-                            </span>
-                            {item.examYear && (
-                              <span className="text-xs bg-white/70 text-gray-700 px-2.5 py-1 rounded-full border border-white/50">
-                                {item.examYear}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 mt-4">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleView(item);
-                            }}
-                            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                          >
-                            <Eye size={14} />
-                            Preview
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(item);
-                            }}
-                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                          >
-                            <Download size={14} />
-                            Download
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
+              {contentError ? "Content Load Failed" : "No Units Available"}
+            </h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">
+              {contentError || "Admin hasn't uploaded any content for this subject yet."}
+            </p>
+            {contentError && (
+              <button
+                type="button"
+                onClick={fetchUnitContent}
+                className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         ) : (
-          units.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
-                <FolderOpen className="text-gray-400" size={48} />
-              </div>
-              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
-                {contentError ? "Content Load Failed" : "No Units Available"}
-              </h3>
-              <p className="font-['Inter'] text-gray-400 mt-2">
-                {contentError || "Admin hasn't uploaded any content for this subject yet."}
-              </p>
-              {contentError && (
-                <button
-                  type="button"
-                  onClick={fetchUnitContent}
-                  className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            {units.map((unit, index) => {
+              const colors = unitColors[index % unitColors.length];
+              const cardId = `unit-${unit.id}`;
+
+              const content = unitContent.filter((item) => {
+                const itemUnit = Number(item?.unit ?? item?.chapter);
+                const unitId = Number(unit?.id);
+                return Number.isInteger(itemUnit) && itemUnit > 0 && Number.isInteger(unitId) && itemUnit === unitId;
+              });
+
+              return (
+                <div
+                  key={unit.id}
+                  className="group relative animate-pop"
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
                 >
-                  Retry
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
-              {units.map((unit, index) => {
-                const colors = unitColors[index % unitColors.length];
-                const cardId = `unit-${unit.id}`;
-
-                const content = unitContent.filter((item) => {
-                  const itemUnit = Number(item?.unit ?? item?.chapter);
-                  const unitId = Number(unit?.id);
-                  return (
-                    Number.isInteger(itemUnit) &&
-                    itemUnit > 0 &&
-                    Number.isInteger(unitId) &&
-                    itemUnit === unitId
-                  );
-                });
-
-                return (
                   <div
-                    key={unit.id}
-                    className="group relative cursor-pointer animate-pop"
-                    style={{ animationDelay: `${index * 0.06}s` }}
-                    onMouseEnter={() => setHoveredCard(cardId)}
-                    onMouseLeave={() => setHoveredCard(null)}
-                    onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-                  >
-                    <div
-                      className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
-                      style={{
-                        background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
-                      }}
-                    ></div>
+                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    style={{
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
+                    }}
+                  ></div>
 
-                    <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
-                      <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                        <div className="absolute inset-0 rounded-2xl" style={{
-                          background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                          animation: "rotateGlow 4s linear infinite",
-                        }}></div>
-                      </div>
-
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-                      <div className="relative z-10">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
-                            {unit.name}
-                          </div>
-                          <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
-                            {unit.id || index + 1}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                          <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                            {unit.topics?.length || 0} {unit.topics?.length === 1 ? "Topic" : "Topics"} • {content.length} {content.length === 1 ? "Document" : "Documents"}
-                          </span>
-                          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                        </div>
-
-                        {unit.topics && unit.topics.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {unit.topics.slice(0, 3).map((topic, i) => (
-                              <span
-                                key={i}
-                                className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50"
-                              >
-                                {topic}
-                              </span>
-                            ))}
-                            {unit.topics.length > 3 && (
-                              <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
-                                +{unit.topics.length - 3} more
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {content.length > 0 && (
-                          <div className="mt-5 pt-4 border-t border-gray-200/50">
-                            <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
-                              📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
-                            </p>
-
-                            <div className="space-y-3">
-                              {content.map((item) => (
-                                <div
-                                  key={item._id}
-                                  className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300"
-                                >
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <FileText size={16} className="text-blue-600 shrink-0" />
-                                    <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
-                                      {item.title || item.fileName || "Document"}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleView(item);
-                                      }}
-                                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                                    >
-                                      <Eye size={14} />
-                                      Preview
-                                    </button>
-
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDownload(item);
-                                      }}
-                                      className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                                    >
-                                      <Download size={14} />
-                                      Download
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {content.length === 0 && (
-                          <div className="mt-5 pt-4 border-t border-gray-200/50">
-                            <p className="text-xs font-['Inter'] text-gray-400">
-                              No documents uploaded yet for this unit
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
+                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 rounded-2xl" style={{
+                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                        animation: "rotateGlow 4s linear infinite",
+                      }}></div>
                     </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                          {unit.name}
+                        </div>
+                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
+                          {unit.id || index + 1}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                        <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? "Topic" : "Topics"} • {content.length} {content.length === 1 ? "Document" : "Documents"}
+                        </span>
+                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                      </div>
+
+                      {unit.topics && unit.topics.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {unit.topics.slice(0, 3).map((topic, i) => (
+                            <span key={i} className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50">
+                              {topic}
+                            </span>
+                          ))}
+                          {unit.topics.length > 3 && (
+                            <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
+                              +{unit.topics.length - 3} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {content.length > 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3">
+                            📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                          </p>
+
+                          <div className="space-y-3">
+                            {content.map((item) => (
+                              <div key={item._id} className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <FileText size={16} className="text-blue-600 shrink-0" />
+                                  <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
+                                    {item.title || item.fileName || "Document"}
+                                  </span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleView(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                  >
+                                    <Eye size={14} />
+                                    Preview
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(item);
+                                    }}
+                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                  >
+                                    <Download size={14} />
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {content.length === 0 && (
+                        <div className="mt-5 pt-4 border-t border-gray-200/50">
+                          <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
                   </div>
-                );
-              })}
-            </div>
-          )
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     );
@@ -1297,17 +1229,24 @@ const PharmD = () => {
 
   // ========== PROGRESS INDICATOR ==========
   const renderProgress = () => {
-    const steps = [
-      { number: 1, label: "Category", icon: BookOpen },
-      { number: 2, label: "Year", icon: GraduationCap },
-      { number: 3, label: "Subject", icon: Book },
-      { number: 4, label: isPYQ() ? "Papers" : "Unit", icon: isPYQ() ? FileText : Layers },
-    ];
+    const steps = isDirectFilesCategory()
+      ? [
+          { number: 1, label: "Category", icon: BookOpen },
+          { number: 4, label: "Files", icon: FileText },
+        ]
+      : [
+          { number: 1, label: "Category", icon: BookOpen },
+          { number: 2, label: "Year", icon: GraduationCap },
+          { number: 3, label: "Subject", icon: Book },
+          { number: 4, label: isPYQ() ? "Papers" : "Unit", icon: isPYQ() ? FileText : Layers },
+        ];
 
     return (
       <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-12">
         {steps.map((step, index) => {
-          const isCompleted = currentStep > step.number;
+          const isCompleted =
+            currentStep > step.number ||
+            (isDirectFilesCategory() && currentStep === 4 && step.number === 1);
           const isActive = currentStep === step.number;
           const Icon = step.icon;
 
@@ -1322,9 +1261,7 @@ const PharmD = () => {
                     : "bg-gray-200 text-gray-500"
                 }`}>
                   {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
-                  {isActive && (
-                    <div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>
-                  )}
+                  {isActive && <div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>}
                 </div>
                 <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${
                   isActive ? "text-blue-600 font-bold animate-pulse" : isCompleted ? "text-emerald-600" : "text-gray-400"
@@ -1391,10 +1328,9 @@ const PharmD = () => {
         </div>
       )}
 
-      {/* ========== PREMIUM HERO BANNER ========== */}
+      {/* HERO */}
       <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
-          {/* Background Image */}
           <div
             className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
             style={{
@@ -1407,51 +1343,37 @@ const PharmD = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-[#071426]/80 via-transparent to-transparent"></div>
           </div>
 
-          {/* Animated Gradient Overlay */}
           <div className="absolute left-0 top-0 h-full w-[55%] bg-gradient-to-r from-[#071426]/90 via-[#0f2847]/45 to-transparent pointer-events-none"></div>
 
-          {/* Animated Floating Particles */}
           <div className="absolute top-16 right-10 w-2 h-2 rounded-full bg-blue-400/40 animate-hero-particle"></div>
           <div className="absolute top-32 right-24 w-3 h-3 rounded-full bg-purple-400/30 animate-hero-particle" style={{ animationDelay: "1s" }}></div>
           <div className="absolute bottom-24 right-16 w-1.5 h-1.5 rounded-full bg-cyan-400/40 animate-hero-particle" style={{ animationDelay: "2s" }}></div>
           <div className="absolute top-1/2 right-40 w-2.5 h-2.5 rounded-full bg-sky-400/30 animate-hero-particle" style={{ animationDelay: "3s" }}></div>
           <div className="absolute bottom-32 right-32 w-2 h-2 rounded-full bg-pink-400/30 animate-hero-particle" style={{ animationDelay: "4s" }}></div>
 
-          {/* Content */}
           <div className="relative z-20 flex items-end h-full px-4 sm:px-8 md:px-16 lg:px-24 pb-10 sm:pb-12 md:pb-14 lg:pb-16">
             <div className="max-w-2xl animate-hero-fade">
-              {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-500/20 to-purple-500/20 backdrop-blur-sm border border-white/10 mb-4 animate-float-text">
                 <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
-                <span className="text-xs font-['Inter'] font-semibold text-sky-300 tracking-widest uppercase">
-                  Pharm.D Program
-                </span>
+                <span className="text-xs font-['Inter'] font-semibold text-sky-300 tracking-widest uppercase">Pharm.D Program</span>
                 <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
               </div>
 
-              {/* Title with Gradient */}
               <h1 className="text-white font-['Space_Grotesk'] font-extrabold leading-[1.1]">
-                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: "0.3s" }}>
-                  Doctor of
-                </span>
-                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-sky-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
-                  Pharmacy
-                </span>
+                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: "0.3s" }}>Doctor of</span>
+                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-sky-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">Pharmacy</span>
               </h1>
 
-              {/* Decorative Line */}
               <div className="flex items-center gap-4 mt-4 mb-4">
                 <div className="h-1 w-16 bg-gradient-to-r from-sky-400 to-purple-400 rounded-full animate-gradient"></div>
                 <div className="h-1 w-8 bg-gradient-to-r from-purple-400 to-cyan-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: "0.5s" }}></div>
                 <div className="h-1 w-4 bg-gradient-to-r from-cyan-400 to-sky-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: "1s" }}></div>
               </div>
 
-              {/* Description */}
               <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: "0.6s" }}>
                 Complete Notes, Year-wise PDFs, Clinical Videos & Predictive Papers for Pharm.D Students.
               </p>
 
-              {/* CTA Button */}
               <button
                 onClick={() => document.getElementById("content-start")?.scrollIntoView({ behavior: "smooth" })}
                 className="mt-6 group inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-semibold text-sm hover:shadow-2xl hover:shadow-sky-500/30 transition-all duration-300 hover:scale-105 animate-float-text"
@@ -1463,7 +1385,6 @@ const PharmD = () => {
             </div>
           </div>
 
-          {/* Bottom Fade */}
           <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-[#f0f7ff] via-[#f0f7ff]/45 to-transparent pointer-events-none"></div>
         </div>
       </div>
@@ -1475,9 +1396,9 @@ const PharmD = () => {
 
         <div className="step-container">
           {currentStep === 1 && renderCategoryStep()}
-          {currentStep === 2 && renderYearStep()}
-          {currentStep === 3 && renderSubjectStep()}
-          {currentStep === 4 && renderContentStep()}
+          {currentStep === 2 && !isDirectFilesCategory() && renderYearStep()}
+          {currentStep === 3 && !isDirectFilesCategory() && renderSubjectStep()}
+          {currentStep === 4 && (isDirectFilesCategory() ? renderDirectFilesStep() : renderContentStep())}
         </div>
 
         {currentStep > 1 && (

@@ -1050,7 +1050,7 @@ const Navbar = () => {
     })),
 
     {
-      name: "Interview Material",
+      name: " Job Interview Material",
       isDropdown: true,
       dropdownItems: interviewMaterialDropdownItems,
     },

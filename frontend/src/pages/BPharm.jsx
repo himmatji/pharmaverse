@@ -41,122 +41,58 @@ import {
   MessageSquare,
   Atom,
   Leaf,
-  Beaker
+  Beaker,
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
 // ========== CATEGORIES ==========
 const categories = [
-  { 
-    id: "Notes", 
-    label: "Notes", 
-    icon: BookOpen, 
+  {
+    id: "Notes",
+    label: "Notes",
+    icon: BookOpen,
     gradient: "from-blue-600 via-indigo-600 to-purple-600",
     bgGradient: "from-blue-50 via-indigo-50 to-purple-50",
     glowColor: "rgba(99, 102, 241, 0.3)",
     description: "Click below to view notes by Imperfect Pharmacy",
     stats: "500+ PDFs",
-    badge: "Most Popular"
+    badge: "Most Popular",
   },
-  { 
-    id: "Exam Crash Course", 
-    label: "Exam Crash Course", 
-    icon: Rocket, 
+  {
+    id: "Exam Crash Course",
+    label: "Exam Crash Course",
+    icon: Rocket,
     gradient: "from-orange-500 via-amber-500 to-yellow-500",
     bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
     glowColor: "rgba(251, 146, 60, 0.3)",
     description: "Click below to view Exam Crash Course by Imperfect Pharmacy",
     stats: "8 Semesters",
-    badge: "🔥 Crash"
+    badge: "🔥 Crash",
   },
-  { 
-    id: "PYQs", 
-    label: "PYQs", 
-    icon: Brain, 
+  {
+    id: "PYQs",
+    label: "PYQs",
+    icon: Brain,
     gradient: "from-rose-500 via-pink-500 to-purple-500",
     bgGradient: "from-rose-50 via-pink-50 to-purple-50",
     glowColor: "rgba(244, 63, 94, 0.3)",
     description: "Click below to view PYQs by Imperfect Pharmacy",
     stats: "1000+ Questions",
-    badge: "📝 Exam"
-  }
+    badge: "📝 Exam",
+  },
 ];
 
 // ========== SEMESTER COLORS ==========
 const semesterColors = [
-  { 
-    gradient: "from-rose-500 to-pink-500", 
-    glow: "rgba(244, 63, 94, 0.5)", 
-    bg: "from-rose-50 to-pink-50", 
-    border: "border-rose-200", 
-    shadow: "shadow-rose-200/50",
-    darkBg: "from-rose-600 to-pink-600",
-    lightBg: "from-rose-100 to-pink-100"
-  },
-  { 
-    gradient: "from-blue-500 to-cyan-500", 
-    glow: "rgba(59, 130, 246, 0.5)", 
-    bg: "from-blue-50 to-cyan-50", 
-    border: "border-blue-200", 
-    shadow: "shadow-blue-200/50",
-    darkBg: "from-blue-600 to-cyan-600",
-    lightBg: "from-blue-100 to-cyan-100"
-  },
-  { 
-    gradient: "from-emerald-500 to-teal-500", 
-    glow: "rgba(16, 185, 129, 0.5)", 
-    bg: "from-emerald-50 to-teal-50", 
-    border: "border-emerald-200", 
-    shadow: "shadow-emerald-200/50",
-    darkBg: "from-emerald-600 to-teal-600",
-    lightBg: "from-emerald-100 to-teal-100"
-  },
-  { 
-    gradient: "from-purple-500 to-indigo-500", 
-    glow: "rgba(139, 92, 246, 0.5)", 
-    bg: "from-purple-50 to-indigo-50", 
-    border: "border-purple-200", 
-    shadow: "shadow-purple-200/50",
-    darkBg: "from-purple-600 to-indigo-600",
-    lightBg: "from-purple-100 to-indigo-100"
-  },
-  { 
-    gradient: "from-orange-500 to-amber-500", 
-    glow: "rgba(251, 146, 60, 0.5)", 
-    bg: "from-orange-50 to-amber-50", 
-    border: "border-orange-200", 
-    shadow: "shadow-orange-200/50",
-    darkBg: "from-orange-600 to-amber-600",
-    lightBg: "from-orange-100 to-amber-100"
-  },
-  { 
-    gradient: "from-pink-500 to-rose-500", 
-    glow: "rgba(236, 72, 153, 0.5)", 
-    bg: "from-pink-50 to-rose-50", 
-    border: "border-pink-200", 
-    shadow: "shadow-pink-200/50",
-    darkBg: "from-pink-600 to-rose-600",
-    lightBg: "from-pink-100 to-rose-100"
-  },
-  { 
-    gradient: "from-cyan-500 to-blue-500", 
-    glow: "rgba(6, 182, 212, 0.5)", 
-    bg: "from-cyan-50 to-blue-50", 
-    border: "border-cyan-200", 
-    shadow: "shadow-cyan-200/50",
-    darkBg: "from-cyan-600 to-blue-600",
-    lightBg: "from-cyan-100 to-blue-100"
-  },
-  { 
-    gradient: "from-teal-500 to-emerald-500", 
-    glow: "rgba(20, 184, 166, 0.5)", 
-    bg: "from-teal-50 to-emerald-50", 
-    border: "border-teal-200", 
-    shadow: "shadow-teal-200/50",
-    darkBg: "from-teal-600 to-emerald-600",
-    lightBg: "from-teal-100 to-emerald-100"
-  },
+  { gradient: "from-rose-500 to-pink-500", glow: "rgba(244, 63, 94, 0.5)", bg: "from-rose-50 to-pink-50", border: "border-rose-200", shadow: "shadow-rose-200/50" },
+  { gradient: "from-blue-500 to-cyan-500", glow: "rgba(59, 130, 246, 0.5)", bg: "from-blue-50 to-cyan-50", border: "border-blue-200", shadow: "shadow-blue-200/50" },
+  { gradient: "from-emerald-500 to-teal-500", glow: "rgba(16, 185, 129, 0.5)", bg: "from-emerald-50 to-teal-50", border: "border-emerald-200", shadow: "shadow-emerald-200/50" },
+  { gradient: "from-purple-500 to-indigo-500", glow: "rgba(139, 92, 246, 0.5)", bg: "from-purple-50 to-indigo-50", border: "border-purple-200", shadow: "shadow-purple-200/50" },
+  { gradient: "from-orange-500 to-amber-500", glow: "rgba(251, 146, 60, 0.5)", bg: "from-orange-50 to-amber-50", border: "border-orange-200", shadow: "shadow-orange-200/50" },
+  { gradient: "from-pink-500 to-rose-500", glow: "rgba(236, 72, 153, 0.5)", bg: "from-pink-50 to-rose-50", border: "border-pink-200", shadow: "shadow-pink-200/50" },
+  { gradient: "from-cyan-500 to-blue-500", glow: "rgba(6, 182, 212, 0.5)", bg: "from-cyan-50 to-blue-50", border: "border-cyan-200", shadow: "shadow-cyan-200/50" },
+  { gradient: "from-teal-500 to-emerald-500", glow: "rgba(20, 184, 166, 0.5)", bg: "from-teal-50 to-emerald-50", border: "border-teal-200", shadow: "shadow-teal-200/50" },
 ];
 
 // ========== SUBJECT COLORS ==========
@@ -189,131 +125,56 @@ const unitColors = [
   { gradient: "from-pink-500 to-rose-500", glow: "rgba(236,72,153,0.25)", bg: "from-pink-50 to-rose-50" },
 ];
 
-// ========== B.PHARM SUBJECTS BY SEMESTER ==========
+// ========== B.PHARM SUBJECTS ==========
 const BPHARM_SUBJECTS = {
-  1: [
-    "Basics of Python Programming for Pharmaceutical Sciences",
-    "General Pharmacy",
-    "Healthcare Psychology and Communication Skills",
-    "Human Anatomy, Physiology and Pathophysiology I",
-    "Introduction to Pharmacognosy",
-    "Pharmaceutical Inorganic and Analytical Chemistry"
-  ],
-  2: [
-    "Applied Biostatistics and Data Analytics for Pharmaceutical Sciences",
-    "Biochemistry",
-    "Human Anatomy, Physiology and Pathophysiology II",
-    "Pharmaceutical Organic Chemistry",
-    "Pharmacognosy and Phytochemistry",
-    "Physical Pharmaceutics"
-  ],
-  3: [
-    "Introduction to Machine Learning in Pharmaceutical Sciences",
-    "Environmental Sciences",
-    "Ethics and Universal Human Values",
-    "General Pharmacology",
-    "Heterocyclic Compounds and Stereochemistry",
-    "Pharmaceutical Dosage Forms I",
-    "Pharmaceutical Engineering",
-    "Pharmaceutical Microbiology"
-  ],
-  4: [
-    "Herbal Drug Technology",
-    "Medicinal Chemistry",
-    "Pharmaceutical Biotechnology",
-    "Social Pharmacy and Public Health",
-    "Systemic Pharmacology I"
-  ],
-  5: [
-    "Biomedicinal Chemistry",
-    "Industrial Pharmacognosy",
-    "Innovation and Startup Ecosystem",
-    "Pharmaceutical Dosage Form II",
-    "Pharmaceutical Quality Assurance",
-    "Systemic Pharmacology II"
-  ],
-  6: [
-    "Advanced Pharmacognosy",
-    "Biopharmaceutics and Pharmacokinetics",
-    "Intellectual Property Rights",
-    "AI Applications in Pharmaceutical Sciences",
-    "Pharmaceutical Analysis",
-    "Pharmaceutical Jurisprudence",
-    "Green Chemistry",
-    "Materiovigilance and Hemovigilance",
-    "Scientific Writing",
-    "Drug Store and Business Management",
-    "Career Building in Cultivation of Medicinal Plants",
-    "Active Pharmaceutical Ingredients and Excipient Sciences"
-  ],
-  7: [
-    "Biostatistics Research Methodology",
-    "Cosmetics and Cosmeceuticals",
-    "AI in Clinical Applications",
-    "Modern Analytical Techniques",
-    "Pharmacovigilance",
-    "Pharmacy Practice",
-    "Regulatory Affairs",
-    "Current Good Manufacturing Practices (cGMP)",
-    "Pharmaceutical Automation",
-    "Modern Techniques in Cellular Biology",
-    "Medical Devices",
-    "Transformation of Food Waste into Medicinal Products",
-    "Biosimilars, Vaccines & Macromolecules"
-  ],
-  8: [
-    "Ethical Considerations and Translational Applications of AI in Pharmacy",
-    "Clinical Pharmacotherapeutics",
-    "Industrial Pharmacy and Facility Design",
-    "Pharmaceutical Management",
-    "Sterile Dosage Forms and Novel Drug Delivery System",
-    "Pharmaceutical Packaging",
-    "Supply Chain Management",
-    "Industrial Safety and Waste Management",
-    "Traditional Healing Practices of India",
-    "Futuristic Pharma through AR/VR: Pharma 4.0",
-    "Herbal Cosmetics for Industry Perspective"
-  ]
+  1: ["Basics of Python Programming for Pharmaceutical Sciences", "General Pharmacy", "Healthcare Psychology and Communication Skills", "Human Anatomy, Physiology and Pathophysiology I", "Introduction to Pharmacognosy", "Pharmaceutical Inorganic and Analytical Chemistry"],
+  2: ["Applied Biostatistics and Data Analytics for Pharmaceutical Sciences", "Biochemistry", "Human Anatomy, Physiology and Pathophysiology II", "Pharmaceutical Organic Chemistry", "Pharmacognosy and Phytochemistry", "Physical Pharmaceutics"],
+  3: ["Introduction to Machine Learning in Pharmaceutical Sciences", "Environmental Sciences", "Ethics and Universal Human Values", "General Pharmacology", "Heterocyclic Compounds and Stereochemistry", "Pharmaceutical Dosage Forms I", "Pharmaceutical Engineering", "Pharmaceutical Microbiology"],
+  4: ["Herbal Drug Technology", "Medicinal Chemistry", "Pharmaceutical Biotechnology", "Social Pharmacy and Public Health", "Systemic Pharmacology I"],
+  5: ["Biomedicinal Chemistry", "Industrial Pharmacognosy", "Innovation and Startup Ecosystem", "Pharmaceutical Dosage Form II", "Pharmaceutical Quality Assurance", "Systemic Pharmacology II"],
+  6: ["Advanced Pharmacognosy", "Biopharmaceutics and Pharmacokinetics", "Intellectual Property Rights", "AI Applications in Pharmaceutical Sciences", "Pharmaceutical Analysis", "Pharmaceutical Jurisprudence", "Green Chemistry", "Materiovigilance and Hemovigilance", "Scientific Writing", "Drug Store and Business Management", "Career Building in Cultivation of Medicinal Plants", "Active Pharmaceutical Ingredients and Excipient Sciences"],
+  7: ["Biostatistics Research Methodology", "Cosmetics and Cosmeceuticals", "AI in Clinical Applications", "Modern Analytical Techniques", "Pharmacovigilance", "Pharmacy Practice", "Regulatory Affairs", "Current Good Manufacturing Practices (cGMP)", "Pharmaceutical Automation", "Modern Techniques in Cellular Biology", "Medical Devices", "Transformation of Food Waste into Medicinal Products", "Biosimilars, Vaccines & Macromolecules"],
+  8: ["Ethical Considerations and Translational Applications of AI in Pharmacy", "Clinical Pharmacotherapeutics", "Industrial Pharmacy and Facility Design", "Pharmaceutical Management", "Sterile Dosage Forms and Novel Drug Delivery System", "Pharmaceutical Packaging", "Supply Chain Management", "Industrial Safety and Waste Management", "Traditional Healing Practices of India", "Futuristic Pharma through AR/VR: Pharma 4.0", "Herbal Cosmetics for Industry Perspective"],
 };
 
 const BPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ========== STEP NAVIGATION ==========
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedSemester, setSelectedSemester] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState(null);
-  
+
   const [loading, setLoading] = useState(false);
-  const [loadingItemId, setLoadingItemId] = useState(null);
   const [hoveredCard, setHoveredCard] = useState(null);
   const [mousePositions, setMousePositions] = useState({});
-  
-  // ========== API STATES ==========
+
   const [units, setUnits] = useState([]);
   const [unitContent, setUnitContent] = useState([]);
   const [isContentLoading, setIsContentLoading] = useState(false);
   const [contentError, setContentError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
-  const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ========== REQUEST CONTROL ==========
+  // ✅ Direct files for Crash Course / PYQs
+  const [directFiles, setDirectFiles] = useState([]);
+  const [isDirectLoading, setIsDirectLoading] = useState(false);
+  const [directError, setDirectError] = useState("");
+
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
 
-  // ========== GET SUBJECTS FOR SELECTED SEMESTER ==========
+  const isDirectFilesCategory = () =>
+    selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
+
   const getAvailableSubjects = () => {
     const semester = Number(selectedSemester);
-    return Array.isArray(BPHARM_SUBJECTS[semester])
-      ? BPHARM_SUBJECTS[semester]
-      : [];
+    return Array.isArray(BPHARM_SUBJECTS[semester]) ? BPHARM_SUBJECTS[semester] : [];
   };
 
-  // ========== FETCH ALL CONTENT FOR THE SELECTED SUBJECT ==========
+  // ========== FETCH NOTES ==========
   const fetchUnitContent = async () => {
     if (!selectedCategory || !selectedSemester || !selectedSubject) {
       setUnitContent([]);
@@ -323,13 +184,7 @@ const BPharm = () => {
       return;
     }
 
-    const cacheKey = [
-      "B.Pharm",
-      String(selectedCategory).trim(),
-      String(selectedSemester).trim(),
-      String(selectedSubject).trim()
-    ].join("||");
-
+    const cacheKey = ["B.Pharm", selectedCategory, selectedSemester, selectedSubject].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -337,13 +192,11 @@ const BPharm = () => {
       contentAbortControllerRef.current = null;
     }
 
-    // Show cached data immediately if this subject was already opened.
     const cached = contentCacheRef.current.get(cacheKey);
     if (cached) {
       setUnitContent(cached.content);
       setUnits(cached.units);
     } else {
-      // Do NOT pretend that there are no units while the API is still loading.
       setUnitContent([]);
       setUnits([]);
     }
@@ -356,85 +209,42 @@ const BPharm = () => {
 
     const buildUnits = (rawContent) => {
       const unitMap = new Map();
-
       rawContent.forEach((item) => {
         const unitValue = Number(item?.unit);
-
         if (!Number.isInteger(unitValue) || unitValue <= 0) return;
-
         if (!unitMap.has(unitValue)) {
-          unitMap.set(unitValue, {
-            id: unitValue,
-            name: `Unit ${unitValue}`,
-            topics: []
-          });
+          unitMap.set(unitValue, { id: unitValue, name: `Unit ${unitValue}`, topics: [] });
         }
-
-        const topic =
-          item?.topic ??
-          item?.topicName ??
-          item?.chapter ??
-          item?.chapterName;
-
+        const topic = item?.topic ?? item?.topicName ?? item?.chapter ?? item?.chapterName;
         if (topic && !unitMap.get(unitValue).topics.includes(String(topic))) {
           unitMap.get(unitValue).topics.push(String(topic));
         }
       });
-
       return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
     };
 
     const getRawContent = (data) => {
       if (Array.isArray(data)) return data;
-
-      const candidates = [
-        data?.data,
-        data?.notes,
-        data?.documents,
-        data?.results,
-        data?.items
-      ];
-
-      for (const value of candidates) {
-        if (Array.isArray(value)) return value;
-      }
-
+      const candidates = [data?.data, data?.notes, data?.documents, data?.results, data?.items];
+      for (const v of candidates) if (Array.isArray(v)) return v;
       return [];
     };
 
     try {
       let res;
-
-      // Small retry makes cold-start/transient API failures invisible to users.
-      for (let attempt = 1; attempt <= 2; attempt += 1) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
         try {
           res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
-            params: {
-              course: "B.Pharm",
-              category: selectedCategory,
-              semester: selectedSemester,
-              subject: selectedSubject
-            },
+            params: { course: "B.Pharm", category: selectedCategory, semester: selectedSemester, subject: selectedSubject },
             signal: controller.signal,
             timeout: 12000,
-            headers: {
-              Accept: "application/json",
-              "Cache-Control": "no-cache"
-            }
+            headers: { Accept: "application/json", "Cache-Control": "no-cache" },
           });
           break;
         } catch (error) {
-          if (
-            error?.code === "ERR_CANCELED" ||
-            error?.name === "CanceledError" ||
-            controller.signal.aborted
-          ) {
-            return;
-          }
-
+          if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
           if (attempt === 2) throw error;
-
-          await new Promise((resolve) => setTimeout(resolve, 350));
+          await new Promise((r) => setTimeout(r, 350));
         }
       }
 
@@ -443,58 +253,24 @@ const BPharm = () => {
       const rawContent = getRawContent(res?.data)
         .filter(Boolean)
         .filter((item) => {
-          const itemSemester = item?.semester;
-          const itemSubject = item?.subject;
-          const itemCategory = item?.category;
-
-          const semesterMatches =
-            itemSemester == null ||
-            String(itemSemester).trim() === String(selectedSemester).trim();
-
-          const subjectMatches =
-            itemSubject == null ||
-            String(itemSubject).trim() === String(selectedSubject).trim();
-
-          const categoryMatches =
-            itemCategory == null ||
-            String(itemCategory).trim() === String(selectedCategory).trim();
-
-          return semesterMatches && subjectMatches && categoryMatches;
+          const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
+          const subMatch = item?.subject == null || String(item.subject).trim() === String(selectedSubject).trim();
+          const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
+          return semMatch && subMatch && catMatch;
         });
 
       const derivedUnits = buildUnits(rawContent);
 
-      contentCacheRef.current.set(cacheKey, {
-        content: rawContent,
-        units: derivedUnits,
-        timestamp: Date.now()
-      });
-
+      contentCacheRef.current.set(cacheKey, { content: rawContent, units: derivedUnits, timestamp: Date.now() });
       setUnitContent(rawContent);
       setUnits(derivedUnits);
       setContentError("");
     } catch (error) {
-      if (
-        error?.code === "ERR_CANCELED" ||
-        error?.name === "CanceledError" ||
-        controller.signal.aborted
-      ) {
-        return;
-      }
-
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
       if (requestId !== contentRequestIdRef.current) return;
-
-      console.error("Failed to fetch subject content:", error);
-      setContentError(
-        error?.response?.data?.message ||
-        "Content load nahi ho paaya. Please try again."
-      );
-
-      // If cached data exists, keep showing it instead of blanking the page.
-      if (!cached) {
-        setUnitContent([]);
-        setUnits([]);
-      }
+      console.error("Failed to fetch:", error);
+      setContentError(error?.response?.data?.message || "Content load nahi ho paaya.");
+      if (!cached) { setUnitContent([]); setUnits([]); }
     } finally {
       if (requestId === contentRequestIdRef.current) {
         setIsContentLoading(false);
@@ -503,9 +279,78 @@ const BPharm = () => {
     }
   };
 
-  // ========== EFFECT: Fetch documents when subject changes ==========
+  // ✅ FETCH DIRECT FILES
+  const fetchDirectFiles = async () => {
+    if (!selectedCategory) return;
+
+    const cacheKey = ["B.Pharm", selectedCategory, "direct"].join("||");
+    const requestId = ++contentRequestIdRef.current;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
+    }
+
+    const cached = contentCacheRef.current.get(cacheKey);
+    if (cached) {
+      setDirectFiles(cached.files);
+    } else {
+      setDirectFiles([]);
+    }
+
+    setIsDirectLoading(true);
+    setDirectError("");
+
+    const controller = new AbortController();
+    contentAbortControllerRef.current = controller;
+
+    const getRawFiles = (data) => {
+      if (Array.isArray(data)) return data;
+      const candidates = [data?.data, data?.files, data?.documents, data?.results, data?.items];
+      for (const v of candidates) if (Array.isArray(v)) return v;
+      return [];
+    };
+
+    try {
+      const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
+        params: { course: "B.Pharm", category: selectedCategory },
+        signal: controller.signal,
+        timeout: 15000,
+        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+      });
+
+      if (requestId !== contentRequestIdRef.current) return;
+
+      const files = getRawFiles(res?.data)
+        .filter(Boolean)
+        .filter((item) => {
+          const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
+          return catMatch;
+        });
+
+      contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
+      setDirectFiles(files);
+      setDirectError("");
+    } catch (error) {
+      if (error?.code === "ERR_CANCELED" || error?.name === "CanceledError" || controller.signal.aborted) return;
+      if (requestId !== contentRequestIdRef.current) return;
+      console.error("Direct files fetch error:", error);
+      setDirectError(error?.response?.data?.message || "Files load nahi ho paayi.");
+      if (!cached) setDirectFiles([]);
+    } finally {
+      if (requestId === contentRequestIdRef.current) {
+        setIsDirectLoading(false);
+        contentAbortControllerRef.current = null;
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchUnitContent();
+    if (isDirectFilesCategory()) {
+      fetchDirectFiles();
+    } else if (selectedCategory === "Notes" && selectedSemester && selectedSubject) {
+      fetchUnitContent();
+    }
 
     return () => {
       if (contentAbortControllerRef.current) {
@@ -518,11 +363,17 @@ const BPharm = () => {
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
-    setCurrentStep(2);
     setSelectedSemester(null);
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
+
+    if (categoryId === "Notes") {
+      setCurrentStep(2);
+    } else {
+      setCurrentStep(4);
+    }
   };
 
   const handleSemesterClick = (semester) => {
@@ -548,10 +399,16 @@ const BPharm = () => {
       setCurrentStep(2);
       setSelectedSemester(null);
     } else if (currentStep === 4) {
-      setCurrentStep(3);
-      setSelectedSubject(null);
-      setUnits([]);
-      setUnitContent([]);
+      if (isDirectFilesCategory()) {
+        setCurrentStep(1);
+        setSelectedCategory(null);
+        setDirectFiles([]);
+      } else {
+        setCurrentStep(3);
+        setSelectedSubject(null);
+        setUnits([]);
+        setUnitContent([]);
+      }
     }
   };
 
@@ -562,125 +419,44 @@ const BPharm = () => {
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
-  // ========== STYLES ==========
+  // ========== FULL PREMIUM STYLES (WAPAS) ==========
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
-      @keyframes floatMedium {
-        0%, 100% { transform: translateY(0px) scale(1); }
-        50% { transform: translateY(-12px) scale(1.02); }
-      }
-      @keyframes shimmerSlide {
-        0% { background-position: -200% 0; }
-        100% { background-position: 200% 0; }
-      }
-      @keyframes pulseGlow {
-        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); }
-        50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); }
-      }
-      @keyframes slideUp {
-        from { opacity: 0; transform: translateY(60px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-40px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-      }
-      @keyframes scaleIn {
-        from { opacity: 0; transform: scale(0.7) rotate(-5deg); }
-        to { opacity: 1; transform: scale(1) rotate(0deg); }
-      }
-      @keyframes rotateGlow {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      @keyframes borderPulse {
-        0%, 100% { border-color: rgba(99,102,241,0.2); }
-        50% { border-color: rgba(99,102,241,0.6); }
-      }
-      @keyframes pop {
-        0% { transform: scale(0.8); opacity: 0; }
-        50% { transform: scale(1.05); opacity: 0.8; }
-        100% { transform: scale(1); opacity: 1; }
-      }
-      
-      @keyframes premiumFloat {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-8px); }
-      }
-      
-      @keyframes premiumShine {
-        0% { background-position: -200% center; }
-        100% { background-position: 200% center; }
-      }
-      
-      @keyframes premiumPulse {
-        0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.05); }
-      }
-      
-      @keyframes premiumGlow {
-        0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); }
-        50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.4); }
-      }
-      
-      @keyframes premiumBorderFlow {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      
-      @keyframes premiumSparkle {
-        0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
-        50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
-      }
-      
-      @keyframes premiumNumberPop {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.1) rotate(-3deg); }
-        100% { transform: scale(1) rotate(0deg); }
-      }
-      
-      @keyframes floatText {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-6px); }
-      }
-      
-      @keyframes shimmerText {
-        0% { background-position: -200% center; }
-        100% { background-position: 200% center; }
-      }
-      
-      @keyframes pulseRing {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.3); opacity: 0; }
-      }
-      
-      @keyframes gradientMove {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      
+      @keyframes floatMedium { 0%, 100% { transform: translateY(0px) scale(1); } 50% { transform: translateY(-12px) scale(1.02); } }
+      @keyframes shimmerSlide { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+      @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.15); } 50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.35); } }
+      @keyframes slideUp { from { opacity: 0; transform: translateY(60px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes slideDown { from { opacity: 0; transform: translateY(-40px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes scaleIn { from { opacity: 0; transform: scale(0.7) rotate(-5deg); } to { opacity: 1; transform: scale(1) rotate(0deg); } }
+      @keyframes rotateGlow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes borderPulse { 0%, 100% { border-color: rgba(99,102,241,0.2); } 50% { border-color: rgba(99,102,241,0.6); } }
+      @keyframes pop { 0% { transform: scale(0.8); opacity: 0; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+      @keyframes premiumFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-8px); } }
+      @keyframes premiumShine { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+      @keyframes premiumPulse { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+      @keyframes premiumGlow { 0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.2); } 50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.4); } }
+      @keyframes premiumBorderFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+      @keyframes premiumSparkle { 0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; } 50% { transform: scale(1.2) rotate(180deg); opacity: 1; } }
+      @keyframes premiumNumberPop { 0% { transform: scale(1); } 50% { transform: scale(1.1) rotate(-3deg); } 100% { transform: scale(1) rotate(0deg); } }
+      @keyframes floatText { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+      @keyframes pulseRing { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.3); opacity: 0; } }
+      @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
       .premium-card {
         animation: premiumFloat 4s ease-in-out infinite;
         transition: all 0.3s cubic-bezier(0.23, 1, 0.32, 1);
       }
-      
       .premium-card::before {
         content: '';
         position: absolute;
         inset: -2px;
         border-radius: 16px;
         padding: 2px;
-        background: linear-gradient(90deg, 
-          rgba(99,102,241,0.3), 
-          rgba(168,85,247,0.3), 
-          rgba(236,72,153,0.3),
-          rgba(99,102,241,0.3)
-        );
+        background: linear-gradient(90deg, rgba(99,102,241,0.3), rgba(168,85,247,0.3), rgba(236,72,153,0.3), rgba(99,102,241,0.3));
         background-size: 300% 100%;
         -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
         -webkit-mask-composite: xor;
@@ -689,88 +465,39 @@ const BPharm = () => {
         opacity: 0.7;
         pointer-events: none;
       }
-      
       .premium-card .glow-ring {
         position: absolute;
         inset: -4px;
         border-radius: 18px;
-        background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), 
-          rgba(255,255,255,0.15) 0%,
-          transparent 60%
-        );
+        background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.15) 0%, transparent 60%);
         opacity: 0.6;
         pointer-events: none;
         transition: opacity 0.3s ease;
       }
-      
       .premium-card .shine-overlay {
         position: absolute;
         inset: 0;
         border-radius: 14px;
-        background: linear-gradient(
-          135deg,
-          rgba(255,255,255,0.4) 0%,
-          rgba(255,255,255,0) 40%,
-          rgba(255,255,255,0) 60%,
-          rgba(255,255,255,0.2) 100%
-        );
+        background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.2) 100%);
         background-size: 300% 100%;
         animation: premiumShine 8s ease-in-out infinite;
         pointer-events: none;
       }
-      
-      .premium-card .sparkle-dot {
-        animation: premiumSparkle 3s ease-in-out infinite;
-      }
-      
-      .premium-card .number-glow {
-        animation: premiumNumberPop 3s ease-in-out infinite;
-      }
-      
-      .premium-card .status-pulse {
-        animation: premiumPulse 2s ease-in-out infinite;
-      }
-      
-      .premium-card:hover {
-        transform: translateY(-12px) scale(1.02);
-        box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-      }
-      
-      .premium-card:hover .glow-ring {
-        opacity: 1;
-      }
-      
-      .premium-card .gradient-text {
-        background-size: 200% auto;
-        animation: premiumShine 4s ease-in-out infinite;
-      }
-      
-      .semester-card-1 { animation-delay: 0s; }
-      .semester-card-2 { animation-delay: 0.3s; }
-      .semester-card-3 { animation-delay: 0.6s; }
-      .semester-card-4 { animation-delay: 0.9s; }
-      .semester-card-5 { animation-delay: 1.2s; }
-      .semester-card-6 { animation-delay: 1.5s; }
-      .semester-card-7 { animation-delay: 1.8s; }
-      .semester-card-8 { animation-delay: 2.1s; }
-      
-      .category-card-1 { animation-delay: 0.1s; }
-      .category-card-2 { animation-delay: 0.2s; }
-      .category-card-3 { animation-delay: 0.3s; }
-      
-      .subject-card-1 { animation-delay: 0.06s; }
-      .subject-card-2 { animation-delay: 0.12s; }
-      .subject-card-3 { animation-delay: 0.18s; }
-      .subject-card-4 { animation-delay: 0.24s; }
-      .subject-card-5 { animation-delay: 0.3s; }
-      .subject-card-6 { animation-delay: 0.36s; }
-      
-      .unit-card-1 { animation-delay: 0.05s; }
-      .unit-card-2 { animation-delay: 0.1s; }
-      .unit-card-3 { animation-delay: 0.15s; }
-      .unit-card-4 { animation-delay: 0.2s; }
-      .unit-card-5 { animation-delay: 0.25s; }
-      
+      .premium-card .sparkle-dot { animation: premiumSparkle 3s ease-in-out infinite; }
+      .premium-card .number-glow { animation: premiumNumberPop 3s ease-in-out infinite; }
+      .premium-card .status-pulse { animation: premiumPulse 2s ease-in-out infinite; }
+      .premium-card:hover { transform: translateY(-12px) scale(1.02); box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+      .premium-card:hover .glow-ring { opacity: 1; }
+      .premium-card .gradient-text { background-size: 200% auto; animation: premiumShine 4s ease-in-out infinite; }
+
+      .semester-card-1 { animation-delay: 0s; } .semester-card-2 { animation-delay: 0.3s; } .semester-card-3 { animation-delay: 0.6s; } .semester-card-4 { animation-delay: 0.9s; }
+      .semester-card-5 { animation-delay: 1.2s; } .semester-card-6 { animation-delay: 1.5s; } .semester-card-7 { animation-delay: 1.8s; } .semester-card-8 { animation-delay: 2.1s; }
+      .category-card-1 { animation-delay: 0.1s; } .category-card-2 { animation-delay: 0.2s; } .category-card-3 { animation-delay: 0.3s; }
+      .subject-card-1 { animation-delay: 0.06s; } .subject-card-2 { animation-delay: 0.12s; } .subject-card-3 { animation-delay: 0.18s; }
+      .subject-card-4 { animation-delay: 0.24s; } .subject-card-5 { animation-delay: 0.3s; } .subject-card-6 { animation-delay: 0.36s; }
+      .unit-card-1 { animation-delay: 0.05s; } .unit-card-2 { animation-delay: 0.1s; } .unit-card-3 { animation-delay: 0.15s; }
+      .unit-card-4 { animation-delay: 0.2s; } .unit-card-5 { animation-delay: 0.25s; }
+
       .animate-float-medium { animation: floatMedium 3.5s ease-in-out infinite; }
       .animate-slide-up { animation: slideUp 0.7s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-slide-down { animation: slideDown 0.6s cubic-bezier(0.23, 1, 0.32, 1) both; }
@@ -780,28 +507,25 @@ const BPharm = () => {
       .animate-pop { animation: pop 0.5s cubic-bezier(0.23, 1, 0.32, 1) both; }
       .animate-float-text { animation: floatText 3s ease-in-out infinite; }
       .animate-gradient { animation: gradientMove 8s ease-in-out infinite; background-size: 200% 200%; }
-      
+
       .shimmer-bg {
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
         background-size: 200% 100%;
         animation: shimmerSlide 1.5s ease-in-out infinite;
       }
-      
+
       .glass-effect {
         background: rgba(255,255,255,0.7);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
       }
-      
-      .pulse-ring {
-        animation: pulseRing 2s ease-out infinite;
-      }
-      
+
+      .pulse-ring { animation: pulseRing 2s ease-out infinite; }
+
       @media (max-width: 768px) {
         .semester-grid { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
         .subject-grid { grid-template-columns: 1fr; }
         .unit-grid { grid-template-columns: 1fr; }
-        .hero-title { font-size: 2rem; }
       }
       @media (max-width: 480px) {
         .semester-grid { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
@@ -813,9 +537,9 @@ const BPharm = () => {
   }, []);
 
   useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap';
-    link.rel = 'stylesheet';
+    const link = document.createElement("link");
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700;800&display=swap";
+    link.rel = "stylesheet";
     document.head.appendChild(link);
     return () => document.head.removeChild(link);
   }, []);
@@ -839,35 +563,27 @@ const BPharm = () => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePositions(prev => ({ ...prev, [cardId]: { x, y } }));
+    setMousePositions((prev) => ({ ...prev, [cardId]: { x, y } }));
   };
 
   const handleCardMouseLeave = (cardId) => {
     setHoveredCard(null);
-    setMousePositions(prev => {
-      const newState = { ...prev };
-      delete newState[cardId];
-      return newState;
+    setMousePositions((prev) => {
+      const n = { ...prev };
+      delete n[cardId];
+      return n;
     });
   };
 
-  // ========== VIEW & DOWNLOAD FUNCTIONS ==========
-  const getToken = () => {
-    return localStorage.getItem("userToken") || localStorage.getItem("token");
-  };
-
+  // ========== VIEW/DOWNLOAD ==========
   const handleView = (item) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
-
     const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
     const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
-
-    if (!win) {
-      toast.error("Please allow popups to preview the PDF");
-    }
+    if (!win) toast.error("Please allow popups to preview the PDF");
   };
 
   const handleDownload = (item) => {
@@ -875,7 +591,6 @@ const BPharm = () => {
       toast.error("Invalid document ID");
       return;
     }
-
     const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
     const link = document.createElement("a");
     link.href = downloadUrl;
@@ -884,7 +599,6 @@ const BPharm = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     toast.success("Download started!");
   };
 
@@ -892,7 +606,7 @@ const BPharm = () => {
     toast.info("💎 Premium purchase flow - Coming soon!");
   };
 
-  // ========== RENDER CATEGORY STEP ==========
+  // ========== RENDER CATEGORY (PREMIUM) ==========
   const renderCategoryStep = () => {
     return (
       <div className="animate-slide-up">
@@ -912,8 +626,7 @@ const BPharm = () => {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
           {categories.map((category, index) => {
             const Icon = category.icon;
-            const delay = index === 0 ? 'category-card-1' : index === 1 ? 'category-card-2' : 'category-card-3';
-            
+            const delay = `category-card-${index + 1}`;
             return (
               <div
                 key={category.id}
@@ -923,20 +636,20 @@ const BPharm = () => {
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(category.id, e)}
               >
-                <div 
+                <div
                   className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
-                    background: `radial-gradient(circle at ${mousePositions[category.id]?.x || 50}% ${mousePositions[category.id]?.y || 50}%, ${category.glowColor}, transparent 70%)`
+                    background: `radial-gradient(circle at ${mousePositions[category.id]?.x || 50}% ${mousePositions[category.id]?.y || 50}%, ${category.glowColor}, transparent 70%)`,
                   }}
                 ></div>
 
                 <div className={`relative bg-gradient-to-br ${category.bgGradient} rounded-3xl p-7 sm:p-9 transition-all duration-500 group-hover:-translate-y-4 group-hover:shadow-2xl border-2 border-white/50 backdrop-blur-sm overflow-hidden`}>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                  
+
                   <div className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-3xl" style={{
                       background: `conic-gradient(from 0deg, ${category.glowColor}, transparent, ${category.glowColor}, transparent)`,
-                      animation: 'rotateGlow 4s linear infinite'
+                      animation: "rotateGlow 4s linear infinite",
                     }}></div>
                   </div>
 
@@ -951,12 +664,8 @@ const BPharm = () => {
                   </div>
 
                   <div className="relative z-10">
-                    <h3 className="text-2xl font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2">
-                      {category.label}
-                    </h3>
-                    <p className="text-sm font-['Inter'] text-gray-600 leading-relaxed mb-3">
-                      {category.description}
-                    </p>
+                    <h3 className="text-2xl font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2">{category.label}</h3>
+                    <p className="text-sm font-['Inter'] text-gray-600 leading-relaxed mb-3">{category.description}</p>
                     <div className="flex items-center gap-3 text-xs font-['Inter']">
                       <span className="flex items-center gap-1 text-gray-500">
                         <Award size={14} className="text-amber-500" />
@@ -980,26 +689,21 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER SEMESTER STEP ==========
+  // ========== RENDER SEMESTER (PREMIUM) ==========
   const renderSemesterStep = () => {
-    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
-    const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
+    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
+    const categoryIcon = categories.find((c) => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
     const allSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
-    const hasData = (sem) => allSemesters.includes(sem);
 
     return (
       <div className="animate-scale-in">
         <div className="flex items-center gap-4 mb-8 flex-wrap">
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
-            Back
+          <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
           </button>
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find(c => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categories.find((c) => c.id === selectedCategory)?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
@@ -1009,7 +713,7 @@ const BPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
             <Sparkles className="text-sky-600" size={16} />
-            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 2 of 3</span>
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 2 of 4</span>
             <Sparkles className="text-sky-600" size={16} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1024,150 +728,89 @@ const BPharm = () => {
 
         <div className="grid grid-cols-4 gap-5 sm:gap-6 max-w-4xl mx-auto">
           {allSemesters.map((sem, index) => {
-            const isAvailable = hasData(sem);
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
-            
             return (
               <div
                 key={sem}
-                onClick={() => isAvailable && handleSemesterClick(sem)}
-                className={`group relative cursor-pointer ${!isAvailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => handleSemesterClick(sem)}
+                className="group relative cursor-pointer"
+                onMouseEnter={() => setHoveredCard(cardId)}
+                onMouseLeave={() => setHoveredCard(null)}
+                onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
-                {isAvailable && (
-                  <div 
-                    className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
-                    style={{
-                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 68%)`
-                    }}
-                  ></div>
-                )}
+                <div
+                  className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                  style={{
+                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 68%)`,
+                  }}
+                ></div>
 
                 <div
-                  className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass}
-                    ${isAvailable 
-                      ? `bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}` 
-                      : 'bg-gray-100 border-2 border-gray-200'
-                    }`}
-                  style={isAvailable ? {
-                    boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)`
-                  } : undefined}
+                  className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass} bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}`}
+                  style={{ boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)` }}
                 >
-
-                  {isAvailable && (
-                    <>
-                      <div 
-                        className="glow-ring"
-                        style={{
-                          '--x': `${mousePositions[cardId]?.x || 50}%`,
-                          '--y': `${mousePositions[cardId]?.y || 50}%`
-                        }}
-                      ></div>
-                      
-                      <div className="shine-overlay"></div>
-                      
-                      <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
-                        <div className="absolute inset-0 rounded-2xl" style={{
-                          background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                          animation: 'rotateGlow 4s linear infinite'
-                        }}></div>
-                      </div>
-
-                      <div className="absolute top-2 right-2 sparkle-dot">
-                        <Sparkles size={12} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-70`} />
-                      </div>
-                      <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: '1.5s' }}>
-                        <Sparkles size={8} className={`text-${colors.gradient.split(' ')[0].replace('from-', '')} opacity-50`} />
-                      </div>
-                      
-                      <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
-                      
-                      <div className="absolute top-1/4 right-1 w-2 h-2 rounded-full bg-white/30 animate-pulse" style={{ animationDelay: '1s' }}></div>
-                      <div className="absolute bottom-1/4 left-1 w-1.5 h-1.5 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-                    </>
-                  )}
+                  <div
+                    className="glow-ring"
+                    style={{
+                      "--x": `${mousePositions[cardId]?.x || 50}%`,
+                      "--y": `${mousePositions[cardId]?.y || 50}%`,
+                    }}
+                  ></div>
+                  <div className="shine-overlay"></div>
+                  <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700">
+                    <div className="absolute inset-0 rounded-2xl" style={{
+                      background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                      animation: "rotateGlow 4s linear infinite",
+                    }}></div>
+                  </div>
+                  <div className="absolute top-2 right-2 sparkle-dot">
+                    <Sparkles size={12} className="text-white opacity-70" />
+                  </div>
+                  <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: "1.5s" }}>
+                    <Sparkles size={8} className="text-white opacity-50" />
+                  </div>
+                  <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
 
                   <div className="relative z-10">
-                    <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold ${isAvailable ? `gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent` : 'text-gray-400'} leading-none number-glow`}>
+                    <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>
                       {sem}
                     </div>
-                    
-                    <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 ${isAvailable ? 'text-gray-500 group-hover:text-gray-700' : 'text-gray-400'}`}>
-                      Semester
+                    <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">Semester</div>
+
+                    <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                      <CheckCircle size={11} className="sm:size-3" />Open
                     </div>
 
-                    {isAvailable && (
-                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                        <CheckCircle size={11} className="sm:size-3" />
-                        Open
-                      </div>
-                    )}
-
-                    {!isAvailable && (
-                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
-                        <Lock size={11} className="sm:size-3" />
-                        Locked
-                      </div>
-                    )}
-
-                    {isAvailable && (
-                      <>
-                        <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
-                        <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">
-                          {BPHARM_SUBJECTS[sem]?.length || 0} Subjects
-                        </div>
-                        <div className="mt-1 flex items-center justify-center gap-1">
-                          <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
-                          <span className="text-[8px] sm:text-[9px] font-['Inter'] font-medium text-emerald-500">Available</span>
-                          <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                        </div>
-                      </>
-                    )}
+                    <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
+                    <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
+                      <span className="text-[8px] sm:text-[9px] font-['Inter'] font-medium text-emerald-500">Available</span>
+                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
         </div>
-
-        <div className="mt-10 flex justify-center items-center gap-4 text-sm flex-wrap">
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '0.5s' }}>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 animate-pulse"></div>
-              <span className="font-['Inter'] font-bold text-gray-700">8</span>
-              <span className="font-['Inter'] text-gray-500">Semesters Available</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '1s' }}>
-            <Sparkles size={16} className="text-emerald-500" />
-            <span className="font-['Inter'] font-bold text-emerald-600">All Unlocked</span>
-            <Sparkles size={16} className="text-emerald-500" />
-          </div>
-          <div className="flex items-center gap-3 glass-effect px-4 py-2.5 rounded-2xl shadow-lg border border-white/50 animate-float-text" style={{ animationDelay: '1.5s' }}>
-            <Gem size={16} className="text-purple-500" />
-            <span className="font-['Inter'] font-bold text-purple-600">Premium Content</span>
-          </div>
-        </div>
       </div>
     );
   };
 
-  // ========== RENDER SUBJECT STEP ==========
+  // ========== RENDER SUBJECT (PREMIUM) ==========
   const renderSubjectStep = () => {
     const subjects = getAvailableSubjects();
-    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
-    const categoryGradient = categories.find(c => c.id === selectedCategory)?.gradient || 'from-purple-500 to-pink-500';
+    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
+    const categoryGradient = categories.find((c) => c.id === selectedCategory)?.gradient || "from-purple-500 to-pink-500";
 
     return (
       <div className="animate-slide-down">
         <div className="flex items-center gap-4 mb-8 flex-wrap">
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
-            Back
+          <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
           </button>
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
@@ -1181,7 +824,7 @@ const BPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-purple-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 3 of 3</span>
+            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 3 of 4</span>
             <Trophy className="text-purple-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1191,7 +834,7 @@ const BPharm = () => {
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
             Choose a subject to continue
-            <span className="inline-block w-2 h-2 rounded-full bg-purple-500 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
+            <span className="inline-block w-2 h-2 rounded-full bg-purple-500 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
           </p>
         </div>
 
@@ -1199,32 +842,30 @@ const BPharm = () => {
           {subjects.map((subject, index) => {
             const colors = subjectColors[index % subjectColors.length];
             const iconData = subjectIcons[index % subjectIcons.length];
-            const Icon = iconData.icon;
+            const SIcon = iconData.icon;
             const cardId = `subject-${index}`;
-            
             return (
               <div
                 key={subject}
                 onClick={() => handleSubjectClick(subject)}
-                className={`group relative cursor-pointer animate-pop`}
+                className="group relative cursor-pointer animate-pop"
                 style={{ animationDelay: `${index * 0.06}s` }}
                 onMouseEnter={() => setHoveredCard(cardId)}
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
-                <div 
+                <div
                   className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
-                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                    background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
                   }}
                 ></div>
 
-                <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
-                  
+                <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
                   <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                     <div className="absolute inset-0 rounded-2xl" style={{
                       background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                      animation: 'rotateGlow 4s linear infinite'
+                      animation: "rotateGlow 4s linear infinite",
                     }}></div>
                   </div>
 
@@ -1232,31 +873,22 @@ const BPharm = () => {
 
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${iconData.color} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-md`}>
-                          <Icon className={`${iconData.textColor}`} size={22} />
+                          <SIcon className={`${iconData.textColor}`} size={22} />
                         </div>
-                        <div className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">
-                          {subject}
-                        </div>
+                        <div className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold bg-gradient-to-r from-gray-800 to-gray-900 bg-clip-text text-transparent leading-tight">{subject}</div>
                       </div>
-                      <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-[10px] font-['Inter'] font-bold shadow-lg animate-pulse`}>
-                        {index + 1}
-                      </div>
+                      <div className={`w-7 h-7 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-[10px] font-['Inter'] font-bold shadow-lg animate-pulse flex-shrink-0`}>{index + 1}</div>
                     </div>
-
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                        Click to view units
-                      </span>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view units</span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
-
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-purple-600 transition-colors duration-300 flex items-center gap-1">
-                        Explore Subject
-                        <ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
+                        Explore Subject<ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
                       </span>
                       <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
                         <ArrowRight className="text-white" size={16} />
@@ -1274,33 +906,165 @@ const BPharm = () => {
             );
           })}
         </div>
+      </div>
+    );
+  };
 
-        {subjects.length === 0 && (
+  // ========== RENDER DIRECT FILES (PREMIUM) ==========
+  const renderDirectFilesStep = () => {
+    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
+    const categoryData = categories.find((c) => c.id === selectedCategory);
+    const Icon = categoryData?.icon || FileText;
+
+    return (
+      <div className="animate-slide-up">
+        <div className="flex items-center gap-4 mb-8 flex-wrap">
+          <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
+          </button>
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categoryData?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
+              <Icon className="text-white" size={18} />
+            </div>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+          </div>
+        </div>
+
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 mb-5 shadow-inner animate-float-text">
+            <Sparkles className="text-amber-600" size={18} />
+            <span className="text-xs font-['Inter'] font-bold text-amber-700 tracking-widest uppercase">Premium Files</span>
+            <Trophy className="text-amber-600" size={18} />
+          </div>
+          <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
+            <span className={`bg-gradient-to-r ${categoryData?.gradient} bg-clip-text text-transparent animate-gradient`}>{categoryLabel}</span>
+          </h2>
+          <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryData?.gradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
+          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            {directFiles.length > 0 ? `${directFiles.length} Files Available` : "No files available yet"}
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
+          </p>
+        </div>
+
+        {isDirectLoading && directFiles.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
+              <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Files...</h3>
+          </div>
+        ) : directError ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
+              <FolderOpen className="text-rose-400" size={48} />
+            </div>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Load Failed</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">{directError}</p>
+            <button onClick={fetchDirectFiles} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
+          </div>
+        ) : directFiles.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Subjects Available</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">Subjects for this semester are coming soon!</p>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Files Available</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any files for this section yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+            {directFiles.map((item, index) => {
+              const colors = unitColors[index % unitColors.length];
+              const cardId = `direct-${item._id || index}`;
+              return (
+                <div
+                  key={item._id || index}
+                  className="group relative cursor-pointer animate-pop"
+                  style={{ animationDelay: `${index * 0.06}s` }}
+                  onMouseEnter={() => setHoveredCard(cardId)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                >
+                  <div
+                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                    style={{
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
+                    }}
+                  ></div>
+
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
+                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                      <div className="absolute inset-0 rounded-2xl" style={{
+                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                        animation: "rotateGlow 4s linear infinite",
+                      }}></div>
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+
+                    <div className="relative z-10">
+                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${colors.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                        <FileText className="text-white" size={26} />
+                      </div>
+
+                      <h3 className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2 line-clamp-2 leading-tight">
+                        {item.title || item.fileName || "Untitled File"}
+                      </h3>
+
+                      {item.description && (
+                        <p className="text-xs font-['Inter'] text-gray-500 leading-relaxed mb-4 line-clamp-3">
+                          {item.description}
+                        </p>
+                      )}
+
+                      {item.fileSize && (
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-xs font-['Inter'] font-medium text-gray-400 bg-white/70 px-2.5 py-1 rounded-full border border-white/60">
+                            📄 {item.fileSize}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleView(item); }}
+                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                        >
+                          <Eye size={14} />Preview
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+                          className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                        >
+                          <Download size={14} />Download
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+
+                    <div className="absolute top-4 right-4">
+                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gradient-to-r ${colors.gradient} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
     );
   };
 
-  // ========== RENDER UNIT STEP ==========
+  // ========== RENDER UNIT (PREMIUM) ==========
   const renderUnitStep = () => {
-    const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
+    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
 
     return (
       <div className="animate-slide-up">
         <div className="flex items-center gap-4 mb-8 flex-wrap">
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group"
-          >
-            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
-            Back
+          <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
+            <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
           </button>
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
@@ -1317,18 +1081,13 @@ const BPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-emerald-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Select Unit</span>
+            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Step 4 of 4 — Select Unit</span>
             <Trophy className="text-emerald-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
             Select Your <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">Unit</span>
           </h2>
           <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4 animate-gradient"></div>
-          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {units.length > 0 ? `${units.length} Units Available` : "No units available yet"}
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
-          </p>
         </div>
 
         {isContentLoading && units.length === 0 ? (
@@ -1336,86 +1095,50 @@ const BPharm = () => {
             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
               <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
-              Loading Units...
-            </h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">
-              Content database se fast fetch ho raha hai...
-            </p>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Units...</h3>
           </div>
         ) : units.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner animate-pulse">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
               <FolderOpen className="text-gray-400" size={48} />
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">
-              {contentError ? "Content Load Failed" : "No Units Available"}
-            </h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">
-              {contentError || "Admin hasn't uploaded any content for this subject yet."}
-            </p>
+            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">{contentError ? "Content Load Failed" : "No Units Available"}</h3>
+            <p className="font-['Inter'] text-gray-400 mt-2">{contentError || "Admin hasn't uploaded any content for this subject yet."}</p>
             {contentError && (
-              <button
-                type="button"
-                onClick={fetchUnitContent}
-                className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all"
-              >
-                Retry
-              </button>
-            )}
-            {!contentError && (
-              <p className="font-['Inter'] text-gray-400 text-sm mt-1">
-                Units will appear here once content is uploaded.
-              </p>
+              <button onClick={fetchUnitContent} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
             )}
           </div>
         ) : (
-          <>
-            {isContentLoading && (
-            <div className="col-span-full flex items-center justify-center gap-2 mb-2 text-xs font-['Inter'] text-emerald-600">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Updating latest content...
-            </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
             {units.map((unit, index) => {
               const colors = unitColors[index % unitColors.length];
               const cardId = `unit-${unit.id}`;
-              
               const content = unitContent.filter((item) => {
                 const itemUnit = Number(item?.unit);
                 const unitId = Number(unit?.id);
-
-                return (
-                  Number.isInteger(itemUnit) &&
-                  itemUnit > 0 &&
-                  Number.isInteger(unitId) &&
-                  itemUnit === unitId
-                );
+                return Number.isInteger(itemUnit) && itemUnit > 0 && Number.isInteger(unitId) && itemUnit === unitId;
               });
-              
               return (
                 <div
                   key={unit.id}
-                  className={`group relative cursor-pointer animate-pop`}
+                  className="group relative cursor-pointer animate-pop"
                   style={{ animationDelay: `${index * 0.06}s` }}
                   onMouseEnter={() => setHoveredCard(cardId)}
                   onMouseLeave={() => setHoveredCard(null)}
                   onMouseMove={(e) => handleCardMouseMove(cardId, e)}
                 >
-                  <div 
+                  <div
                     className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                     style={{
-                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`
+                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
                     }}
                   ></div>
 
-                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
-                    
+                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
                     <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                       <div className="absolute inset-0 rounded-2xl" style={{
                         background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                        animation: 'rotateGlow 4s linear infinite'
+                        animation: "rotateGlow 4s linear infinite",
                       }}></div>
                     </div>
 
@@ -1434,7 +1157,7 @@ const BPharm = () => {
                       <div className="flex items-center gap-2 mb-3">
                         <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                         <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? 'Topic' : 'Topics'} • {content.length} {content.length === 1 ? 'Document' : 'Documents'}
+                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? "Topic" : "Topics"} • {content.length} {content.length === 1 ? "Document" : "Documents"}
                         </span>
                         <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                       </div>
@@ -1442,12 +1165,9 @@ const BPharm = () => {
                       {unit.topics && unit.topics.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           {unit.topics.slice(0, 3).map((topic, i) => (
-                            <span 
-                              key={i} 
-                              className={`text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50 group-hover:shadow-md transition-all duration-300`}
-                              style={{
-                                animation: `pop 0.3s ease ${i * 0.05}s both`
-                              }}
+                            <span
+                              key={i}
+                              className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50"
                             >
                               {topic}
                             </span>
@@ -1459,7 +1179,7 @@ const BPharm = () => {
                           )}
                         </div>
                       )}
-                      
+
                       {content.length > 0 && (
                         <div className="mt-5 pt-4 border-t border-gray-200/50">
                           <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3 animate-float-text">
@@ -1481,25 +1201,16 @@ const BPharm = () => {
 
                                 <div className="flex gap-2">
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleView(item);
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); handleView(item); }}
                                     className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
                                   >
-                                    <Eye size={14} />
-                                    Preview
+                                    <Eye size={14} />Preview
                                   </button>
-
                                   <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownload(item);
-                                    }}
+                                    onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
                                     className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
                                   >
-                                    <Download size={14} />
-                                    Download
+                                    <Download size={14} />Download
                                   </button>
                                 </div>
                               </div>
@@ -1518,47 +1229,50 @@ const BPharm = () => {
                     <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
 
                     <div className="absolute top-4 right-4">
-                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                      <div className="w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse"></div>
                     </div>
                   </div>
                 </div>
               );
             })}
-            </div>
-          </>
+          </div>
         )}
       </div>
     );
   };
 
-  // ========== PROGRESS INDICATOR ==========
+  // ========== PROGRESS ==========
   const renderProgress = () => {
-    const steps = [
-      { number: 1, label: "Category", icon: BookOpen },
-      { number: 2, label: "Semester", icon: GraduationCap },
-      { number: 3, label: "Subject", icon: Book },
-      { number: 4, label: "Unit", icon: Layers }
-    ];
+    const steps = isDirectFilesCategory()
+      ? [
+          { number: 1, label: "Category", icon: BookOpen },
+          { number: 4, label: "Files", icon: FileText },
+        ]
+      : [
+          { number: 1, label: "Category", icon: BookOpen },
+          { number: 2, label: "Semester", icon: GraduationCap },
+          { number: 3, label: "Subject", icon: Book },
+          { number: 4, label: "Unit", icon: Layers },
+        ];
 
     return (
       <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-12">
         {steps.map((step, index) => {
-          const isCompleted = currentStep > step.number;
+          const isCompleted = currentStep > step.number || (isDirectFilesCategory() && currentStep === 4 && step.number === 1);
           const isActive = currentStep === step.number;
-          const Icon = step.icon;
-          
+          const StepIcon = step.icon;
           return (
             <div key={step.number} className="flex items-center">
               <div className="flex items-center gap-2">
-                <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200' : isActive ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow' : 'bg-gray-200 text-gray-500'}`}>
-                  {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
-                  {isActive && (<div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>)}
+                <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center font-['Inter'] font-bold text-sm transition-all duration-500 ${isCompleted ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200" : isActive ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow" : "bg-gray-200 text-gray-500"}`}>
+                  {isCompleted ? <CheckCircle size={20} /> : <StepIcon size={18} />}
+                  {isActive && <div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>}
                 </div>
-                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? 'text-blue-600 font-bold animate-pulse' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
-                  {step.label}
-                </span>
+                <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${isActive ? "text-blue-600 font-bold animate-pulse" : isCompleted ? "text-emerald-600" : "text-gray-400"}`}>{step.label}</span>
               </div>
-              {index < steps.length - 1 && (<div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? 'bg-gradient-to-r from-emerald-400 to-teal-400 animate-gradient' : 'bg-gray-200'}`}></div>)}
+              {index < steps.length - 1 && (
+                <div className={`w-8 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-all duration-500 ${isCompleted ? "bg-gradient-to-r from-emerald-400 to-teal-400 animate-gradient" : "bg-gray-200"}`}></div>
+              )}
             </div>
           );
         })}
@@ -1567,17 +1281,17 @@ const BPharm = () => {
   };
 
   // ============================================================
-  // MAIN RENDER - FINAL WITH PREMIUM ANIMATIONS
+  // MAIN RENDER
   // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white">
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
-          style: { background: '#363636', color: '#fff' },
-          success: { duration: 3000, style: { background: '#10b981', color: '#fff' } },
-          error: { duration: 4000, style: { background: '#ef4444', color: '#fff' } },
+          style: { background: "#363636", color: "#fff" },
+          success: { duration: 3000, style: { background: "#10b981", color: "#fff" } },
+          error: { duration: 4000, style: { background: "#ef4444", color: "#fff" } },
         }}
       />
 
@@ -1603,80 +1317,54 @@ const BPharm = () => {
       {isPremium && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
           <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />
-            Premium Member
-            <Shield size={18} className="text-yellow-300" />
+            <Gem size={18} className="text-yellow-300" />Premium Member<Shield size={18} className="text-yellow-300" />
           </div>
         </div>
       )}
 
       {/* ============================================================
-          PREMIUM HEADER - WITH PREMIUM ANIMATIONS
+          PREMIUM HEADER
           ============================================================ */}
       <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 sm:mt-20">
         <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
-          
-          {/* Background Image */}
-          <div 
-            className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-            style={{ 
-              backgroundImage: `url(${bannerImg})`,
-              backgroundPosition: 'center 8%',
-              backgroundSize: 'cover'
-            }}
-          >
+          <div className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${bannerImg})`, backgroundPosition: "center 8%", backgroundSize: "cover" }}>
             <div className="absolute inset-0 bg-gradient-to-r from-[#071426]/90 via-[#071426]/38 to-transparent"></div>
             <div className="absolute inset-0 bg-gradient-to-t from-[#071426]/70 via-transparent to-transparent"></div>
           </div>
 
-          {/* Animated Gradient Overlay */}
           <div className="absolute left-0 top-0 h-full w-[48%] bg-gradient-to-r from-[#071426]/78 via-[#0f2847]/38 to-transparent pointer-events-none"></div>
-          
-          {/* Animated Particles */}
-          <div className="absolute top-20 right-10 w-2 h-2 rounded-full bg-blue-400/30 animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-          <div className="absolute top-40 right-20 w-3 h-3 rounded-full bg-purple-400/20 animate-pulse" style={{ animationDelay: '1.2s' }}></div>
-          <div className="absolute bottom-20 right-30 w-1.5 h-1.5 rounded-full bg-cyan-400/20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-          
-          {/* Content */}
+
+          <div className="absolute top-20 right-10 w-2 h-2 rounded-full bg-blue-400/30 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
+          <div className="absolute top-40 right-20 w-3 h-3 rounded-full bg-purple-400/20 animate-pulse" style={{ animationDelay: "1.2s" }}></div>
+          <div className="absolute bottom-20 right-30 w-1.5 h-1.5 rounded-full bg-cyan-400/20 animate-pulse" style={{ animationDelay: "2s" }}></div>
+
           <div className="relative z-20 flex items-end h-full px-4 sm:px-8 md:px-16 lg:px-24 pb-10 sm:pb-12 md:pb-14 lg:pb-16">
             <div className="max-w-2xl animate-slide-up">
-              
-              {/* Badge with Pulse */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-white/10 mb-4 animate-float-text">
                 <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-                <span className="text-xs font-['Inter'] font-semibold text-blue-300 tracking-widest uppercase">
-                  B.Pharm Program
-                </span>
-                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: '0.5s' }}></span>
+                <span className="text-xs font-['Inter'] font-semibold text-blue-300 tracking-widest uppercase">B.Pharm Program</span>
+                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
               </div>
 
-              {/* Title with Gradient Animation */}
               <h1 className="text-white font-['Space_Grotesk'] font-extrabold leading-[1.1]">
-                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: '0.3s' }}>
-                  Bachelor of
-                </span>
-                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">
-                  Pharmacy
-                </span>
+                <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl block animate-float-text" style={{ animationDelay: "0.3s" }}>Bachelor of</span>
+                <span className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl block bg-gradient-to-r from-blue-400 via-cyan-400 to-purple-400 bg-clip-text text-transparent animate-gradient">Pharmacy</span>
               </h1>
 
-              {/* Decorative Line */}
               <div className="flex items-center gap-4 mt-4 mb-4">
                 <div className="h-1 w-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full animate-gradient"></div>
-                <div className="h-1 w-8 bg-gradient-to-r from-purple-400 to-cyan-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: '0.5s' }}></div>
-                <div className="h-1 w-4 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: '1s' }}></div>
+                <div className="h-1 w-8 bg-gradient-to-r from-purple-400 to-cyan-400 rounded-full opacity-60 animate-gradient" style={{ animationDelay: "0.5s" }}></div>
+                <div className="h-1 w-4 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full opacity-30 animate-gradient" style={{ animationDelay: "1s" }}></div>
               </div>
 
-              {/* Description */}
-              <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: '0.6s' }}>
+              <p className="text-gray-300 text-sm sm:text-base md:text-lg font-['Inter'] font-light leading-relaxed max-w-xl animate-float-text" style={{ animationDelay: "0.6s" }}>
                 Complete Notes, Semester-wise PDFs, Practical Videos & Predictive Papers for B.Pharm Students.
               </p>
 
-              {/* CTA Button with Hover Animation */}
-              <button 
-                onClick={() => document.getElementById('content-start')?.scrollIntoView({ behavior: 'smooth' })}
+              <button
+                onClick={() => document.getElementById("content-start")?.scrollIntoView({ behavior: "smooth" })}
                 className="mt-6 group inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-['Inter'] font-semibold text-sm hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 animate-float-text"
-                style={{ animationDelay: '0.9s' }}
+                style={{ animationDelay: "0.9s" }}
               >
                 <span>Explore Content</span>
                 <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform duration-300" />
@@ -1684,23 +1372,20 @@ const BPharm = () => {
             </div>
           </div>
 
-          {/* Bottom Fade */}
           <div className="absolute bottom-0 left-0 right-0 h-14 bg-gradient-to-t from-[#f0f7ff] via-[#f0f7ff]/45 to-transparent pointer-events-none"></div>
         </div>
       </div>
 
-      {/* Content Start Anchor */}
       <div id="content-start"></div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-8 sm:py-14">
-        
         {currentStep > 1 && renderProgress()}
 
         <div className="step-container">
           {currentStep === 1 && renderCategoryStep()}
           {currentStep === 2 && renderSemesterStep()}
           {currentStep === 3 && renderSubjectStep()}
-          {currentStep === 4 && renderUnitStep()}
+          {currentStep === 4 && (isDirectFilesCategory() ? renderDirectFilesStep() : renderUnitStep())}
         </div>
 
         {currentStep > 1 && (

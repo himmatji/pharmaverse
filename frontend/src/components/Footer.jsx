@@ -8,15 +8,7 @@ import {
   FileText,
   AlertCircle,
   X,
-  File,
-  Video,
-  FileSpreadsheet,
-  BookOpen,
-  Zap,
-  GraduationCap,
-  Users,
-  Award,
-  CheckCircle
+  GraduationCap
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -30,62 +22,6 @@ const Footer = () => {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showRefund, setShowRefund] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
-
-  const quickLinks = [
-    { 
-      label: "Free PDF Notes", 
-      icon: File, 
-      color: "text-emerald-500",
-      bg: "bg-emerald-50",
-      description: "Download free study materials",
-      path: "/bpharm",
-      state: { scrollTo: "notes" }
-    },
-    { 
-      label: "Premium Notes", 
-      icon: BookOpen, 
-      color: "text-amber-500",
-      bg: "bg-amber-50",
-      description: "Exclusive premium content",
-      path: "/bpharm",
-      state: { scrollTo: "notes" }
-    },
-    { 
-      label: "Practical / Project Record File", 
-      icon: FileSpreadsheet, 
-      color: "text-purple-500",
-      bg: "bg-purple-50",
-      description: "Complete practical guides",
-      path: "/bpharm",
-      state: { scrollTo: "papers" }
-    },
-    { 
-      label: "Practical Videos", 
-      icon: Video, 
-      color: "text-rose-500",
-      bg: "bg-rose-50",
-      description: "Step-by-step video tutorials",
-      path: "/bpharm",
-      state: { scrollTo: "videos" }
-    },
-    { 
-      label: "Exam Crash Course", 
-      icon: Zap, 
-      color: "text-orange-500",
-      bg: "bg-orange-50",
-      description: "Quick revision for exams",
-      path: "/bpharm",
-      state: { scrollTo: "notes" }
-    },
-  ];
-
-  const resources = [
-    { label: "Blog", path: "/blog" },
-    { label: "Success Stories", path: "/success-stories" },
-    { label: "FAQs", path: "/faqs" },
-    { label: "Support Center", path: "/support" },
-    { label: "Community", path: "/community" }
-  ];
 
   const founders = [
     "Prof. Anuj Km. Bharti",
@@ -102,14 +38,6 @@ const Footer = () => {
     { icon: FaWhatsapp, href: "https://whatsapp.com/channel/0029Vb7gIycDuMRlrNrord3M", label: "WhatsApp" },
     { icon: FaQuora, href: "https://qr.ae/pFrdVn", label: "Quora" }
   ];
-
-  const handleNavigate = (path, state) => {
-    if (state) {
-      navigate(path, { state });
-    } else {
-      navigate(path);
-    }
-  };
 
   const LegalModal = ({ isOpen, onClose, title, icon: Icon, children }) => {
     if (!isOpen) return null;
@@ -493,7 +421,7 @@ const Footer = () => {
       <footer className="bg-white border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-16">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-10 lg:gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 lg:gap-12">
             
             {/* Column 1: Brand */}
             <div className="text-center md:text-left">
@@ -513,54 +441,7 @@ const Footer = () => {
               </div>
             </div>
 
-            {/* Column 2: Quick Links */}
-            <div className="text-center md:text-left">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Quick Links</h3>
-              <ul className="space-y-3 sm:space-y-3.5">
-                {quickLinks.map((link, idx) => {
-                  const Icon = link.icon;
-                  return (
-                    <li key={idx}>
-                      <div 
-                        className="flex items-center gap-3 group cursor-pointer hover:translate-x-1 transition-all duration-300"
-                        onClick={() => handleNavigate(link.path, link.state)}
-                      >
-                        <div className={`w-8 h-8 rounded-lg ${link.bg} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300`}>
-                          <Icon size={16} className={link.color} />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-gray-700 text-sm sm:text-base font-medium group-hover:text-amber-500 transition-colors duration-300">
-                            {link.label}
-                          </span>
-                          <span className="text-gray-400 text-[10px] sm:text-xs">
-                            {link.description}
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            {/* Column 3: Resources */}
-            <div className="text-center md:text-left">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Resources</h3>
-              <ul className="space-y-2 sm:space-y-2.5">
-                {resources.map((link, idx) => (
-                  <li key={idx}>
-                    <span 
-                      className="text-gray-600 text-sm sm:text-base hover:text-amber-500 transition-colors duration-300 cursor-pointer"
-                      onClick={() => handleNavigate(link.path)}
-                    >
-                      {link.label}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Column 4: Founders */}
+            {/* Column 2: Founders */}
             <div className="text-center md:text-left">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Our Founders</h3>
               <ul className="space-y-2 sm:space-y-2.5">
@@ -572,7 +453,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            {/* Column 5: Contact & Social */}
+            {/* Column 3: Contact & Social */}
             <div className="text-center md:text-left">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Connect With Us</h3>
               
@@ -597,7 +478,7 @@ const Footer = () => {
 
               <div>
                 <p className="text-sm sm:text-base font-medium text-gray-700 mb-3 sm:mb-4">Follow us on</p>
-                <div className="flex gap-3 flex-wrap justify-center md:justify-start">
+                <div className="flex gap-2 sm:gap-3 justify-center md:justify-start overflow-x-auto">
                   {socialLinks.map((social, idx) => {
                     const Icon = social.icon;
                     return (
@@ -618,7 +499,7 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Bottom Bar - UPDATED with full copyright notice */}
+          {/* Bottom Bar */}
           <div className="border-t border-gray-200 mt-10 sm:mt-12 pt-6 sm:pt-8">
             <div className="flex flex-col items-center gap-4">
               <div className="text-center">

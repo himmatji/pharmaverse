@@ -410,6 +410,7 @@ const getCourseOptions = (course) => {
 };
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_DIRECT_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB
 const MAX_INTERVIEW_FILE_SIZE = 300 * 1024 * 1024;
 
 // ===================================================================
@@ -1383,14 +1384,31 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   const handleUploadFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        alert(`File size exceeds 50MB limit.`);
-        e.target.value = '';
-        return;
-      }
-      setUploadForm(prev => ({ ...prev, file }));
+    if (!file) return;
+
+    const category = uploadForm.category;
+    const isDirectUpload =
+      category === "Exam Crash Course" ||
+      category === "PYQs";
+
+    const maxSize = isDirectUpload
+      ? MAX_DIRECT_FILE_SIZE
+      : MAX_FILE_SIZE;
+
+    if (file.size > maxSize) {
+      const limitLabel = isDirectUpload
+        ? "5GB"
+        : "50MB";
+
+      alert(`File size exceeds ${limitLabel} limit.`);
+      e.target.value = "";
+      return;
     }
+
+    setUploadForm(prev => ({
+      ...prev,
+      file
+    }));
   };
 
   const handleUnitChange = (index, field, value) => {
@@ -1577,6 +1595,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
+  // ============================================================
+  // ✅ FINAL UPLOAD SUBMIT
+  // - Notes: semester + subject + unit zaroori
+  // - Crash/PYQs: sirf title + description + file (direct)
+  // ============================================================
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
 
@@ -1586,29 +1609,51 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
 
     const branchName = getBranchName();
+    const isNotes = uploadForm.category === "Notes";
+    const isDirectUpload =
+      uploadForm.category === "Exam Crash Course" ||
+      uploadForm.category === "PYQs";
 
-    if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
+    // Notes ke liye hi semester / subject / unit / language / specialization
+    // validations apply hongi. Crash Course / PYQs are truly direct uploads.
+    if (isNotes && branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
 
-    if (branchName === "D.Pharm" && !uploadForm.language) {
+    if (isNotes && branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
     }
 
-    if (!uploadForm.semester) {
-      alert("Please select a semester/year");
-      return;
+    // ✅ Notes ke liye semester + subject + unit zaroori
+    if (isNotes) {
+      if (!uploadForm.semester) {
+        alert("Please select a semester/year");
+        return;
+      }
+      if (!uploadForm.subject) {
+        alert("Please select a subject");
+        return;
+      }
+      if (!uploadForm.unit) {
+        alert("Please select a unit");
+        return;
+      }
     }
-    if (!uploadForm.subject) {
-      alert("Please select a subject");
-      return;
+
+    // ✅ Crash/PYQs ke liye title + description zaroori
+    if (isDirectUpload) {
+      if (!uploadForm.title || !uploadForm.title.trim()) {
+        alert("Please enter a title");
+        return;
+      }
+      if (!uploadForm.description || !uploadForm.description.trim()) {
+        alert("Please enter a description");
+        return;
+      }
     }
-    if (!uploadForm.unit) {
-      alert("Please select a unit");
-      return;
-    }
+
     if (!uploadForm.file) {
       alert("Please select a file to upload");
       return;
@@ -1630,23 +1675,45 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         ? uploadForm.mpharmBranch
         : branchName;
 
-      formData.append("branch", branchValue);
+      formData.append("branch", branchName);
       formData.append("course", branchName);
-      formData.append("mpharmBranch", uploadForm.mpharmBranch || "");
+      formData.append(
+        "mpharmBranch",
+        isNotes ? (uploadForm.mpharmBranch || "") : ""
+      );
       formData.append("category", uploadForm.category);
-      formData.append("semester", uploadForm.semester);
-      formData.append("subject", uploadForm.subject);
-      formData.append("unit", uploadForm.unit);
-      formData.append("language", uploadForm.language || "english");
-      formData.append("units", JSON.stringify(uploadForm.units));
-      formData.append("title", uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`);
-      formData.append("description", uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`);
+      formData.append(
+        "language",
+        isNotes ? (uploadForm.language || "") : ""
+      );
       formData.append("isPremium", uploadForm.isPremium);
       formData.append("type", uploadForm.type);
       formData.append("file", uploadForm.file);
 
-      if (branchName === "Pharm.D") {
-        formData.append("year", uploadForm.semester);
+      if (isNotes) {
+        // ✅ Notes — full filter data
+        formData.append("semester", uploadForm.semester);
+        formData.append("subject", uploadForm.subject);
+        formData.append("unit", uploadForm.unit);
+        formData.append("units", JSON.stringify(uploadForm.units));
+        formData.append(
+          "title",
+          uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`
+        );
+        formData.append(
+          "description",
+          uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`
+        );
+
+        if (branchName === "Pharm.D") {
+          formData.append("year", uploadForm.semester);
+        }
+      } else {
+        // ✅ Crash/PYQs — direct upload, no semester/subject/unit
+        // Direct upload: do not send semester / subject / unit / year / language.
+        formData.append("isDirectFile", "true");
+        formData.append("title", uploadForm.title.trim());
+        formData.append("description", uploadForm.description.trim());
       }
 
       const response = await axios.post(
@@ -1682,7 +1749,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           type: "note"
         });
         setUploadProgress(0);
-        document.getElementById("upload-file-input").value = "";
+        const fileInput = document.getElementById("upload-file-input");
+        if (fileInput) fileInput.value = "";
         fetchAllData();
       } else {
         alert("❌ " + (response.data.message || "Upload failed"));
@@ -1788,6 +1856,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
+  // ============================================================
+  // ✅ FINAL renderUploadTab
+  // - Notes: category → sem → subject → unit → file
+  // - Crash/PYQs: category → title+desc → file (NO sem/sub/unit)
+  // ============================================================
   const renderUploadTab = () => {
     const branchName = getBranchName();
     const subjects = getSubjectsForBranch();
@@ -1795,6 +1868,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     const isYearBased = COURSE_CONFIG[branchName]?.type === "year";
     const showLanguage = COURSE_CONFIG[branchName]?.showLanguage || false;
     const showMPharmBranch = COURSE_CONFIG[branchName]?.showMPharmBranch || false;
+
+    const isNotes = uploadForm.category === "Notes";
+    const isDirectUpload =
+      uploadForm.category === "Exam Crash Course" ||
+      uploadForm.category === "PYQs";
 
     const branchContent = notes.filter((n) => {
       if (branchName === "M.Pharm") {
@@ -1840,17 +1918,25 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-800">Upload Content</h3>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
-                  {branchName === "M.Pharm"
+                  {uploadForm.category === "Exam Crash Course" || uploadForm.category === "PYQs"
+                    ? "Enter title, description & choose file"
+                    : branchName === "M.Pharm"
                     ? "Select Branch, Semester, Subject & Unit"
                     : isYearBased
                     ? "Select Language, Year, Subject & Unit"
                     : "Select Semester, Subject & Unit"}
                 </p>
               </div>
-              {uploadForm.unit && uploadForm.subject && (
+              {isNotes && uploadForm.unit && uploadForm.subject && (
                 <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-['Inter'] font-bold">
                   <CheckCircle size={15} />
                   Unit {uploadForm.unit}
+                </div>
+              )}
+              {isDirectUpload && uploadForm.file && (
+                <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-['Inter'] font-bold">
+                  <CheckCircle size={15} />
+                  Ready to Upload
                 </div>
               )}
             </div>
@@ -1888,6 +1974,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </span>
               </div>
 
+              {/* STEP 1 — Category */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">1</span>
@@ -1898,7 +1985,15 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, category: cat.id }))}
+                      onClick={() => setUploadForm(prev => ({
+                        ...prev,
+                        category: cat.id,
+                        semester: "",
+                        subject: "",
+                        unit: "",
+                        title: "",
+                        description: ""
+                      }))}
                       className={`group p-3.5 rounded-2xl border-2 transition-all duration-300 flex items-center gap-3 font-['Inter'] text-left ${
                         uploadForm.category === cat.id
                           ? `border-sky-500 bg-gradient-to-r ${cat.color} text-white shadow-lg scale-[1.02]`
@@ -1915,7 +2010,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {showLanguage && (
+              {/* Language (sirf D.Pharm ke liye) */}
+              {showLanguage && isNotes && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">1.5</span>
@@ -1950,7 +2046,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {showMPharmBranch && (
+              {/* M.Pharm Branch (sirf M.Pharm ke liye) */}
+              {showMPharmBranch && isNotes && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">1.7</span>
@@ -1988,80 +2085,120 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
-                  <label className="text-sm font-['Inter'] font-bold text-gray-800">
-                    {isYearBased ? "Year" : "Semester"}
-                  </label>
-                </div>
-                <select
-                  value={uploadForm.semester}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
-                  disabled={branchName === "M.Pharm" && !uploadForm.mpharmBranch}
-                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {branchName === "M.Pharm" && !uploadForm.mpharmBranch
-                      ? "Select M.Pharm branch first"
-                      : `Select ${isYearBased ? "year" : "semester"}`}
-                  </option>
-                  {branchOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
-                  <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
-                </div>
-                <select
-                  value={uploadForm.subject}
-                  onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
-                  disabled={!uploadForm.semester}
-                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                >
-                  <option value="">{uploadForm.semester ? "Select subject" : `Select ${isYearBased ? "year" : "semester"} first`}</option>
-                  {subjects.map((subject) => (
-                    <option key={subject} value={subject}>{subject}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">4</span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Unit</label>
+              {/* ✅ STEP 2 — Semester (SIRF NOTES KE LIYE) */}
+              {isNotes && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">
+                      {isYearBased ? "Year" : "Semester"}
+                    </label>
                   </div>
-                  {uploadForm.unit && (
-                    <span className="text-xs font-['Inter'] font-bold text-emerald-600">Unit {uploadForm.unit} selected</span>
-                  )}
+                  <select
+                    value={uploadForm.semester}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
+                    disabled={branchName === "M.Pharm" && !uploadForm.mpharmBranch}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {branchName === "M.Pharm" && !uploadForm.mpharmBranch
+                        ? "Select M.Pharm branch first"
+                        : `Select ${isYearBased ? "year" : "semester"}`}
+                    </option>
+                    {branchOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((unitNum) => (
-                    <button
-                      key={unitNum}
-                      type="button"
-                      disabled={!uploadForm.subject}
-                      onClick={() => setUploadForm(prev => ({ ...prev, unit: unitNum }))}
-                      className={`py-3 px-2 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-bold text-sm ${
-                        uploadForm.unit === unitNum
-                          ? "border-emerald-500 bg-emerald-500 text-white shadow-lg scale-[1.03]"
-                          : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
-                      } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-200`}
-                    >
-                      Unit {unitNum}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              )}
 
+              {/* ✅ STEP 3 — Subject (SIRF NOTES KE LIYE) */}
+              {isNotes && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
+                  </div>
+                  <select
+                    value={uploadForm.subject}
+                    onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
+                    disabled={!uploadForm.semester}
+                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{uploadForm.semester ? "Select subject" : `Select ${isYearBased ? "year" : "semester"} first`}</option>
+                    {subjects.map((subject) => (
+                      <option key={subject} value={subject}>{subject}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* ✅ STEP 4 — Unit (SIRF NOTES KE LIYE) */}
+              {isNotes && (
+                <div>
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">4</span>
+                      <label className="text-sm font-['Inter'] font-bold text-gray-800">Unit</label>
+                    </div>
+                    {uploadForm.unit && (
+                      <span className="text-xs font-['Inter'] font-bold text-emerald-600">Unit {uploadForm.unit} selected</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((unitNum) => (
+                      <button
+                        key={unitNum}
+                        type="button"
+                        disabled={!uploadForm.subject}
+                        onClick={() => setUploadForm(prev => ({ ...prev, unit: unitNum }))}
+                        className={`py-3 px-2 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-bold text-sm ${
+                          uploadForm.unit === unitNum
+                            ? "border-emerald-500 bg-emerald-500 text-white shadow-lg scale-[1.03]"
+                            : "border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50 text-gray-700"
+                        } disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-gray-200`}
+                      >
+                        Unit {unitNum}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ STEP 4 (Direct) — Title + Description (SIRF CRASH/PYQs KE LIYE) */}
+              {isDirectUpload && (
+                <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">2</span>
+                    <label className="text-sm font-['Inter'] font-bold text-gray-800">
+                      Title & Description <span className="text-amber-600">(required)</span>
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    name="title"
+                    value={uploadForm.title}
+                    onChange={handleUploadChange}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none font-['Inter'] text-sm"
+                    placeholder="Enter title e.g. Semester 1 Crash Course"
+                  />
+                  <textarea
+                    name="description"
+                    value={uploadForm.description}
+                    onChange={handleUploadChange}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none font-['Inter'] text-sm resize-none"
+                    placeholder="Enter short description..."
+                  />
+                </div>
+              )}
+
+              {/* ✅ STEP 5 — Choose file (sab ke liye) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">5</span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">
+                    {isNotes ? "5" : "3"}
+                  </span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">Choose file</label>
                 </div>
                 <div className="relative">
@@ -2070,7 +2207,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     type="file"
                     onChange={handleUploadFileChange}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                    accept={isDirectUpload ? undefined : ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"}
                   />
                   <div className={`p-5 sm:p-6 border-2 border-dashed rounded-2xl text-center transition-all duration-300 ${
                     uploadForm.file
@@ -2087,52 +2224,58 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                         <>Click to choose a file <span className="text-gray-400">or drag & drop</span></>
                       )}
                     </p>
-                    <p className="text-xs text-gray-400 font-['Inter'] mt-1">PDF, DOC, PPT, XLS, TXT • Max 50MB</p>
+                    <p className="text-xs text-gray-400 font-['Inter'] mt-1">PDF, DOC, PPT, XLS, TXT • {isDirectUpload ? "Max 5GB" : "Max 50MB"}</p>
                   </div>
                 </div>
               </div>
 
-              <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
-                <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
-                  <span>Optional details</span>
-                  <span className="text-xs text-gray-400 group-open:hidden">Title, description & premium</span>
-                  <span className="text-xs text-gray-400 hidden group-open:inline">Hide</span>
-                </summary>
-                <div className="px-4 pb-4 pt-1 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      name="title"
-                      value={uploadForm.title}
-                      onChange={handleUploadChange}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
-                      placeholder="Title (optional)"
-                    />
-                    <input
-                      type="text"
-                      name="description"
-                      value={uploadForm.description}
-                      onChange={handleUploadChange}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
-                      placeholder="Description (optional)"
-                    />
+              {/* Optional details (SIRF NOTES KE LIYE — Crash/PYQs me upar required hai) */}
+              {isNotes && (
+                <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
+                  <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
+                    <span>Optional details</span>
+                    <span className="text-xs text-gray-400 group-open:hidden">Title & description</span>
+                    <span className="text-xs text-gray-400 hidden group-open:inline">Hide</span>
+                  </summary>
+                  <div className="px-4 pb-4 pt-1 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        name="title"
+                        value={uploadForm.title}
+                        onChange={handleUploadChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
+                        placeholder="Title (optional)"
+                      />
+                      <input
+                        type="text"
+                        name="description"
+                        value={uploadForm.description}
+                        onChange={handleUploadChange}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
+                        placeholder="Description (optional)"
+                      />
+                    </div>
                   </div>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isPremium"
-                      checked={uploadForm.isPremium}
-                      onChange={handleUploadChange}
-                      className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
-                    />
-                    <span className="font-['Inter'] text-sm text-gray-700">
-                      <span className="font-semibold">Premium content</span>
-                      <span className="text-xs text-gray-400 block">Students need to purchase it.</span>
-                    </span>
-                  </label>
-                </div>
-              </details>
+                </details>
+              )}
 
+              {/* Premium toggle */}
+              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-2xl border-2 border-gray-200 bg-gray-50/70 hover:bg-amber-50/50 hover:border-amber-200 transition-all">
+                <input
+                  type="checkbox"
+                  name="isPremium"
+                  checked={uploadForm.isPremium}
+                  onChange={handleUploadChange}
+                  className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                />
+                <span className="font-['Inter'] text-sm text-gray-700">
+                  <span className="font-semibold">Premium content</span>
+                  <span className="text-xs text-gray-400 block">Students need to purchase it.</span>
+                </span>
+              </label>
+
+              {/* Content type */}
               <div>
                 <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
                 <div className="grid grid-cols-3 gap-2.5">
@@ -2153,6 +2296,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
+              {/* Submit */}
               <button
                 type="submit"
                 disabled={uploading}
@@ -2166,7 +2310,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 ) : (
                   <>
                     <Upload size={20} />
-                    Upload to {uploadForm.unit ? `Unit ${uploadForm.unit}` : "Selected Unit"}
+                    {isNotes
+                      ? `Upload to ${uploadForm.unit ? `Unit ${uploadForm.unit}` : "Selected Unit"}`
+                      : `Upload ${uploadForm.category || "File"}`}
                   </>
                 )}
               </button>
@@ -2209,9 +2355,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                               {item.mpharmBranch || item.branch}
                             </span>
                           )}
-                          <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
-                            {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester || item.year}` : `Sem ${item.semester}`}
-                          </span>
+                          {item.semester && (
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                              {COURSE_CONFIG[branchName]?.type === "year" ? `Year ${item.semester || item.year}` : `Sem ${item.semester}`}
+                            </span>
+                          )}
+                          {item.unit && (
+                            <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+                              Unit {item.unit}
+                            </span>
+                          )}
                           {item.language && (
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               item.language === "hindi"
@@ -2225,11 +2378,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Premium</span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-500 mt-2 font-['Inter']">Subject: {item.subject}</p>
-                        {item.units && item.units.length > 0 && (
-                          <p className="text-xs text-gray-400 font-['Inter'] mt-1">
-                            {item.units.length} unit{item.units.length > 1 ? 's' : ''}
-                          </p>
+                        {item.subject && (
+                          <p className="text-xs text-gray-500 mt-2 font-['Inter']">Subject: {item.subject}</p>
                         )}
                       </div>
                       <div className="flex gap-1 flex-shrink-0 ml-2">

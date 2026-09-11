@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
 
 const User = require("../models/User");
 const Admin = require("../models/Admin");
@@ -40,6 +42,29 @@ if (!Note.schema.path("mpharmBranch")) {
     mpharmBranch: { type: String, default: "" }
   });
 }
+
+// Direct Exam Crash Course / PYQs files are stored on disk so files
+// larger than MongoDB's BSON document limit can be uploaded safely.
+if (!Note.schema.path("isDirectFile")) {
+  Note.schema.add({
+    isDirectFile: { type: Boolean, default: false }
+  });
+}
+
+if (!Note.schema.path("filePath")) {
+  Note.schema.add({
+    filePath: { type: String, default: "" }
+  });
+}
+
+const DIRECT_UPLOAD_DIR =
+  process.env.DIRECT_UPLOAD_DIR ||
+  path.join(process.cwd(), "uploads", "direct-files");
+
+fs.mkdirSync(DIRECT_UPLOAD_DIR, { recursive: true });
+
+const DIRECT_MAX_FILE_SIZE =
+  5 * 1024 * 1024 * 1024; // 5 GB
 
 const normalizeDPharmYear = (value) => {
   const raw = String(value ?? "").trim();
@@ -91,12 +116,24 @@ const JWT_SECRET =
    MULTER - MEMORY STORAGE
 ========================================================= */
 
-const storage = multer.memoryStorage();
+// Disk storage keeps large uploads out of Node.js RAM.
+// Notes are still limited to 50MB and are converted to the existing
+// Base64 format for backward compatibility. Direct Crash/PYQs files
+// are moved to DIRECT_UPLOAD_DIR and are never Base64 encoded.
+const tempStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, DIRECT_UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || "");
+    const safeName =
+      `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+    cb(null, safeName);
+  }
+});
 
 const upload = multer({
-  storage: storage,
+  storage: tempStorage,
   limits: {
-    fileSize: 50 * 1024 * 1024
+    fileSize: DIRECT_MAX_FILE_SIZE
   }
 });
 
@@ -323,18 +360,12 @@ router.post(
   adminAuth,
   upload.single("file"),
   async (req, res) => {
+    let tempFilePath = "";
+
     try {
-      console.log(
-        "\n================================="
-      );
-
-      console.log(
-        "📤 ADMIN UPLOAD REQUEST"
-      );
-
-      console.log(
-        "================================="
-      );
+      console.log("\n=================================");
+      console.log("📤 ADMIN UPLOAD REQUEST");
+      console.log("=================================");
 
       const file = req.file;
 
@@ -344,6 +375,8 @@ router.post(
           message: "No file uploaded"
         });
       }
+
+      tempFilePath = file.path;
 
       const {
         course,
@@ -358,18 +391,117 @@ router.post(
         description,
         isPremium,
         type,
-        language
+        language,
+        isDirectFile
       } = req.body;
 
-      // M.Pharm uses course + specialization separately.
-      // Legacy courses continue to work when branch equals course.
+      const normalizedCategory = String(category || "").trim();
+      const directCategory =
+        normalizedCategory === "Exam Crash Course" ||
+        normalizedCategory === "PYQs";
+
       const normalizedCourse = String(course || branch || "").trim();
       const normalizedBranch = String(branch || course || "").trim();
-
       const courseKey = normalizedCourse.toLowerCase();
+
       const isDPharm = courseKey === "d.pharm";
       const isPharmD = courseKey === "pharm.d";
 
+      // Direct upload means ONLY title + description + file.
+      // No semester, year, subject, unit, language or specialization
+      // is required for Crash Course / PYQs.
+      if (directCategory || String(isDirectFile).toLowerCase() === "true") {
+        if (!normalizedCourse) {
+          return res.status(400).json({
+            success: false,
+            message: "Course is required"
+          });
+        }
+
+        const cleanTitle = String(title || "").trim();
+        const cleanDescription = String(description || "").trim();
+
+        if (!cleanTitle) {
+          return res.status(400).json({
+            success: false,
+            message: "Title is required"
+          });
+        }
+
+        if (!cleanDescription) {
+          return res.status(400).json({
+            success: false,
+            message: "Description is required"
+          });
+        }
+
+        // Move the uploaded temp file to a permanent, deterministic
+        // directory. Never read the whole file into memory.
+        const ext = path.extname(file.originalname || "");
+        const permanentName =
+          `${new mongoose.Types.ObjectId().toString()}-${Date.now()}${ext}`;
+        const permanentPath =
+          path.join(DIRECT_UPLOAD_DIR, permanentName);
+
+        fs.renameSync(tempFilePath, permanentPath);
+        tempFilePath = "";
+
+        const directData = {
+          title: cleanTitle,
+          description: cleanDescription,
+          course: normalizedCourse,
+          branch: normalizedCourse,
+          mpharmBranch: "",
+          category: normalizedCategory,
+          language: "",
+          semester: "",
+          year: "",
+          subject: "",
+          unit: "",
+          units: [],
+          fileName: file.originalname,
+          fileType: file.mimetype || "application/octet-stream",
+          fileSize:
+            `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          fileData: "",
+          filePath: permanentPath,
+          isDirectFile: true,
+          isPremium:
+            isPremium === "true" || isPremium === true,
+          thumbnail: req.body.thumbnail || "",
+          downloadCount: 0,
+          viewCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+
+        const directContent = await Note.create(directData);
+
+        console.log("✅ DIRECT FILE SAVED:", directContent._id);
+        console.log("📦 Size:", file.size);
+        console.log("📁 Path:", permanentPath);
+
+        return res.status(201).json({
+          success: true,
+          message: "Direct file uploaded successfully",
+          data: {
+            id: directContent._id,
+            _id: directContent._id,
+            title: directContent.title,
+            description: directContent.description,
+            course: directContent.course,
+            category: directContent.category,
+            fileName: directContent.fileName,
+            fileSize: directContent.fileSize,
+            isPremium: directContent.isPremium,
+            isDirectFile: true
+          }
+        });
+      }
+
+      // =========================
+      // EXISTING NOTES FLOW
+      // =========================
       if (courseKey === "m.pharm" && !normalizedBranch) {
         return res.status(400).json({
           success: false,
@@ -387,13 +519,9 @@ router.post(
         ? normalizePharmDYear(year || semester)
         : "";
 
-      // D.Pharm Notes / Exam Crash Course use Language.
-      // PYQs intentionally have no Language step.
       const needsLanguage =
         isDPharm &&
-        ["Notes", "Exam Crash Course"].includes(
-          String(category || "").trim()
-        );
+        normalizedCategory === "Notes";
 
       if (
         needsLanguage &&
@@ -402,7 +530,7 @@ router.post(
         return res.status(400).json({
           success: false,
           message:
-            "Language is required for D.Pharm Notes and Exam Crash Course"
+            "Language is required for D.Pharm Notes"
         });
       }
 
@@ -419,47 +547,42 @@ router.post(
       if (isPharmD && !pharmDYearNumber(normalizedYear)) {
         return res.status(400).json({
           success: false,
-          message: "Valid Pharm.D Year is required (1st Year to 6th Year)"
+          message:
+            "Valid Pharm.D Year is required (1st Year to 5th Year)"
         });
       }
 
-      console.log(
-        "📄 File Name:",
-        file.originalname
-      );
+      if (!type || type !== "note") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid file type for Notes. Use 'note'."
+        });
+      }
 
-      console.log(
-        "📦 File Size:",
-        file.size
-      );
+      const semesterNumber = Number.parseInt(semester, 10);
+      const unitNumber = Number.parseInt(unit, 10);
 
-      console.log(
-        "📁 Mime Type:",
-        file.mimetype
-      );
+      if (!isDPharm && !isPharmD) {
+        if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
+          return res.status(400).json({
+            success: false,
+            message:
+              "Invalid semester. Please select a valid semester."
+          });
+        }
+      }
 
-      console.log(
-        "📂 Category:",
-        category
-      );
-
-      console.log(
-        "📚 Semester:",
-        semester
-      );
-
-      console.log(
-        "📖 Subject:",
-        subject
-      );
-
-      console.log(
-        "📌 Unit:",
-        unit
-      );
+      if (!Number.isInteger(unitNumber) || unitNumber <= 0) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Invalid unit. Please select Unit 1, Unit 2, etc."
+        });
+      }
 
       const base64Data =
-        file.buffer.toString("base64");
+        fs.readFileSync(tempFilePath).toString("base64");
 
       const fileData =
         `data:${file.mimetype};base64,${base64Data}`;
@@ -470,7 +593,7 @@ router.post(
         parsedUnits = units
           ? JSON.parse(units)
           : [];
-      } catch (e) {
+      } catch (_e) {
         parsedUnits = [];
       }
 
@@ -494,40 +617,14 @@ router.post(
         });
       }
 
-      /* =====================================================
-         IMPORTANT UNIT FIX
-         ===================================================== */
-
-      const semesterNumber = Number.parseInt(semester, 10);
-      const unitNumber = Number.parseInt(unit, 10);
-
-      // D.Pharm and Pharm.D are year based. Other courses remain semester based.
-      if (!isDPharm && !isPharmD) {
-        if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
-          return res.status(400).json({
-            success: false,
-            message:
-              "Invalid semester. Please select a valid semester."
-          });
-        }
-      }
-
-      if (!Number.isInteger(unitNumber) || unitNumber <= 0) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid unit. Please select Unit 1, Unit 2, etc."
-        });
-      }
-
       const contentData = {
         title:
           title ||
-          `${subject} - ${category}`,
+          `${subject} - ${normalizedCategory}`,
 
         description:
           description ||
-          `${category} for ${subject}`,
+          `${normalizedCategory} for ${subject}`,
 
         course:
           normalizedCourse || "B.Pharm",
@@ -535,26 +632,25 @@ router.post(
         branch:
           normalizedBranch || "B.Pharm",
 
-        // M.Pharm specialization mirror for admin/UI compatibility.
         mpharmBranch:
           normalizedCourse.toLowerCase() === "m.pharm"
             ? normalizedBranch
             : "",
 
-        category,
+        category: normalizedCategory,
 
         language:
           isDPharm && needsLanguage
             ? normalizedLanguage
             : (normalizedLanguage || undefined),
 
-        // D.Pharm uses year; semester=1 is retained only for
-        // compatibility with older Note documents/schema.
         semester:
           isDPharm ? 1 : semesterNumber,
 
         year:
-          (isDPharm || isPharmD) ? normalizedYear : "",
+          (isDPharm || isPharmD)
+            ? normalizedYear
+            : "",
 
         subject,
 
@@ -571,14 +667,13 @@ router.post(
           file.mimetype,
 
         fileSize:
-          (
-            file.size /
-            1024 /
-            1024
-          ).toFixed(2) +
-          " MB",
+          `${(file.size / 1024 / 1024).toFixed(2)} MB`,
 
         fileData,
+
+        filePath: "",
+
+        isDirectFile: false,
 
         isPremium:
           isPremium === "true" ||
@@ -601,9 +696,7 @@ router.post(
       };
 
       const newContent =
-        new Model(
-          contentData
-        );
+        new Model(contentData);
 
       await newContent.save();
 
@@ -619,10 +712,6 @@ router.post(
       console.log(
         "✅ Document ID:",
         newContent._id
-      );
-
-      console.log(
-        "=================================\n"
       );
 
       return res.status(201).json({
@@ -667,6 +756,16 @@ router.post(
         error
       );
 
+      // If database save failed after a direct file was moved,
+      // remove the orphaned physical file.
+      if (tempFilePath) {
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (_e) {}
+      }
+
       return res.status(500).json({
         success: false,
         message:
@@ -676,6 +775,7 @@ router.post(
     }
   }
 );
+
 
 /* =========================================================
    ADMIN LOGIN ROUTE
@@ -2813,6 +2913,31 @@ router.delete(
         }
       }
 
+      // Remove the physical file for direct Crash/PYQs uploads.
+      if (
+        note.isDirectFile &&
+        note.filePath
+      ) {
+        try {
+          const resolvedPath = path.resolve(note.filePath);
+          const allowedRoot = path.resolve(DIRECT_UPLOAD_DIR);
+
+          if (
+            resolvedPath.startsWith(
+              `${allowedRoot}${path.sep}`
+            ) &&
+            fs.existsSync(resolvedPath)
+          ) {
+            fs.unlinkSync(resolvedPath);
+          }
+        } catch (fileDeleteError) {
+          console.error(
+            "Direct file cleanup error:",
+            fileDeleteError
+          );
+        }
+      }
+
       await Note.findByIdAndDelete(
         id
       );
@@ -3596,6 +3721,76 @@ const getContentModel = (
 };
 
 /* =========================================================
+   PUBLIC DIRECT FILES
+   Exam Crash Course + PYQs
+   NO semester / subject / unit / year / language
+========================================================= */
+
+router.get(
+  "/public/direct-files",
+  async (req, res) => {
+    try {
+      const course = String(req.query.course || "").trim();
+      const category = String(req.query.category || "").trim();
+
+      if (!course) {
+        return res.status(400).json({
+          success: false,
+          message: "Course is required"
+        });
+      }
+
+      if (
+        !["Exam Crash Course", "PYQs"].includes(category)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Category must be Exam Crash Course or PYQs"
+        });
+      }
+
+      const items = await Note.find({
+        course: {
+          $regex:
+            `^${course.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $options: "i"
+        },
+        category: {
+          $regex:
+            `^${category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          $options: "i"
+        },
+        isDirectFile: true
+      })
+        .select(
+          "-fileData -filePath"
+        )
+        .sort({
+          createdAt: -1
+        })
+        .lean();
+
+      return res.json({
+        success: true,
+        data: items,
+        count: items.length
+      });
+    } catch (error) {
+      console.error(
+        "Public direct files error:",
+        error
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch direct files"
+      });
+    }
+  }
+);
+
+/* =========================================================
    SEND STORED FILE
 ========================================================= */
 
@@ -3636,14 +3831,98 @@ const sendStoredFile = async (
     const item =
       await Model.findById(id);
 
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "File not found"
+      });
+    }
+
+    const safeFileName =
+      String(
+        item.fileName ||
+        "document.pdf"
+      )
+        .replace(
+          /[\r\n"]/g,
+          ""
+        )
+        .trim() ||
+      "document.pdf";
+
+    // Large direct files are stored on disk.
     if (
-      !item ||
+      item.isDirectFile &&
+      item.filePath
+    ) {
+      const resolvedPath = path.resolve(
+        item.filePath
+      );
+      const allowedRoot = path.resolve(
+        DIRECT_UPLOAD_DIR
+      );
+
+      if (
+        !resolvedPath.startsWith(
+          `${allowedRoot}${path.sep}`
+        )
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: "Invalid file location"
+        });
+      }
+
+      if (!fs.existsSync(resolvedPath)) {
+        return res.status(404).json({
+          success: false,
+          message: "Physical file not found"
+        });
+      }
+
+      const stat =
+        fs.statSync(resolvedPath);
+
+      res.setHeader(
+        "Content-Type",
+        item.fileType ||
+          "application/octet-stream"
+      );
+
+      res.setHeader(
+        "Content-Length",
+        stat.size
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `${disposition}; filename="${safeFileName}"`
+      );
+
+      if (
+        disposition === "attachment" &&
+        typeof item.incrementDownloads ===
+          "function"
+      ) {
+        item
+          .incrementDownloads()
+          .catch(() => {});
+      }
+
+      return fs.createReadStream(
+        resolvedPath
+      ).pipe(res);
+    }
+
+    // Legacy Notes / existing small files remain unchanged.
+    if (
       !item.fileData
     ) {
       return res.status(404).json({
         success: false,
         message:
-          "File not found"
+          "File data not found"
       });
     }
 
@@ -3673,18 +3952,6 @@ const sendStoredFile = async (
         match[2],
         "base64"
       );
-
-    const safeFileName =
-      String(
-        item.fileName ||
-        "document.pdf"
-      )
-        .replace(
-          /[\r\n"]/g,
-          ""
-        )
-        .trim() ||
-      "document.pdf";
 
     res.setHeader(
       "Content-Type",
@@ -3726,6 +3993,7 @@ const sendStoredFile = async (
     });
   }
 };
+
 
 /* =========================================================
    PUBLIC PREVIEW
@@ -4365,6 +4633,7 @@ router.get(
         "GET /public/free-videos",
         "GET /public/paid-pdfs",
         "GET /public/papers",
+        "GET /public/direct-files",
         "GET /public/preview/:type/:id",
         "GET /public/download/:type/:id",
         "GET /interview-materials",
