@@ -118,7 +118,7 @@ const PharmD = () => {
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ✅ Direct files for Crash Course / PYQs
+  // Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [directError, setDirectError] = useState("");
@@ -126,6 +126,14 @@ const PharmD = () => {
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
+
+  // ✅ MOBILE BACK BUTTON SYNC — refs
+  const isPopStateRef = useRef(false);
+  const currentStepRef = useRef(1);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
 
   const isPYQ = () => String(selectedCategory || "").trim().toLowerCase() === "pyqs";
 
@@ -272,10 +280,11 @@ const PharmD = () => {
   };
 
   // ✅ FETCH DIRECT FILES (Crash Course / PYQs)
+  // ✅ Ab year + subject bhi pass karo
   const fetchDirectFiles = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !selectedYear || !selectedSubject) return;
 
-    const cacheKey = ["Pharm.D", selectedCategory, "direct"].join("||");
+    const cacheKey = ["Pharm.D", selectedCategory, String(selectedYear), String(selectedSubject), "direct"].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -305,7 +314,13 @@ const PharmD = () => {
 
     try {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
-        params: { course: "Pharm.D", category: selectedCategory },
+        params: {
+          course: "Pharm.D",
+          category: selectedCategory,
+          year: selectedYear,
+          semester: selectedYear,
+          subject: selectedSubject,
+        },
         signal: controller.signal,
         timeout: 15000,
         headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -317,7 +332,18 @@ const PharmD = () => {
         .filter(Boolean)
         .filter((item) => {
           const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
-          return catMatch;
+
+          const itemYear = item?.year ?? item?.semester;
+          const yearMatch =
+            itemYear == null ||
+            String(itemYear).trim() === String(selectedYear).trim() ||
+            String(itemYear).trim().replace(/\D/g, "") === String(selectedYear).trim();
+
+          const subMatch =
+            item?.subject == null ||
+            String(item.subject).trim().toLowerCase() === String(selectedSubject).trim().toLowerCase();
+
+          return catMatch && yearMatch && subMatch;
         });
 
       contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
@@ -337,10 +363,11 @@ const PharmD = () => {
     }
   };
 
+  // ========== EFFECT ==========
   useEffect(() => {
-    if (isDirectFilesCategory()) {
+    if (isDirectFilesCategory() && selectedYear && selectedSubject) {
       fetchDirectFiles();
-    } else {
+    } else if (selectedCategory === "Notes" && selectedYear && selectedSubject) {
       fetchUnitContent();
     }
 
@@ -352,7 +379,61 @@ const PharmD = () => {
     };
   }, [selectedCategory, selectedYear, selectedSubject]);
 
+  // ========== ✅ MOBILE BACK — pushState on forward nav ==========
+  useEffect(() => {
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false;
+      return;
+    }
+    if (currentStep > 1) {
+      window.history.pushState(
+        { pharmdStep: currentStep },
+        "",
+        window.location.href
+      );
+    }
+  }, [currentStep]);
+
+  // ========== ✅ MOBILE BACK — popstate handler ==========
+  useEffect(() => {
+    const handlePopState = () => {
+      const step = currentStepRef.current;
+      if (step > 1) {
+        isPopStateRef.current = true;
+
+        // Step-by-step back
+        if (step === 2) {
+          setCurrentStep(1);
+          setSelectedCategory(null);
+        } else if (step === 3) {
+          setCurrentStep(2);
+          setSelectedYear(null);
+          setSelectedSubject(null);
+        } else if (step === 4) {
+          // Step 4 (Unit/Files) → Step 3 (Subject)
+          setCurrentStep(3);
+          setSelectedSubject(null);
+          setUnits([]);
+          setUnitContent([]);
+          setDirectFiles([]);
+        }
+
+        // Push state back so user stays on page
+        window.history.pushState(
+          { pharmdStep: step - 1 },
+          "",
+          window.location.href
+        );
+      }
+      // step === 1 → normal browser back (page exit)
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // ========== HANDLERS ==========
+  // ✅ FIX: Har category Year step (step 2) pe jaayegi
   const handleCategoryClick = (categoryId) => {
     contentRequestIdRef.current += 1;
     if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
@@ -364,12 +445,8 @@ const PharmD = () => {
     setUnitContent([]);
     setDirectFiles([]);
 
-    // Notes → Step 2 (year), Crash Course/PYQs → Step 4 (direct files)
-    if (categoryId === "Notes") {
-      setCurrentStep(2);
-    } else {
-      setCurrentStep(4);
-    }
+    // Sab categories (Notes / Crash / PYQs) → Step 2 (Year)
+    setCurrentStep(2);
   };
 
   const handleYearClick = (year) => {
@@ -381,6 +458,7 @@ const PharmD = () => {
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
   const handleSubjectClick = (subject) => {
@@ -388,8 +466,10 @@ const PharmD = () => {
     setCurrentStep(4);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
+  // ✅ FIX: goBack me saare steps handle karo
   const goBack = () => {
     if (currentStep === 2) {
       setCurrentStep(1);
@@ -398,16 +478,12 @@ const PharmD = () => {
       setCurrentStep(2);
       setSelectedYear(null);
     } else if (currentStep === 4) {
-      if (isDirectFilesCategory()) {
-        setCurrentStep(1);
-        setSelectedCategory(null);
-        setDirectFiles([]);
-      } else {
-        setCurrentStep(3);
-        setSelectedSubject(null);
-        setUnits([]);
-        setUnitContent([]);
-      }
+      // Step 4 → Step 3 (Subject) for BOTH Notes and Crash/PYQs
+      setCurrentStep(3);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
     }
   };
 
@@ -660,7 +736,7 @@ const PharmD = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
             <Sparkles className="text-sky-600" size={16} />
-            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 2 of 3</span>
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 2 of 4</span>
             <Sparkles className="text-sky-600" size={16} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -760,7 +836,7 @@ const PharmD = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-purple-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 3 of 3</span>
+            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 3 of 4</span>
             <Trophy className="text-purple-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -825,7 +901,9 @@ const PharmD = () => {
 
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view units</span>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                        {isDirectFilesCategory() ? "Click to view files" : "Click to view units"}
+                      </span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
 
@@ -865,6 +943,7 @@ const PharmD = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryData = categories.find((c) => c.id === selectedCategory);
     const Icon = categoryData?.icon || FileText;
+    const yearName = selectedYear === 1 ? "1st Year" : selectedYear === 2 ? "2nd Year" : selectedYear === 3 ? "3rd Year" : selectedYear === 4 ? "4th Year" : "5th Year";
 
     return (
       <div className="animate-slide-up">
@@ -876,11 +955,17 @@ const PharmD = () => {
             <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
             Back
           </button>
-          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categoryData?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Year:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{yearName}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Subject:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 truncate max-w-[160px]">{selectedSubject}</span>
           </div>
         </div>
 
@@ -1232,23 +1317,23 @@ const PharmD = () => {
     const steps = isDirectFilesCategory()
       ? [
           { number: 1, label: "Category", icon: BookOpen },
+          { number: 2, label: "Year", icon: GraduationCap },
+          { number: 3, label: "Subject", icon: Book },
           { number: 4, label: "Files", icon: FileText },
         ]
       : [
           { number: 1, label: "Category", icon: BookOpen },
           { number: 2, label: "Year", icon: GraduationCap },
           { number: 3, label: "Subject", icon: Book },
-          { number: 4, label: isPYQ() ? "Papers" : "Unit", icon: isPYQ() ? FileText : Layers },
+          { number: 4, label: "Unit", icon: Layers },
         ];
 
     return (
       <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-12">
         {steps.map((step, index) => {
-          const isCompleted =
-            currentStep > step.number ||
-            (isDirectFilesCategory() && currentStep === 4 && step.number === 1);
+          const isCompleted = currentStep > step.number;
           const isActive = currentStep === step.number;
-          const Icon = step.icon;
+          const PIcon = step.icon;
 
           return (
             <div key={step.number} className="flex items-center">
@@ -1260,7 +1345,7 @@ const PharmD = () => {
                     ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 scale-110 animate-pulse-glow"
                     : "bg-gray-200 text-gray-500"
                 }`}>
-                  {isCompleted ? <CheckCircle size={20} /> : <Icon size={18} />}
+                  {isCompleted ? <CheckCircle size={20} /> : <PIcon size={18} />}
                   {isActive && <div className="absolute -inset-1 rounded-full border-2 border-blue-400/50 animate-pulse"></div>}
                 </div>
                 <span className={`text-xs sm:text-sm font-['Inter'] font-medium hidden sm:inline ${
@@ -1396,8 +1481,8 @@ const PharmD = () => {
 
         <div className="step-container">
           {currentStep === 1 && renderCategoryStep()}
-          {currentStep === 2 && !isDirectFilesCategory() && renderYearStep()}
-          {currentStep === 3 && !isDirectFilesCategory() && renderSubjectStep()}
+          {currentStep === 2 && renderYearStep()}
+          {currentStep === 3 && renderSubjectStep()}
           {currentStep === 4 && (isDirectFilesCategory() ? renderDirectFilesStep() : renderContentStep())}
         </div>
 

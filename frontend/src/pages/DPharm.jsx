@@ -155,7 +155,6 @@ const DPharm = () => {
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ✅ Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [directError, setDirectError] = useState("");
@@ -164,7 +163,20 @@ const DPharm = () => {
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
 
-  // ✅ Check if current category is direct-files type
+  // ✅ HISTORY SYNC REFS
+  const isPopStateRef = useRef(false);
+  const currentStepRef = useRef(1);
+  const isDirectFilesCategoryRef = useRef(false);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  useEffect(() => {
+    isDirectFilesCategoryRef.current =
+      selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
+  }, [selectedCategory]);
+
   const isDirectFilesCategory = () =>
     selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
 
@@ -309,11 +321,18 @@ const DPharm = () => {
     toast.error("Content load nahi ho paaya. Retry karein.");
   };
 
-  // ✅ FETCH DIRECT FILES for Crash Course / PYQs
+  // FETCH DIRECT FILES
   const fetchDirectFiles = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !selectedLanguage || !selectedYear || !selectedSubject) return;
 
-    const cacheKey = ["D.Pharm", selectedCategory, "direct"].join("||");
+    const cacheKey = [
+      "D.Pharm",
+      selectedCategory,
+      String(selectedLanguage),
+      String(selectedYear),
+      String(selectedSubject),
+      "direct",
+    ].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -343,7 +362,13 @@ const DPharm = () => {
 
     try {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
-        params: { course: "D.Pharm", category: selectedCategory },
+        params: {
+          course: "D.Pharm",
+          category: selectedCategory,
+          language: selectedLanguage,
+          year: selectedYear,
+          subject: selectedSubject,
+        },
         signal: controller.signal,
         timeout: 15000,
         headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -354,8 +379,25 @@ const DPharm = () => {
       const files = getRawFiles(res?.data)
         .filter(Boolean)
         .filter((item) => {
-          const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
-          return catMatch;
+          const catMatch =
+            item?.category == null ||
+            String(item.category).trim() === String(selectedCategory).trim();
+
+          const languageMatch =
+            item?.language == null ||
+            String(item.language).trim().toLowerCase() ===
+              String(selectedLanguage).trim().toLowerCase();
+
+          const yearMatch =
+            item?.year == null ||
+            String(item.year).trim() === String(selectedYear).trim();
+
+          const subjectMatch =
+            item?.subject == null ||
+            String(item.subject).trim().toLowerCase() ===
+              String(selectedSubject).trim().toLowerCase();
+
+          return catMatch && languageMatch && yearMatch && subjectMatch;
         });
 
       contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
@@ -377,7 +419,12 @@ const DPharm = () => {
 
   // ========== EFFECT ==========
   useEffect(() => {
-    if (isDirectFilesCategory()) {
+    if (
+      isDirectFilesCategory() &&
+      selectedLanguage &&
+      selectedYear &&
+      selectedSubject
+    ) {
       fetchDirectFiles();
     } else if (selectedCategory && selectedYear && selectedSubject) {
       fetchUnitContent({
@@ -393,6 +440,64 @@ const DPharm = () => {
     }
   }, [selectedCategory, selectedLanguage, selectedYear, selectedSubject]);
 
+  // ========== ✅ HISTORY SYNC: push state on step change ==========
+  useEffect(() => {
+    // Skip push if this change came from popstate (browser back)
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false;
+      return;
+    }
+
+    if (currentStep > 1) {
+      // Push a new history entry for each forward navigation
+      window.history.pushState(
+        { dpharmStep: currentStep },
+        "",
+        window.location.href
+      );
+    }
+  }, [currentStep]);
+
+  // ========== ✅ POPSTATE HANDLER: browser/hardware back ==========
+  useEffect(() => {
+    const handlePopState = () => {
+      const step = currentStepRef.current;
+      if (step > 1) {
+        isPopStateRef.current = true;
+
+        // Step-by-step back logic (same as goBack)
+        if (step === 2) {
+          setCurrentStep(1);
+          setSelectedCategory(null);
+        } else if (step === 3) {
+          setCurrentStep(2);
+          setSelectedLanguage(null);
+        } else if (step === 4) {
+          setCurrentStep(3);
+          setSelectedYear(null);
+        } else if (step === 5) {
+          setCurrentStep(4);
+          setSelectedSubject(null);
+          setUnits([]);
+          setUnitContent([]);
+          setDirectFiles([]);
+          setContentLoading(false);
+        }
+
+        // Push state back so user stays in page
+        window.history.pushState(
+          { dpharmStep: step - 1 },
+          "",
+          window.location.href
+        );
+      }
+      // If step === 1, let browser go back naturally (exit page)
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     contentRequestIdRef.current += 1;
@@ -407,11 +512,7 @@ const DPharm = () => {
     setDirectFiles([]);
     setContentLoading(false);
 
-    if (categoryId === "Notes") {
-      setCurrentStep(2);
-    } else {
-      setCurrentStep(5); // Direct files
-    }
+    setCurrentStep(2);
   };
 
   const handleLanguageClick = (languageId) => {
@@ -450,6 +551,13 @@ const DPharm = () => {
     }
 
     setSelectedSubject(subject);
+
+    if (isDirectFilesCategory()) {
+      setCurrentStep(5);
+      setContentLoading(false);
+      return;
+    }
+
     setCurrentStep(5);
     setContentLoading(true);
 
@@ -469,6 +577,7 @@ const DPharm = () => {
     fetchUnitContent({ category, language, year, subject, force: false });
   };
 
+  // ✅ goBack — used by in-page Back button
   const goBack = () => {
     if (currentStep === 2) {
       setCurrentStep(1);
@@ -480,17 +589,12 @@ const DPharm = () => {
       setCurrentStep(3);
       setSelectedYear(null);
     } else if (currentStep === 5) {
-      if (isDirectFilesCategory()) {
-        // Direct files → back to category
-        setCurrentStep(1);
-        setSelectedCategory(null);
-        setDirectFiles([]);
-      } else {
-        setCurrentStep(4);
-        setSelectedSubject(null);
-        setUnits([]);
-        setUnitContent([]);
-      }
+      setCurrentStep(4);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
+      setContentLoading(false);
     }
   };
 
@@ -505,7 +609,7 @@ const DPharm = () => {
     setDirectFiles([]);
   };
 
-  // ========== STYLES ==========
+  // ========== STYLES (same as before) ==========
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
@@ -838,7 +942,7 @@ const DPharm = () => {
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
-            {selectedLanguage && selectedCategory !== "PYQs" && (
+            {selectedLanguage && true && (
               <>
                 <span className="text-gray-300">|</span>
                 <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedLanguage}</span>
@@ -956,7 +1060,7 @@ const DPharm = () => {
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800">{categoryLabel}</span>
-            {selectedLanguage && selectedCategory !== "PYQs" && (
+            {selectedLanguage && true && (
               <>
                 <span className="text-gray-300">|</span>
                 <span className="text-gray-500 text-sm font-['Inter'] font-medium">Language:</span>
@@ -1039,7 +1143,7 @@ const DPharm = () => {
 
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view units</span>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">{isDirectFilesCategory() ? "Click to view files" : "Click to view units"}</span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
 
@@ -1074,7 +1178,7 @@ const DPharm = () => {
     );
   };
 
-  // ========== RENDER DIRECT FILES (Crash Course / PYQs) ==========
+  // ========== RENDER DIRECT FILES ==========
   const renderDirectFilesStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryData = categories.find((c) => c.id === selectedCategory);
@@ -1095,6 +1199,14 @@ const DPharm = () => {
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+            <span className="text-gray-300">|</span>
+            <span className="font-['Inter'] text-sm text-gray-500">{selectedLanguage}</span>
+            <span className="text-gray-300">|</span>
+            <span className="font-['Inter'] text-sm text-gray-500">
+              {selectedYear === 1 ? "1st Year" : "2nd Year"}
+            </span>
+            <span className="text-gray-300">|</span>
+            <span className="font-['Inter'] text-sm text-gray-500">{selectedSubject}</span>
           </div>
         </div>
 
@@ -1256,7 +1368,7 @@ const DPharm = () => {
           <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800">{categoryLabel}</span>
-            {selectedLanguage && selectedCategory !== "PYQs" && (
+            {selectedLanguage && true && (
               <>
                 <span className="text-gray-300">|</span>
                 <span className="text-gray-500 text-sm font-['Inter'] font-medium">Language:</span>
@@ -1460,6 +1572,9 @@ const DPharm = () => {
     const steps = isDirectFilesCategory()
       ? [
           { number: 1, label: "Category", icon: BookOpen },
+          { number: 2, label: "Language", icon: Book },
+          { number: 3, label: "Year", icon: GraduationCap },
+          { number: 4, label: "Subject", icon: Book },
           { number: 5, label: "Files", icon: FileText },
         ]
       : [
@@ -1629,9 +1744,9 @@ const DPharm = () => {
 
         <div className="step-container">
           {currentStep === 1 && renderCategoryStep()}
-          {currentStep === 2 && !isDirectFilesCategory() && renderLanguageStep()}
-          {currentStep === 3 && !isDirectFilesCategory() && renderYearStep()}
-          {currentStep === 4 && !isDirectFilesCategory() && renderSubjectStep()}
+          {currentStep === 2 && renderLanguageStep()}
+          {currentStep === 3 && renderYearStep()}
+          {currentStep === 4 && renderSubjectStep()}
           {currentStep === 5 && (isDirectFilesCategory() ? renderDirectFilesStep() : renderUnitStep())}
         </div>
 

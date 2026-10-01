@@ -157,7 +157,6 @@ const BPharm = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPrice, setPremiumPrice] = useState(999);
 
-  // ✅ Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [directError, setDirectError] = useState("");
@@ -165,6 +164,20 @@ const BPharm = () => {
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
+
+  // ✅ HISTORY SYNC REFS
+  const isPopStateRef = useRef(false);
+  const currentStepRef = useRef(1);
+  const isDirectFilesCategoryRef = useRef(false);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
+
+  useEffect(() => {
+    isDirectFilesCategoryRef.current =
+      selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
+  }, [selectedCategory]);
 
   const isDirectFilesCategory = () =>
     selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
@@ -281,9 +294,9 @@ const BPharm = () => {
 
   // ✅ FETCH DIRECT FILES
   const fetchDirectFiles = async () => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !selectedSemester || !selectedSubject) return;
 
-    const cacheKey = ["B.Pharm", selectedCategory, "direct"].join("||");
+    const cacheKey = ["B.Pharm", selectedCategory, selectedSemester, selectedSubject, "direct"].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -313,7 +326,12 @@ const BPharm = () => {
 
     try {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
-        params: { course: "B.Pharm", category: selectedCategory },
+        params: {
+          course: "B.Pharm",
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject,
+        },
         signal: controller.signal,
         timeout: 15000,
         headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -325,7 +343,9 @@ const BPharm = () => {
         .filter(Boolean)
         .filter((item) => {
           const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
-          return catMatch;
+          const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
+          const subMatch = item?.subject == null || String(item.subject).trim() === String(selectedSubject).trim();
+          return catMatch && semMatch && subMatch;
         });
 
       contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
@@ -346,7 +366,7 @@ const BPharm = () => {
   };
 
   useEffect(() => {
-    if (isDirectFilesCategory()) {
+    if (isDirectFilesCategory() && selectedSemester && selectedSubject) {
       fetchDirectFiles();
     } else if (selectedCategory === "Notes" && selectedSemester && selectedSubject) {
       fetchUnitContent();
@@ -360,6 +380,58 @@ const BPharm = () => {
     };
   }, [selectedCategory, selectedSemester, selectedSubject]);
 
+  // ========== ✅ HISTORY SYNC: push state on step change ==========
+  useEffect(() => {
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false;
+      return;
+    }
+    if (currentStep > 1) {
+      window.history.pushState(
+        { bpharmStep: currentStep },
+        "",
+        window.location.href
+      );
+    }
+  }, [currentStep]);
+
+  // ========== ✅ POPSTATE HANDLER: browser/hardware back ==========
+  useEffect(() => {
+    const handlePopState = () => {
+      const step = currentStepRef.current;
+      if (step > 1) {
+        isPopStateRef.current = true;
+
+        // Step-by-step back
+        if (step === 2) {
+          setCurrentStep(1);
+          setSelectedCategory(null);
+        } else if (step === 3) {
+          setCurrentStep(2);
+          setSelectedSemester(null);
+          setSelectedSubject(null);
+        } else if (step === 4) {
+          setCurrentStep(3);
+          setSelectedSubject(null);
+          setUnits([]);
+          setUnitContent([]);
+          setDirectFiles([]);
+        }
+
+        // Push state back taaki page se bahar na jaaye
+        window.history.pushState(
+          { bpharmStep: step - 1 },
+          "",
+          window.location.href
+        );
+      }
+      // step === 1 pe normal browser back
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId);
@@ -369,11 +441,7 @@ const BPharm = () => {
     setUnitContent([]);
     setDirectFiles([]);
 
-    if (categoryId === "Notes") {
-      setCurrentStep(2);
-    } else {
-      setCurrentStep(4);
-    }
+    setCurrentStep(2);
   };
 
   const handleSemesterClick = (semester) => {
@@ -398,17 +466,13 @@ const BPharm = () => {
     } else if (currentStep === 3) {
       setCurrentStep(2);
       setSelectedSemester(null);
+      setSelectedSubject(null);
     } else if (currentStep === 4) {
-      if (isDirectFilesCategory()) {
-        setCurrentStep(1);
-        setSelectedCategory(null);
-        setDirectFiles([]);
-      } else {
-        setCurrentStep(3);
-        setSelectedSubject(null);
-        setUnits([]);
-        setUnitContent([]);
-      }
+      setCurrentStep(3);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
     }
   };
 
@@ -422,7 +486,7 @@ const BPharm = () => {
     setDirectFiles([]);
   };
 
-  // ========== FULL PREMIUM STYLES (WAPAS) ==========
+  // ========== FULL PREMIUM STYLES ==========
   useEffect(() => {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
@@ -606,7 +670,7 @@ const BPharm = () => {
     toast.info("💎 Premium purchase flow - Coming soon!");
   };
 
-  // ========== RENDER CATEGORY (PREMIUM) ==========
+  // ========== RENDER CATEGORY ==========
   const renderCategoryStep = () => {
     return (
       <div className="animate-slide-up">
@@ -689,7 +753,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER SEMESTER (PREMIUM) ==========
+  // ========== RENDER SEMESTER ==========
   const renderSemesterStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryIcon = categories.find((c) => c.id === selectedCategory)?.icon || BookOpen;
@@ -800,7 +864,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER SUBJECT (PREMIUM) ==========
+  // ========== RENDER SUBJECT ==========
   const renderSubjectStep = () => {
     const subjects = getAvailableSubjects();
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
@@ -883,7 +947,7 @@ const BPharm = () => {
                     </div>
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view units</span>
+                      <span className="text-xs font-['Inter'] font-medium text-gray-500">Click to view {isDirectFilesCategory() ? "files" : "units"}</span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
                     <div className="mt-4 flex items-center justify-between">
@@ -910,7 +974,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER DIRECT FILES (PREMIUM) ==========
+  // ========== RENDER DIRECT FILES ==========
   const renderDirectFilesStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryData = categories.find((c) => c.id === selectedCategory);
@@ -922,18 +986,24 @@ const BPharm = () => {
           <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
             <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
           </button>
-          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50">
+          <div className="flex items-center gap-3 glass-effect rounded-2xl px-5 py-3 shadow-lg border border-white/50 flex-wrap">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${categoryData?.gradient} flex items-center justify-center shadow-md animate-pulse`}>
               <Icon className="text-white" size={18} />
             </div>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800 text-lg">{categoryLabel}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Semester:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedSemester}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Subject:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 truncate max-w-[220px]">{selectedSubject}</span>
           </div>
         </div>
 
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-amber-100 to-orange-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-amber-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-amber-700 tracking-widest uppercase">Premium Files</span>
+            <span className="text-xs font-['Inter'] font-bold text-amber-700 tracking-widest uppercase">{categoryLabel} • Files</span>
             <Trophy className="text-amber-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1056,7 +1126,7 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER UNIT (PREMIUM) ==========
+  // ========== RENDER UNIT ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
 
@@ -1246,6 +1316,8 @@ const BPharm = () => {
     const steps = isDirectFilesCategory()
       ? [
           { number: 1, label: "Category", icon: BookOpen },
+          { number: 2, label: "Semester", icon: GraduationCap },
+          { number: 3, label: "Subject", icon: Book },
           { number: 4, label: "Files", icon: FileText },
         ]
       : [
@@ -1258,7 +1330,7 @@ const BPharm = () => {
     return (
       <div className="flex items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-12">
         {steps.map((step, index) => {
-          const isCompleted = currentStep > step.number || (isDirectFilesCategory() && currentStep === 4 && step.number === 1);
+          const isCompleted = currentStep > step.number;
           const isActive = currentStep === step.number;
           const StepIcon = step.icon;
           return (
@@ -1322,9 +1394,7 @@ const BPharm = () => {
         </div>
       )}
 
-      {/* ============================================================
-          PREMIUM HEADER
-          ============================================================ */}
+      {/* PREMIUM HEADER */}
       <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] mt-16 sm:mt-20">
         <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
           <div className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat" style={{ backgroundImage: `url(${bannerImg})`, backgroundPosition: "center 8%", backgroundSize: "cover" }}>

@@ -1396,19 +1396,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       : MAX_FILE_SIZE;
 
     if (file.size > maxSize) {
-      const limitLabel = isDirectUpload
-        ? "5GB"
-        : "50MB";
-
+      const limitLabel = isDirectUpload ? "5GB" : "50MB";
       alert(`File size exceeds ${limitLabel} limit.`);
       e.target.value = "";
       return;
     }
 
-    setUploadForm(prev => ({
-      ...prev,
-      file
-    }));
+    setUploadForm(prev => ({ ...prev, file }));
   };
 
   const handleUnitChange = (index, field, value) => {
@@ -1458,7 +1452,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("At least one unit is required");
       return;
     }
-
     setUploadForm(prev => ({
       ...prev,
       units: prev.units.filter((_, i) => i !== index)
@@ -1481,7 +1474,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       alert("At least one topic is required");
       return;
     }
-
     setUploadForm(prev => ({
       ...prev,
       units: prev.units.map((unit, i) =>
@@ -1597,8 +1589,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   // ============================================================
   // ✅ FINAL UPLOAD SUBMIT
-  // - Notes: semester + subject + unit zaroori
-  // - Crash/PYQs: sirf title + description + file (direct)
+  // Notes → Category → [Lang] → [Branch] → Sem/Year → Subject → Unit → File
+  // Crash/PYQs → Category → [Lang] → [Branch] → Sem/Year → Subject → Title+Desc → File (NO Unit)
   // ============================================================
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
@@ -1614,35 +1606,35 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       uploadForm.category === "Exam Crash Course" ||
       uploadForm.category === "PYQs";
 
-    // Notes ke liye hi semester / subject / unit / language / specialization
-    // validations apply hongi. Crash Course / PYQs are truly direct uploads.
-    if (isNotes && branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
+    // M.Pharm specialization check (Notes + Crash + PYQs sab ke liye)
+    if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
 
-    if (isNotes && branchName === "D.Pharm" && !uploadForm.language) {
+    // D.Pharm language check (Notes + Crash + PYQs sab ke liye)
+    if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
     }
 
-    // ✅ Notes ke liye semester + subject + unit zaroori
-    if (isNotes) {
-      if (!uploadForm.semester) {
-        alert("Please select a semester/year");
-        return;
-      }
-      if (!uploadForm.subject) {
-        alert("Please select a subject");
-        return;
-      }
-      if (!uploadForm.unit) {
-        alert("Please select a unit");
-        return;
-      }
+    // Semester + Subject — Notes + Crash + PYQs sab ke liye zaroori
+    if (!uploadForm.semester) {
+      alert(`Please select a ${COURSE_CONFIG[branchName]?.type === "year" ? "year" : "semester"}`);
+      return;
+    }
+    if (!uploadForm.subject) {
+      alert("Please select a subject");
+      return;
     }
 
-    // ✅ Crash/PYQs ke liye title + description zaroori
+    // Unit — SIRF Notes ke liye zaroori
+    if (isNotes && !uploadForm.unit) {
+      alert("Please select a unit");
+      return;
+    }
+
+    // Title + Description — SIRF Crash/PYQs ke liye zaroori
     if (isDirectUpload) {
       if (!uploadForm.title || !uploadForm.title.trim()) {
         alert("Please enter a title");
@@ -1671,29 +1663,36 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       }
 
       const formData = new FormData();
-      const branchValue = branchName === "M.Pharm"
-        ? uploadForm.mpharmBranch
-        : branchName;
 
-      formData.append("branch", branchName);
+      // ========== Common fields (always send) ==========
       formData.append("course", branchName);
-      formData.append(
-        "mpharmBranch",
-        isNotes ? (uploadForm.mpharmBranch || "") : ""
-      );
+      formData.append("branch", branchName);
       formData.append("category", uploadForm.category);
-      formData.append(
-        "language",
-        isNotes ? (uploadForm.language || "") : ""
-      );
       formData.append("isPremium", uploadForm.isPremium);
       formData.append("type", uploadForm.type);
       formData.append("file", uploadForm.file);
 
+      // Semester + Subject — sab ke liye
+      formData.append("semester", uploadForm.semester);
+      formData.append("subject", uploadForm.subject);
+
+      // M.Pharm specialization
+      if (branchName === "M.Pharm") {
+        formData.append("mpharmBranch", uploadForm.mpharmBranch || "");
+      }
+
+      // D.Pharm language
+      if (branchName === "D.Pharm") {
+        formData.append("language", uploadForm.language || "");
+      }
+
+      // Year-based courses (D.Pharm, Pharm.D)
+      if (COURSE_CONFIG[branchName]?.type === "year") {
+        formData.append("year", uploadForm.semester);
+      }
+
       if (isNotes) {
-        // ✅ Notes — full filter data
-        formData.append("semester", uploadForm.semester);
-        formData.append("subject", uploadForm.subject);
+        // ========== NOTES — full data with unit ==========
         formData.append("unit", uploadForm.unit);
         formData.append("units", JSON.stringify(uploadForm.units));
         formData.append(
@@ -1704,16 +1703,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           "description",
           uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`
         );
-
-        if (branchName === "Pharm.D") {
-          formData.append("year", uploadForm.semester);
-        }
       } else {
-        // ✅ Crash/PYQs — direct upload, no semester/subject/unit
-        // Direct upload: do not send semester / subject / unit / year / language.
+        // ========== CRASH / PYQs — direct file (NO unit) ==========
         formData.append("isDirectFile", "true");
         formData.append("title", uploadForm.title.trim());
         formData.append("description", uploadForm.description.trim());
+        // ❌ NO unit, NO units
       }
 
       const response = await axios.post(
@@ -1858,8 +1853,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   // ============================================================
   // ✅ FINAL renderUploadTab
-  // - Notes: category → sem → subject → unit → file
-  // - Crash/PYQs: category → title+desc → file (NO sem/sub/unit)
+  // Notes: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → Unit → File
+  // Crash/PYQs: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → Title+Desc → File
   // ============================================================
   const renderUploadTab = () => {
     const branchName = getBranchName();
@@ -1875,22 +1870,17 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       uploadForm.category === "PYQs";
 
     const branchContent = notes.filter((n) => {
+      const itemCourse = String(n?.course || n?.branch || "").trim().toLowerCase();
+      const targetCourse = branchName.trim().toLowerCase();
+
+      if (itemCourse === targetCourse) return true;
+
       if (branchName === "M.Pharm") {
-        const itemCourse = String(n?.course || "").trim().toLowerCase();
-        const itemBranch = String(n?.branch || n?.mpharmBranch || "").trim();
-
-        return (
-          itemCourse === "m.pharm" &&
-          MPHARM_BRANCHES.some((b) => b.value === itemBranch)
-        );
+        const itemBranch = String(n?.mpharmBranch || "").trim();
+        return itemCourse === "m.pharm" && MPHARM_BRANCHES.some((b) => b.value === itemBranch);
       }
 
-      if (branchName === "Pharm.D") {
-        const itemCourse = String(n?.course || "").trim().toLowerCase();
-        return itemCourse === "pharm.d";
-      }
-
-      return n?.branch === branchName || n?.course === branchName;
+      return false;
     });
 
     return (
@@ -1919,7 +1909,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
                   {uploadForm.category === "Exam Crash Course" || uploadForm.category === "PYQs"
-                    ? "Enter title, description & choose file"
+                    ? "Select Semester, Subject, then add Title, Description & File"
                     : branchName === "M.Pharm"
                     ? "Select Branch, Semester, Subject & Unit"
                     : isYearBased
@@ -1933,7 +1923,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   Unit {uploadForm.unit}
                 </div>
               )}
-              {isDirectUpload && uploadForm.file && (
+              {isDirectUpload && uploadForm.file && uploadForm.subject && (
                 <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-['Inter'] font-bold">
                   <CheckCircle size={15} />
                   Ready to Upload
@@ -1959,6 +1949,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             )}
 
             <form onSubmit={handleUploadSubmit} className="space-y-5">
+              {/* Course indicator */}
               <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-xl bg-white shadow-sm text-sky-600">
@@ -2010,11 +2001,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Language (sirf D.Pharm ke liye) */}
-              {showLanguage && isNotes && (
+              {/* Language — D.Pharm ke liye (sab categories me) */}
+              {showLanguage && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">1.5</span>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">2</span>
                     <label className="text-sm font-['Inter'] font-bold text-gray-800">Language</label>
                     {uploadForm.language && (
                       <span className="text-xs font-['Inter'] font-bold text-amber-600">
@@ -2046,11 +2037,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* M.Pharm Branch (sirf M.Pharm ke liye) */}
-              {showMPharmBranch && isNotes && (
+              {/* M.Pharm Branch — sab categories me */}
+              {showMPharmBranch && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">1.7</span>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">3</span>
                     <label className="text-sm font-['Inter'] font-bold text-gray-800">M.Pharm Branch / Specialization</label>
                     {uploadForm.mpharmBranch && (
                       <span className="text-xs font-['Inter'] font-bold text-indigo-600">
@@ -2085,60 +2076,62 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* ✅ STEP 2 — Semester (SIRF NOTES KE LIYE) */}
-              {isNotes && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">2</span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">
-                      {isYearBased ? "Year" : "Semester"}
-                    </label>
-                  </div>
-                  <select
-                    value={uploadForm.semester}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
-                    disabled={branchName === "M.Pharm" && !uploadForm.mpharmBranch}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {branchName === "M.Pharm" && !uploadForm.mpharmBranch
-                        ? "Select M.Pharm branch first"
-                        : `Select ${isYearBased ? "year" : "semester"}`}
-                    </option>
-                    {branchOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
+              {/* STEP — Semester/Year (sab categories ke liye) */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">
+                    {showLanguage && showMPharmBranch ? "4" : showLanguage || showMPharmBranch ? "3" : "2"}
+                  </span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">
+                    {isYearBased ? "Year" : "Semester"}
+                  </label>
                 </div>
-              )}
+                <select
+                  value={uploadForm.semester}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, semester: e.target.value, subject: "", unit: "" }))}
+                  disabled={branchName === "M.Pharm" && !uploadForm.mpharmBranch}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {branchName === "M.Pharm" && !uploadForm.mpharmBranch
+                      ? "Select M.Pharm branch first"
+                      : `Select ${isYearBased ? "year" : "semester"}`}
+                  </option>
+                  {branchOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
 
-              {/* ✅ STEP 3 — Subject (SIRF NOTES KE LIYE) */}
-              {isNotes && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">3</span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
-                  </div>
-                  <select
-                    value={uploadForm.subject}
-                    onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value }))}
-                    disabled={!uploadForm.semester}
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">{uploadForm.semester ? "Select subject" : `Select ${isYearBased ? "year" : "semester"} first`}</option>
-                    {subjects.map((subject) => (
-                      <option key={subject} value={subject}>{subject}</option>
-                    ))}
-                  </select>
+              {/* STEP — Subject (sab categories ke liye) */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">
+                    {showLanguage && showMPharmBranch ? "5" : showLanguage || showMPharmBranch ? "4" : "3"}
+                  </span>
+                  <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
                 </div>
-              )}
+                <select
+                  value={uploadForm.subject}
+                  onChange={(e) => setUploadForm(prev => ({ ...prev, subject: e.target.value, unit: "" }))}
+                  disabled={!uploadForm.semester}
+                  className="w-full px-4 py-3.5 rounded-2xl border-2 border-gray-200 bg-white text-gray-800 font-['Inter'] text-sm font-medium outline-none transition-all focus:border-purple-400 focus:ring-4 focus:ring-purple-50 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  <option value="">{uploadForm.semester ? "Select subject" : `Select ${isYearBased ? "year" : "semester"} first`}</option>
+                  {subjects.map((subject) => (
+                    <option key={subject} value={subject}>{subject}</option>
+                  ))}
+                </select>
+              </div>
 
-              {/* ✅ STEP 4 — Unit (SIRF NOTES KE LIYE) */}
+              {/* STEP — Unit (SIRF Notes ke liye) */}
               {isNotes && (
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">4</span>
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">
+                        {showLanguage && showMPharmBranch ? "6" : showLanguage || showMPharmBranch ? "5" : "4"}
+                      </span>
                       <label className="text-sm font-['Inter'] font-bold text-gray-800">Unit</label>
                     </div>
                     {uploadForm.unit && (
@@ -2165,11 +2158,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* ✅ STEP 4 (Direct) — Title + Description (SIRF CRASH/PYQs KE LIYE) */}
+              {/* STEP — Title + Description (SIRF Crash/PYQs ke liye) */}
               {isDirectUpload && (
                 <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">2</span>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">
+                      {showLanguage && showMPharmBranch ? "6" : showLanguage || showMPharmBranch ? "5" : "4"}
+                    </span>
                     <label className="text-sm font-['Inter'] font-bold text-gray-800">
                       Title & Description <span className="text-amber-600">(required)</span>
                     </label>
@@ -2193,11 +2188,21 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* ✅ STEP 5 — Choose file (sab ke liye) */}
+              {/* STEP — Choose file (sab ke liye) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">
-                    {isNotes ? "5" : "3"}
+                    {isNotes
+                      ? showLanguage && showMPharmBranch
+                        ? "7"
+                        : showLanguage || showMPharmBranch
+                        ? "6"
+                        : "5"
+                      : showLanguage && showMPharmBranch
+                      ? "7"
+                      : showLanguage || showMPharmBranch
+                      ? "6"
+                      : "5"}
                   </span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">Choose file</label>
                 </div>
@@ -2229,7 +2234,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Optional details (SIRF NOTES KE LIYE — Crash/PYQs me upar required hai) */}
+              {/* Optional details (SIRF NOTES ke liye) */}
               {isNotes && (
                 <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
                   <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
@@ -2260,41 +2265,45 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </details>
               )}
 
-              {/* Premium toggle */}
-              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-2xl border-2 border-gray-200 bg-gray-50/70 hover:bg-amber-50/50 hover:border-amber-200 transition-all">
-                <input
-                  type="checkbox"
-                  name="isPremium"
-                  checked={uploadForm.isPremium}
-                  onChange={handleUploadChange}
-                  className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
-                />
-                <span className="font-['Inter'] text-sm text-gray-700">
-                  <span className="font-semibold">Premium content</span>
-                  <span className="text-xs text-gray-400 block">Students need to purchase it.</span>
-                </span>
-              </label>
+              {/* Premium toggle — SIRF NOTES ke liye */}
+              {isNotes && (
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-2xl border-2 border-gray-200 bg-gray-50/70 hover:bg-amber-50/50 hover:border-amber-200 transition-all">
+                  <input
+                    type="checkbox"
+                    name="isPremium"
+                    checked={uploadForm.isPremium}
+                    onChange={handleUploadChange}
+                    className="w-5 h-5 rounded border-gray-300 text-amber-500 focus:ring-amber-400 cursor-pointer"
+                  />
+                  <span className="font-['Inter'] text-sm text-gray-700">
+                    <span className="font-semibold">Premium content</span>
+                    <span className="text-xs text-gray-400 block">Students need to purchase it.</span>
+                  </span>
+                </label>
+              )}
 
-              {/* Content type */}
-              <div>
-                <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
-                <div className="grid grid-cols-3 gap-2.5">
-                  {["note", "video", "paper"].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setUploadForm(prev => ({ ...prev, type }))}
-                      className={`py-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm capitalize ${
-                        uploadForm.type === type
-                          ? "border-sky-500 bg-sky-500 text-white shadow-md scale-[1.02]"
-                          : "border-gray-200 bg-white hover:border-sky-300 hover:bg-sky-50 text-gray-700"
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
+              {/* Content type — SIRF NOTES ke liye */}
+              {isNotes && (
+                <div>
+                  <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {["note", "video", "paper"].map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setUploadForm(prev => ({ ...prev, type }))}
+                        className={`py-3 rounded-xl border-2 transition-all duration-300 font-['Inter'] font-semibold text-sm capitalize ${
+                          uploadForm.type === type
+                            ? "border-sky-500 bg-sky-500 text-white shadow-md scale-[1.02]"
+                            : "border-gray-200 bg-white hover:border-sky-300 hover:bg-sky-50 text-gray-700"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Submit */}
               <button
@@ -2376,6 +2385,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                           )}
                           {item.isPremium && (
                             <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">Premium</span>
+                          )}
+                          {item.isDirectFile && (
+                            <span className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full">Direct</span>
                           )}
                         </div>
                         {item.subject && (
@@ -2601,10 +2613,8 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
         {isBranchTab() && renderUploadTab()}
 
-        {/* ========== INTERVIEW MATERIAL TAB ========== */}
         {activeTab === "interview-material" && <InterviewMaterial />}
 
-        {/* ========== DOUBTS TAB ========== */}
         {activeTab === "doubts" && <AdminDoubts />}
 
         {activeTab === "users" && <UsersComponent />}

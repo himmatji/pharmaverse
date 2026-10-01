@@ -441,7 +441,7 @@ const Footer = () => {
               </div>
             </div>
 
-            {/* Column 2: Founders */}
+            {/* Column 2: Founders
             <div className="text-center md:text-left">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Our Founders</h3>
               <ul className="space-y-2 sm:space-y-2.5">
@@ -451,7 +451,7 @@ const Footer = () => {
                   </li>
                 ))}
               </ul>
-            </div>
+            </div> */}
 
             {/* Column 3: Contact & Social */}
             <div className="text-center md:text-left">

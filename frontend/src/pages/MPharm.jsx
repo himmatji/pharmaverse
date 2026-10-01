@@ -306,10 +306,11 @@ const MPharm = () => {
   };
 
   // ✅ FETCH DIRECT FILES (Crash Course / PYQs)
+  // ✅ Ab semester + subject bhi pass karte hain
   const fetchDirectFiles = async () => {
     if (!selectedBranch || !selectedCategory) return;
 
-    const cacheKey = ["M.Pharm", selectedBranch, selectedCategory, "direct"].join("||");
+    const cacheKey = ["M.Pharm", selectedBranch, selectedCategory, String(selectedSemester || ""), String(selectedSubject || ""), "direct"].join("||");
     const requestId = ++contentRequestIdRef.current;
 
     if (contentAbortControllerRef.current) {
@@ -339,7 +340,13 @@ const MPharm = () => {
 
     try {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
-        params: { course: "M.Pharm", branch: selectedBranch, category: selectedCategory },
+        params: {
+          course: "M.Pharm",
+          branch: selectedBranch,
+          category: selectedCategory,
+          semester: selectedSemester,
+          subject: selectedSubject,
+        },
         signal: controller.signal,
         timeout: 15000,
         headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -352,7 +359,9 @@ const MPharm = () => {
         .filter((item) => {
           const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
           const branchMatch = item?.branch == null || String(item.branch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase();
-          return catMatch && branchMatch;
+          const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
+          const subMatch = item?.subject == null || String(item.subject).trim().toLowerCase() === String(selectedSubject).trim().toLowerCase();
+          return catMatch && branchMatch && semMatch && subMatch;
         });
 
       contentCacheRef.current.set(cacheKey, { files, timestamp: Date.now() });
@@ -374,9 +383,10 @@ const MPharm = () => {
 
   // ========== EFFECT ==========
   useEffect(() => {
-    if (isDirectFilesCategory()) {
+    // Direct files sirf tab fetch karo jab semester + subject select ho chuka ho
+    if (isDirectFilesCategory() && selectedSemester && selectedSubject) {
       fetchDirectFiles();
-    } else {
+    } else if (selectedCategory === "Notes" && selectedSemester && selectedSubject) {
       fetchUnitContent();
     }
 
@@ -403,6 +413,7 @@ const MPharm = () => {
     setDirectFiles([]);
   };
 
+  // ✅ FIX: Ab har category (Notes / Crash / PYQs) semester step pe jaayegi
   const handleCategoryClick = (categoryId) => {
     contentRequestIdRef.current += 1;
     if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
@@ -414,11 +425,8 @@ const MPharm = () => {
     setUnitContent([]);
     setDirectFiles([]);
 
-    if (categoryId === "Notes") {
-      setCurrentStep(3);
-    } else {
-      setCurrentStep(5);
-    }
+    // Har category me Semester step pe jaayenge (Notes / Crash / PYQs sab)
+    setCurrentStep(3);
   };
 
   const handleSemesterClick = (semester) => {
@@ -430,8 +438,10 @@ const MPharm = () => {
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
+  // ✅ FIX: Crash/PYQs me subject click karte hi seedha Direct Files (step 5)
   const handleSubjectClick = (subject) => {
     if (isResearchWork(subject)) {
       const mailSubject = `M.Pharm ${selectedBranch} – Research Work Guidance (Semester ${selectedSemester})`;
@@ -459,11 +469,13 @@ const MPharm = () => {
     }
 
     setSelectedSubject(subject);
-    setCurrentStep(5);
+    setCurrentStep(5); // Notes ke liye Unit, Crash/PYQs ke liye Direct Files
     setUnits([]);
     setUnitContent([]);
+    setDirectFiles([]);
   };
 
+  // ✅ FIX: goBack me saare steps handle karo
   const goBack = () => {
     if (currentStep === 2) {
       setCurrentStep(1);
@@ -475,16 +487,12 @@ const MPharm = () => {
       setCurrentStep(3);
       setSelectedSemester(null);
     } else if (currentStep === 5) {
-      if (isDirectFilesCategory()) {
-        setCurrentStep(2);
-        setSelectedCategory(null);
-        setDirectFiles([]);
-      } else {
-        setCurrentStep(4);
-        setSelectedSubject(null);
-        setUnits([]);
-        setUnitContent([]);
-      }
+      // Step 5 se hamesha step 4 (Subject) pe wapas
+      setCurrentStep(4);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
     }
   };
 
@@ -756,7 +764,7 @@ const MPharm = () => {
         <div className="text-center mb-12 sm:mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-4 animate-float-text">
             <Sparkles className="text-purple-600" size={16} />
-            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-wider uppercase">Step 2 of 4</span>
+            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-wider uppercase">Step 2 of 5</span>
             <Sparkles className="text-purple-600" size={16} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -864,7 +872,7 @@ const MPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gradient-to-r from-sky-100 to-blue-100 mb-4 shadow-inner animate-float-text">
             <Sparkles className="text-sky-600" size={16} />
-            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 3 of 4</span>
+            <span className="text-xs font-['Inter'] font-bold text-sky-700 tracking-widest uppercase">Step 3 of 5</span>
             <Sparkles className="text-sky-600" size={16} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1000,7 +1008,7 @@ const MPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-purple-100 to-pink-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-purple-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 4 of 4</span>
+            <span className="text-xs font-['Inter'] font-bold text-purple-700 tracking-widest uppercase">Step 4 of 5</span>
             <Trophy className="text-purple-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1069,7 +1077,11 @@ const MPharm = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                       <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                        {research ? "Get guidance & support via email" : "Click to view units"}
+                        {research
+                          ? "Get guidance & support via email"
+                          : isDirectFilesCategory()
+                          ? "Click to view files"
+                          : "Click to view units"}
                       </span>
                       <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                     </div>
@@ -1128,6 +1140,12 @@ const MPharm = () => {
             <span className="text-gray-300">|</span>
             <span className="text-gray-500 text-sm font-['Inter'] font-medium">Category:</span>
             <span className="font-['Space_Grotesk'] font-bold text-gray-800">{categoryLabel}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Sem:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800">{selectedSemester}</span>
+            <span className="text-gray-300">|</span>
+            <span className="text-gray-500 text-sm font-['Inter'] font-medium">Subject:</span>
+            <span className="font-['Space_Grotesk'] font-bold text-gray-800 truncate max-w-[160px]">{selectedSubject}</span>
           </div>
         </div>
 
@@ -1299,7 +1317,7 @@ const MPharm = () => {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-100 to-teal-100 mb-5 shadow-inner animate-float-text">
             <Sparkles className="text-emerald-600" size={18} />
-            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Select Unit</span>
+            <span className="text-xs font-['Inter'] font-bold text-emerald-700 tracking-widest uppercase">Step 5 of 5 — Select Unit</span>
             <Trophy className="text-emerald-600" size={18} />
           </div>
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold text-gray-900 leading-tight">
@@ -1478,6 +1496,8 @@ const MPharm = () => {
       ? [
           { number: 1, label: "Branch", icon: FlaskRound },
           { number: 2, label: "Category", icon: BookOpen },
+          { number: 3, label: "Semester", icon: GraduationCap },
+          { number: 4, label: "Subject", icon: Book },
           { number: 5, label: "Files", icon: FileText },
         ]
       : [
@@ -1491,9 +1511,7 @@ const MPharm = () => {
     return (
       <div className="flex items-center justify-center gap-1 sm:gap-4 mb-8 sm:mb-12 flex-wrap">
         {steps.map((step, index) => {
-          const isCompleted =
-            currentStep > step.number ||
-            (isDirectFilesCategory() && currentStep === 5 && step.number === 2);
+          const isCompleted = currentStep > step.number;
           const isActive = currentStep === step.number;
           const PIcon = step.icon;
 
@@ -1652,8 +1670,8 @@ const MPharm = () => {
         <div className="step-container">
           {currentStep === 1 && renderBranchStep()}
           {currentStep === 2 && renderCategoryStep()}
-          {currentStep === 3 && !isDirectFilesCategory() && renderSemesterStep()}
-          {currentStep === 4 && !isDirectFilesCategory() && renderSubjectStep()}
+          {currentStep === 3 && renderSemesterStep()}
+          {currentStep === 4 && renderSubjectStep()}
           {currentStep === 5 && (isDirectFilesCategory() ? renderDirectFilesStep() : renderUnitStep())}
         </div>
 
