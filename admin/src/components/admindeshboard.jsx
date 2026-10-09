@@ -1590,7 +1590,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   // ============================================================
   // ✅ FINAL UPLOAD SUBMIT
   // Notes → Category → [Lang] → [Branch] → Sem/Year → Subject → Unit → File
-  // Crash/PYQs → Category → [Lang] → [Branch] → Sem/Year → Subject → Title+Desc → File (NO Unit)
+  // Crash/PYQs → Category → [Lang] → [Branch] → Sem/Year → Subject → File (NO Unit)
   // ============================================================
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
@@ -1606,19 +1606,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       uploadForm.category === "Exam Crash Course" ||
       uploadForm.category === "PYQs";
 
-    // M.Pharm specialization check (Notes + Crash + PYQs sab ke liye)
+    // M.Pharm specialization check (sab categories me)
     if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
 
-    // D.Pharm language check (Notes + Crash + PYQs sab ke liye)
+    // D.Pharm language check (sab categories me)
     if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
     }
 
-    // Semester + Subject — Notes + Crash + PYQs sab ke liye zaroori
+    // Semester + Subject — sab ke liye zaroori
     if (!uploadForm.semester) {
       alert(`Please select a ${COURSE_CONFIG[branchName]?.type === "year" ? "year" : "semester"}`);
       return;
@@ -1632,18 +1632,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     if (isNotes && !uploadForm.unit) {
       alert("Please select a unit");
       return;
-    }
-
-    // Title + Description — SIRF Crash/PYQs ke liye zaroori
-    if (isDirectUpload) {
-      if (!uploadForm.title || !uploadForm.title.trim()) {
-        alert("Please enter a title");
-        return;
-      }
-      if (!uploadForm.description || !uploadForm.description.trim()) {
-        alert("Please enter a description");
-        return;
-      }
     }
 
     if (!uploadForm.file) {
@@ -1664,35 +1652,28 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       const formData = new FormData();
 
-      // ========== Common fields (always send) ==========
+      // Common fields
       formData.append("course", branchName);
       formData.append("branch", branchName);
       formData.append("category", uploadForm.category);
       formData.append("isPremium", uploadForm.isPremium);
       formData.append("type", uploadForm.type);
       formData.append("file", uploadForm.file);
-
-      // Semester + Subject — sab ke liye
       formData.append("semester", uploadForm.semester);
       formData.append("subject", uploadForm.subject);
 
-      // M.Pharm specialization
       if (branchName === "M.Pharm") {
         formData.append("mpharmBranch", uploadForm.mpharmBranch || "");
       }
-
-      // D.Pharm language
       if (branchName === "D.Pharm") {
         formData.append("language", uploadForm.language || "");
       }
-
-      // Year-based courses (D.Pharm, Pharm.D)
       if (COURSE_CONFIG[branchName]?.type === "year") {
         formData.append("year", uploadForm.semester);
       }
 
       if (isNotes) {
-        // ========== NOTES — full data with unit ==========
+        // NOTES — full data with unit
         formData.append("unit", uploadForm.unit);
         formData.append("units", JSON.stringify(uploadForm.units));
         formData.append(
@@ -1704,11 +1685,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`
         );
       } else {
-        // ========== CRASH / PYQs — direct file (NO unit) ==========
+        // ✅ CRASH / PYQs — direct file (NO unit, NO manual title/desc)
         formData.append("isDirectFile", "true");
-        formData.append("title", uploadForm.title.trim());
-        formData.append("description", uploadForm.description.trim());
-        // ❌ NO unit, NO units
+        formData.append("title", `${uploadForm.subject} - ${uploadForm.category}`);
+        formData.append("description", `${uploadForm.category} for ${uploadForm.subject}`);
       }
 
       const response = await axios.post(
@@ -1854,7 +1834,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   // ============================================================
   // ✅ FINAL renderUploadTab
   // Notes: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → Unit → File
-  // Crash/PYQs: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → Title+Desc → File
+  // Crash/PYQs: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → File
   // ============================================================
   const renderUploadTab = () => {
     const branchName = getBranchName();
@@ -1883,6 +1863,17 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       return false;
     });
 
+    // ✅ Dynamic step numbers
+    let stepCounter = 1;
+    const categoryStep = stepCounter++;
+    const languageStep = showLanguage ? stepCounter++ : null;
+    const mpharmBranchStep = showMPharmBranch ? stepCounter++ : null;
+    const semesterStep = stepCounter++;
+    const subjectStep = stepCounter++;
+    const contentStep = stepCounter++;   // Unit (Notes) OR nothing (Crash/PYQs)
+    const fileStep = isNotes ? stepCounter++ : contentStep;
+    // For Crash/PYQs, file takes the content slot
+
     return (
       <div className="animate-fadeIn">
         <div className="mb-8">
@@ -1909,7 +1900,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 font-['Inter'] mt-1 ml-11">
                   {uploadForm.category === "Exam Crash Course" || uploadForm.category === "PYQs"
-                    ? "Select Semester, Subject, then add Title, Description & File"
+                    ? "Select Semester, Subject, then choose file"
                     : branchName === "M.Pharm"
                     ? "Select Branch, Semester, Subject & Unit"
                     : isYearBased
@@ -1965,10 +1956,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </span>
               </div>
 
-              {/* STEP 1 — Category */}
+              {/* STEP — Category */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">1</span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">{categoryStep}</span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">What are you uploading?</label>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -2001,11 +1992,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Language — D.Pharm ke liye (sab categories me) */}
+              {/* Language — D.Pharm (sab categories) */}
               {showLanguage && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">2</span>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">{languageStep}</span>
                     <label className="text-sm font-['Inter'] font-bold text-gray-800">Language</label>
                     {uploadForm.language && (
                       <span className="text-xs font-['Inter'] font-bold text-amber-600">
@@ -2037,11 +2028,11 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* M.Pharm Branch — sab categories me */}
+              {/* M.Pharm Branch (sab categories) */}
               {showMPharmBranch && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">3</span>
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-indigo-500 text-white text-xs font-bold">{mpharmBranchStep}</span>
                     <label className="text-sm font-['Inter'] font-bold text-gray-800">M.Pharm Branch / Specialization</label>
                     {uploadForm.mpharmBranch && (
                       <span className="text-xs font-['Inter'] font-bold text-indigo-600">
@@ -2076,12 +2067,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* STEP — Semester/Year (sab categories ke liye) */}
+              {/* STEP — Semester/Year (sab categories) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">
-                    {showLanguage && showMPharmBranch ? "4" : showLanguage || showMPharmBranch ? "3" : "2"}
-                  </span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">{semesterStep}</span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">
                     {isYearBased ? "Year" : "Semester"}
                   </label>
@@ -2103,12 +2092,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </select>
               </div>
 
-              {/* STEP — Subject (sab categories ke liye) */}
+              {/* STEP — Subject (sab categories) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">
-                    {showLanguage && showMPharmBranch ? "5" : showLanguage || showMPharmBranch ? "4" : "3"}
-                  </span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">{subjectStep}</span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">Subject</label>
                 </div>
                 <select
@@ -2129,9 +2116,7 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">
-                        {showLanguage && showMPharmBranch ? "6" : showLanguage || showMPharmBranch ? "5" : "4"}
-                      </span>
+                      <span className="flex items-center justify-center w-6 h-6 rounded-full bg-emerald-500 text-white text-xs font-bold">{contentStep}</span>
                       <label className="text-sm font-['Inter'] font-bold text-gray-800">Unit</label>
                     </div>
                     {uploadForm.unit && (
@@ -2158,52 +2143,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* STEP — Title + Description (SIRF Crash/PYQs ke liye) */}
-              {isDirectUpload && (
-                <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-500 text-white text-xs font-bold">
-                      {showLanguage && showMPharmBranch ? "6" : showLanguage || showMPharmBranch ? "5" : "4"}
-                    </span>
-                    <label className="text-sm font-['Inter'] font-bold text-gray-800">
-                      Title & Description <span className="text-amber-600">(required)</span>
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    name="title"
-                    value={uploadForm.title}
-                    onChange={handleUploadChange}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none font-['Inter'] text-sm"
-                    placeholder="Enter title e.g. Semester 1 Crash Course"
-                  />
-                  <textarea
-                    name="description"
-                    value={uploadForm.description}
-                    onChange={handleUploadChange}
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl border-2 border-amber-200 bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none font-['Inter'] text-sm resize-none"
-                    placeholder="Enter short description..."
-                  />
-                </div>
-              )}
-
               {/* STEP — Choose file (sab ke liye) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">
-                    {isNotes
-                      ? showLanguage && showMPharmBranch
-                        ? "7"
-                        : showLanguage || showMPharmBranch
-                        ? "6"
-                        : "5"
-                      : showLanguage && showMPharmBranch
-                      ? "7"
-                      : showLanguage || showMPharmBranch
-                      ? "6"
-                      : "5"}
-                  </span>
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">{fileStep}</span>
                   <label className="text-sm font-['Inter'] font-bold text-gray-800">Choose file</label>
                 </div>
                 <div className="relative">
