@@ -1,3 +1,7 @@
+// M.PHARM NOTES FIX — VERSION 2
+// IMPORTANT: Copy this entire file into the actual M.Pharm component (.jsx) in frontend/src.
+// Downloading this TXT alone does not modify the project or change git status.
+
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
