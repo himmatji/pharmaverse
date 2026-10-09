@@ -246,7 +246,10 @@ const MPharm = () => {
           res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
             params: {
               course: "M.Pharm",
-              branch: selectedBranch,
+              // Admin saves branch as "M.Pharm"; specialization is stored
+              // separately in mpharmBranch.
+              branch: "M.Pharm",
+              mpharmBranch: selectedBranch,
               category: selectedCategory,
               semester: selectedSemester,
               subject: selectedSubject,
@@ -272,12 +275,21 @@ const MPharm = () => {
           const itemSubject = item?.subject;
           const itemCategory = item?.category;
           const itemBranch = item?.branch;
+          const itemMPharmBranch = item?.mpharmBranch;
 
           const semesterMatches = itemSemester == null || String(itemSemester).trim() === String(selectedSemester).trim();
-          const subjectMatches = itemSubject == null || String(itemSubject).trim() === String(selectedSubject).trim();
-          const categoryMatches = itemCategory == null || String(itemCategory).trim() === String(selectedCategory).trim();
+          const subjectMatches = itemSubject == null || String(itemSubject).trim().toLowerCase() === String(selectedSubject).trim().toLowerCase();
+          const categoryMatches = itemCategory == null || String(itemCategory).trim().toLowerCase() === String(selectedCategory).trim().toLowerCase();
           const courseMatches = item?.course == null || String(item.course).trim().toLowerCase() === "m.pharm";
-          const branchMatches = itemBranch == null || String(itemBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase();
+
+          // New uploads store branch="M.Pharm" and specialization in mpharmBranch.
+          // Older records may store the specialization directly in branch.
+          const branchMatches =
+            itemMPharmBranch != null && String(itemMPharmBranch).trim() !== ""
+              ? String(itemMPharmBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase()
+              : itemBranch == null ||
+                String(itemBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase() ||
+                String(itemBranch).trim().toLowerCase() === "m.pharm";
 
           return courseMatches && semesterMatches && subjectMatches && categoryMatches && branchMatches;
         });
@@ -342,7 +354,9 @@ const MPharm = () => {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
         params: {
           course: "M.Pharm",
-          branch: selectedBranch,
+          // Direct uploads use branch="M.Pharm" and mpharmBranch=specialization.
+          branch: "M.Pharm",
+          mpharmBranch: selectedBranch,
           category: selectedCategory,
           semester: selectedSemester,
           subject: selectedSubject,
@@ -358,7 +372,14 @@ const MPharm = () => {
         .filter(Boolean)
         .filter((item) => {
           const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
-          const branchMatch = item?.branch == null || String(item.branch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase();
+          const itemBranch = item?.branch;
+          const itemMPharmBranch = item?.mpharmBranch;
+          const branchMatch =
+            itemMPharmBranch != null && String(itemMPharmBranch).trim() !== ""
+              ? String(itemMPharmBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase()
+              : itemBranch == null ||
+                String(itemBranch).trim().toLowerCase() === String(selectedBranch).trim().toLowerCase() ||
+                String(itemBranch).trim().toLowerCase() === "m.pharm";
           const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
           const subMatch = item?.subject == null || String(item.subject).trim().toLowerCase() === String(selectedSubject).trim().toLowerCase();
           return catMatch && branchMatch && semMatch && subMatch;
