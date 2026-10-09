@@ -1,3 +1,4 @@
+// Corrected full backend routes file. Review and back up the original before replacing it.
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -1651,10 +1652,6 @@ router.get(
 
 router.get("/public/notes", async (req, res) => {
   try {
-    console.log("\n=================================");
-    console.log("📚 PUBLIC NOTES REQUEST");
-    console.log("=================================");
-
     const {
       course,
       category,
@@ -1663,235 +1660,115 @@ router.get("/public/notes", async (req, res) => {
       subject,
       unit,
       branch,
+      mpharmBranch,
       language
     } = req.query;
 
-    const normalizedLanguage = language
-      ? String(language).trim().toLowerCase()
-      : "";
-
+    const normalizedLanguage = String(language || "").trim().toLowerCase();
     const normalizedYear = normalizeDPharmYear(year);
-
-    console.log("Course:", course);
-    console.log("Category:", category);
-    console.log("Semester:", semester);
-    console.log("Subject:", subject);
-    console.log("Unit:", unit);
-    console.log("Branch:", branch);
-    console.log("Language:", normalizedLanguage);
-
-    if (mongoose.connection.readyState !== 1) {
-      console.error("❌ MongoDB is not connected");
-      return res.status(500).json({
-        success: false,
-        message: "Database not connected"
-      });
-    }
-
-    const query = {};
-
-    if (category && category !== "") {
-      query.category = {
-        $regex: `^${String(category).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
-        $options: "i"
-      };
-    }
-
-    // IMPORTANT: course and branch are separate filters.
-    // M.Pharm MUST be filtered by specialization/branch as well as course.
-    // This is especially important for Semester 3 & 4 because every M.Pharm
-    // branch uses the same subject names: Research Methodology & Biostatistics
-    // and Research Work.
-    const selectedCourse = course || branch;
-
-    const selectedCourseKey =
-      String(selectedCourse || "").trim().toLowerCase();
-
+    const selectedCourse = String(course || branch || "").trim();
+    const selectedCourseKey = selectedCourse.toLowerCase();
     const isDPharm = selectedCourseKey === "d.pharm";
     const isPharmD = selectedCourseKey === "pharm.d";
+    const isMPharm = selectedCourseKey === "m.pharm";
+
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({ success: false, message: "Database not connected" });
+    }
+
+    const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const exactRegex = (value) => ({ $regex: `^${escapeRegex(value)}$`, $options: "i" });
+    const query = {};
+
+    if (category && String(category).trim()) query.category = exactRegex(category.trim());
 
     if (isDPharm) {
       if (!["1st Year", "2nd Year"].includes(normalizedYear)) {
-        return res.status(400).json({
-          success: false,
-          message: "Valid D.Pharm Year is required"
-        });
+        return res.status(400).json({ success: false, message: "Valid D.Pharm Year is required" });
       }
-
-      // D.Pharm legacy-safe year matching.
-      // Older records may have year as 1/2, "Year 1/Year 2", or may
-      // have only semester=1/2. Use native Mongo below to avoid Mongoose
-      // casting errors between Number and String legacy schemas.
-      const yearValues = normalizedYear === "1st Year"
-        ? ["1st Year", "1", "Year 1", 1]
-        : ["2nd Year", "2", "Year 2", 2];
-
+      const yearNumber = Number(normalizedYear[0]);
+      const yearValues = yearNumber === 1 ? ["1st Year", "1", "Year 1", 1] : ["2nd Year", "2", "Year 2", 2];
       query.$and = query.$and || [];
-      query.$and.push({
-        $or: [
-          { year: { $in: yearValues } },
-          { semester: Number(normalizedYear[0]) }
-        ]
-      });
+      query.$and.push({ $or: [{ year: { $in: yearValues } }, { semester: yearNumber }] });
     } else if (isPharmD) {
-      const requestedYear = year || semester;
-      const normalizedPharmD = normalizePharmDYear(requestedYear);
+      const normalizedPharmD = normalizePharmDYear(year || semester);
       const pharmDNumber = pharmDYearNumber(normalizedPharmD);
-
       if (!pharmDNumber) {
-        return res.status(400).json({
-          success: false,
-          message: "Valid Pharm.D Year is required (1st Year to 6th Year)"
-        });
+        return res.status(400).json({ success: false, message: "Valid Pharm.D Year is required (1st Year to 6th Year)" });
       }
-
-      // Pharm.D is year-based. Match both the new `year` field and
-      // legacy documents that only stored the same value in `semester`.
-      const yearValues = [
-        normalizedPharmD,
-        String(pharmDNumber),
-        `${pharmDNumber} Year`,
-        `Year ${pharmDNumber}`,
-        pharmDNumber
-      ];
-
       query.$and = query.$and || [];
       query.$and.push({
         $or: [
-          { year: { $in: yearValues } },
+          { year: { $in: [normalizedPharmD, String(pharmDNumber), `${pharmDNumber} Year`, `Year ${pharmDNumber}`, pharmDNumber] } },
           { semester: pharmDNumber }
         ]
       });
     } else if (semester !== undefined && semester !== "") {
       const semesterNumber = Number.parseInt(semester, 10);
-
       if (!Number.isInteger(semesterNumber) || semesterNumber <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid semester"
-        });
+        return res.status(400).json({ success: false, message: "Invalid semester" });
       }
-
       query.semester = semesterNumber;
     }
 
-    if (subject && subject !== "") {
-      query.subject = {
-        $regex: `^${String(subject).replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}$`,
-        $options: "i"
-      };
-    }
+    if (subject && String(subject).trim()) query.subject = exactRegex(subject.trim());
 
     if (unit !== undefined && unit !== "") {
       const unitNumber = Number.parseInt(unit, 10);
-
       if (!Number.isInteger(unitNumber) || unitNumber <= 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid unit"
-        });
+        return res.status(400).json({ success: false, message: "Invalid unit" });
       }
-
       query.unit = unitNumber;
     }
 
-    // STRICT course + branch separation.
-    // Never use course OR branch here: that can mix M.Pharm branches.
-    if (course && String(course).trim() !== "") {
-      const escapedCourse = String(course).replace(
-        /[.*+?^${}()|[\\]\\]/g,
-        "\\$&"
-      );
+    if (course && String(course).trim()) query.course = exactRegex(course.trim());
 
-      query.course = {
-        $regex: `^${escapedCourse}$`,
-        $options: "i"
-      };
+    // M.Pharm uploads use course="M.Pharm", branch="M.Pharm" and
+    // mpharmBranch=<specialization>. Older records may keep the specialization
+    // in branch and have no mpharmBranch. Support both formats without mixing branches.
+    if (isMPharm && mpharmBranch && String(mpharmBranch).trim()) {
+      const specialization = String(mpharmBranch).trim();
+      query.$and = query.$and || [];
+      query.$and.push({
+        $or: [
+          { mpharmBranch: exactRegex(specialization) },
+          {
+            $and: [
+              { $or: [{ mpharmBranch: "" }, { mpharmBranch: { $exists: false } }, { mpharmBranch: null }] },
+              { branch: exactRegex(specialization) }
+            ]
+          }
+        ]
+      });
+    } else if (branch && String(branch).trim()) {
+      query.branch = exactRegex(branch.trim());
     }
 
-    if (branch && String(branch).trim() !== "") {
-      const escapedBranch = String(branch).replace(
-        /[.*+?^${}()|[\\]\\]/g,
-        "\\$&"
-      );
-
-      query.branch = {
-        $regex: `^${escapedBranch}$`,
-        $options: "i"
-      };
-    }
-
-    const needsLanguage =
-      isDPharm &&
-      ["Notes", "Exam Crash Course"].includes(
-        String(category || "").trim()
-      );
-
+    const needsLanguage = isDPharm && ["Notes", "Exam Crash Course"].includes(String(category || "").trim());
     if (needsLanguage) {
       if (!["hindi", "english"].includes(normalizedLanguage)) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Language is required for D.Pharm Notes and Exam Crash Course"
-        });
+        return res.status(400).json({ success: false, message: "Language is required for D.Pharm Notes and Exam Crash Course" });
       }
-
-      // Case-insensitive language match so old "English"/"Hindi"
-      // records work exactly like new lowercase records.
-      query.language = {
-        $regex: `^${normalizedLanguage}$`,
-        $options: "i"
-      };
+      query.language = exactRegex(normalizedLanguage);
     } else if (normalizedLanguage) {
-      // Case-insensitive language match so old "English"/"Hindi"
-      // records work exactly like new lowercase records.
-      query.language = {
-        $regex: `^${normalizedLanguage}$`,
-        $options: "i"
-      };
+      query.language = exactRegex(normalizedLanguage);
     }
 
-    console.log(
-      "🔎 MongoDB Query:",
-      JSON.stringify(query, null, 2)
-    );
+    console.log("📚 PUBLIC NOTES QUERY:", JSON.stringify(query, null, 2));
 
     const notes = await Note.collection
       .find(query, { projection: { fileData: 0 } })
       .sort({ createdAt: -1 })
       .toArray();
 
-    const filteredNotes = notes.filter((note) => {
-      const unitVal = Number(note.unit);
-      return Number.isInteger(unitVal) && unitVal > 0;
-    });
+    // Only records with valid positive unit numbers can create unit cards.
+    const validNotes = notes.filter((note) => Number.isInteger(Number(note.unit)) && Number(note.unit) > 0);
 
-    console.log(`📄 Total Documents Found: ${notes.length}`);
-    console.log(`📄 Valid Documents: ${filteredNotes.length}`);
-
-    filteredNotes.forEach((note, index) => {
-      console.log(
-        `  ${index + 1}. Language: ${note.language || "N/A"}, Unit: ${note.unit}, Subject: ${note.subject || "N/A"}, Title: ${note.title || "Untitled"}`
-      );
-    });
-
-    console.log("=================================\n");
-
-    return res.json({
-      success: true,
-      data: filteredNotes,
-      count: filteredNotes.length,
-      total: notes.length
-    });
+    console.log(`📄 Public notes found: ${notes.length}; valid unit records: ${validNotes.length}`);
+    return res.json({ success: true, data: validNotes, count: validNotes.length, total: notes.length });
   } catch (error) {
-    console.error("\n❌ PUBLIC NOTES ERROR:");
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch notes",
-      error: error.message
-    });
+    console.error("❌ PUBLIC NOTES ERROR:", error);
+    return res.status(500).json({ success: false, message: "Failed to fetch notes", error: error.message });
   }
 });
 
