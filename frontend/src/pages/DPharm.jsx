@@ -388,9 +388,23 @@ const DPharm = () => {
             String(item.language).trim().toLowerCase() ===
               String(selectedLanguage).trim().toLowerCase();
 
+          // Normalize year formats from older/admin uploads:
+          // 1, "1", "1st Year", "Year 1", "First Year" => 1
+          // 2, "2", "2nd Year", "Year 2", "Second Year" => 2
+          const normalizeYear = (value) => {
+            if (value == null || String(value).trim() === "") return null;
+            const raw = String(value).trim().toLowerCase();
+            if (/\b(first|1st)\b/.test(raw) || /^1$/.test(raw) || /\byear\s*1\b/.test(raw) || /^1\s*st\s*year$/.test(raw)) return "1";
+            if (/\b(second|2nd)\b/.test(raw) || /^2$/.test(raw) || /\byear\s*2\b/.test(raw) || /^2\s*nd\s*year$/.test(raw)) return "2";
+            const match = raw.match(/^\s*([12])\s*(st|nd|rd|th)?(?:\s*year)?\s*$/) || raw.match(/^\s*year\s*([12])\s*$/);
+            return match ? String(match[1]) : raw.replace(/\s+/g, " ");
+          };
+          const itemYear = normalizeYear(item?.year);
+          const selectedYearNormalized = normalizeYear(selectedYear);
           const yearMatch =
-            item?.year == null ||
-            String(item.year).trim() === String(selectedYear).trim();
+            itemYear == null ||
+            selectedYearNormalized == null ||
+            itemYear === selectedYearNormalized;
 
           const subjectMatch =
             item?.subject == null ||
