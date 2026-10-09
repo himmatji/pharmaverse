@@ -15,8 +15,6 @@ const noteSchema = new mongoose.Schema(
     },
 
     // ================= COURSE / BRANCH =================
-    // Existing system uses "course"
-    // New Branch Upload will save branch here as well
     course: {
       type: String,
       required: true,
@@ -24,6 +22,12 @@ const noteSchema = new mongoose.Schema(
     },
 
     branch: {
+      type: String,
+      default: "",
+      trim: true
+    },
+
+    mpharmBranch: {
       type: String,
       default: "",
       trim: true
@@ -37,10 +41,23 @@ const noteSchema = new mongoose.Schema(
       trim: true
     },
 
-    // ================= SEMESTER =================
+    // ================= SEMESTER / YEAR =================
     semester: {
       type: Number,
       default: 1
+    },
+
+    year: {
+      type: String,
+      default: "",
+      trim: true
+    },
+
+    language: {
+      type: String,
+      default: "",
+      trim: true,
+      lowercase: true
     },
 
     // ================= SUBJECT =================
@@ -56,27 +73,12 @@ const noteSchema = new mongoose.Schema(
       default: 1
     },
 
-    // ================= UNITS (Full structure) =================
-    // Example:
-    // [
-    //   {
-    //     id: 1,
-    //     name: "Unit 1",
-    //     topics: ["Topic 1", "Topic 2"]
-    //   },
-    //   {
-    //     id: 2,
-    //     name: "Unit 2",
-    //     topics: ["Topic 3", "Topic 4"]
-    //   }
-    // ]
     units: {
       type: mongoose.Schema.Types.Mixed,
       default: []
     },
 
     // ================= CONTENT TYPE =================
-    // note / video / paper
     type: {
       type: String,
       default: "note",
@@ -97,12 +99,14 @@ const noteSchema = new mongoose.Schema(
 
     fileName: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     fileType: {
       type: String,
-      required: true
+      required: true,
+      trim: true
     },
 
     fileSize: {
@@ -110,23 +114,37 @@ const noteSchema = new mongoose.Schema(
       required: true
     },
 
-    // Base64 Data URL
+    // Normal Notes store Base64 in fileData.
+    // Direct Crash Course/PYQs files are stored on disk in filePath.
     fileData: {
       type: String,
-      required: true
+      required: function () {
+        return this.isDirectFile !== true;
+      },
+      default: ""
     },
 
-    // ================= VIDEO URL (For video type) =================
+    isDirectFile: {
+      type: Boolean,
+      default: false
+    },
+
+    filePath: {
+      type: String,
+      default: ""
+    },
+
+    // ================= VIDEO URL =================
     videoUrl: {
       type: String,
       default: ""
     },
 
-    // ================= DIFFICULTY (For papers) =================
+    // ================= DIFFICULTY =================
     difficulty: {
       type: String,
-      enum: ['Easy', 'Medium', 'Hard', 'Expert'],
-      default: 'Medium'
+      enum: ["Easy", "Medium", "Hard", "Expert"],
+      default: "Medium"
     },
 
     // ================= STATS =================
@@ -140,7 +158,7 @@ const noteSchema = new mongoose.Schema(
       default: 0
     },
 
-    // ================= PRICE (For paid content) =================
+    // ================= PRICE =================
     price: {
       type: Number,
       default: 0
@@ -149,7 +167,7 @@ const noteSchema = new mongoose.Schema(
     // ================= PURCHASED BY =================
     purchasedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       default: null
     },
 
@@ -170,93 +188,68 @@ const noteSchema = new mongoose.Schema(
   }
 );
 
-// =========================================================
-// INDEXES FOR BETTER PERFORMANCE
-// =========================================================
+// ================= INDEXES =================
 noteSchema.index({ category: 1, semester: 1, subject: 1, unit: 1 });
 noteSchema.index({ course: 1, category: 1 });
+noteSchema.index({ course: 1, category: 1, isDirectFile: 1, semester: 1, subject: 1 });
 noteSchema.index({ isPremium: 1 });
 noteSchema.index({ createdAt: -1 });
 
-// =========================================================
-// VIRTUAL - Get unit name by unit number
-// =========================================================
-noteSchema.virtual('unitName').get(function() {
+// ================= VIRTUAL: UNIT NAME =================
+noteSchema.virtual("unitName").get(function () {
   if (this.units && this.units.length > 0) {
-    const unit = this.units.find(u => u.id === this.unit);
+    const unit = this.units.find(
+      (item) => Number(item.id) === Number(this.unit)
+    );
     return unit ? unit.name : `Unit ${this.unit}`;
   }
   return `Unit ${this.unit}`;
 });
 
-// =========================================================
-// VIRTUAL - Get unit topics by unit number
-// =========================================================
-noteSchema.virtual('unitTopics').get(function() {
+// ================= VIRTUAL: UNIT TOPICS =================
+noteSchema.virtual("unitTopics").get(function () {
   if (this.units && this.units.length > 0) {
-    const unit = this.units.find(u => u.id === this.unit);
+    const unit = this.units.find(
+      (item) => Number(item.id) === Number(this.unit)
+    );
     return unit ? unit.topics || [] : [];
   }
   return [];
 });
 
-// =========================================================
-// METHOD - Get content preview (without fileData)
-// =========================================================
-noteSchema.methods.getPreview = function() {
+// ================= PREVIEW WITHOUT FILE DATA =================
+noteSchema.methods.getPreview = function () {
   const obj = this.toObject();
   delete obj.fileData;
+  delete obj.filePath;
   return obj;
 };
 
-// =========================================================
-// METHOD - Increment views
-// =========================================================
-noteSchema.methods.incrementViews = async function() {
+// ================= INCREMENT VIEWS =================
+noteSchema.methods.incrementViews = async function () {
   this.views = (this.views || 0) + 1;
   return this.save();
 };
 
-// =========================================================
-// METHOD - Increment downloads
-// =========================================================
-noteSchema.methods.incrementDownloads = async function() {
+// ================= INCREMENT DOWNLOADS =================
+noteSchema.methods.incrementDownloads = async function () {
   this.downloadCount = (this.downloadCount || 0) + 1;
   return this.save();
 };
 
-// =========================================================
-// STATIC - Find content by category, semester, subject, unit
-// =========================================================
-noteSchema.statics.findByUnit = function(category, semester, subject, unit) {
-  return this.find({
-    category: category,
-    semester: semester,
-    subject: subject,
-    unit: unit
-  }).sort({ createdAt: -1 });
+// ================= FIND BY UNIT =================
+noteSchema.statics.findByUnit = function (category, semester, subject, unit) {
+  return this.find({ category, semester, subject, unit }).sort({ createdAt: -1 });
 };
 
-// =========================================================
-// STATIC - Find content by course and category
-// =========================================================
-noteSchema.statics.findByCourseAndCategory = function(course, category) {
-  return this.find({
-    course: course,
-    category: category
-  }).sort({ createdAt: -1 });
+// ================= FIND BY COURSE AND CATEGORY =================
+noteSchema.statics.findByCourseAndCategory = function (course, category) {
+  return this.find({ course, category }).sort({ createdAt: -1 });
 };
 
-// =========================================================
-// STATIC - Find popular content
-// =========================================================
-noteSchema.statics.findPopular = function(limit = 10) {
-  return this.find({})
-    .sort({ views: -1, downloadCount: -1 })
-    .limit(limit);
+// ================= FIND POPULAR CONTENT =================
+noteSchema.statics.findPopular = function (limit = 10) {
+  return this.find({}).sort({ views: -1, downloadCount: -1 }).limit(limit);
 };
 
-// =========================================================
-// ✅ FINAL EXPORT
-// =========================================================
 module.exports = mongoose.model("Note", noteSchema);

@@ -444,25 +444,42 @@ router.post(
           path.join(DIRECT_UPLOAD_DIR, permanentName);
 
         fs.renameSync(tempFilePath, permanentPath);
-        tempFilePath = "";
+        // Keep this path so the catch block can remove the physical file
+        // if MongoDB validation/save fails after the move.
+        tempFilePath = permanentPath;
 
+        const parsedSemester = Number.parseInt(semester, 10);
         const directData = {
           title: cleanTitle,
           description: cleanDescription,
           course: normalizedCourse,
-          branch: normalizedCourse,
-          mpharmBranch: "",
+          branch: normalizedBranch || normalizedCourse,
+          mpharmBranch:
+            courseKey === "m.pharm"
+              ? String(req.body.mpharmBranch || "").trim()
+              : "",
           category: normalizedCategory,
-          language: "",
-          semester: "",
-          year: "",
-          subject: "",
-          unit: "",
+          language: isDPharm
+            ? String(language || "").trim().toLowerCase()
+            : "",
+          semester:
+            Number.isInteger(parsedSemester) && parsedSemester > 0
+              ? parsedSemester
+              : 1,
+          year: isDPharm
+            ? normalizeDPharmYear(year || semester)
+            : isPharmD
+              ? normalizePharmDYear(year || semester)
+              : String(year || "").trim(),
+          subject: String(subject || "").trim(),
+          // Crash Course / PYQs intentionally do not require a unit.
+          unit: 1,
           units: [],
+          type: String(type || "note").trim() || "note",
           fileName: file.originalname,
           fileType: file.mimetype || "application/octet-stream",
-          fileSize:
-            `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          fileSize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+          // The original file is stored at filePath, not as Base64.
           fileData: "",
           filePath: permanentPath,
           isDirectFile: true,
@@ -470,7 +487,7 @@ router.post(
             isPremium === "true" || isPremium === true,
           thumbnail: req.body.thumbnail || "",
           downloadCount: 0,
-          viewCount: 0,
+          views: 0,
           createdAt: new Date(),
           updatedAt: new Date()
         };
