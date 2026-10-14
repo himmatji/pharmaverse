@@ -402,8 +402,24 @@ router.post(
         normalizedCategory === "PYQs";
 
       const normalizedCourse = String(course || branch || "").trim();
-      const normalizedBranch = String(branch || course || "").trim();
       const courseKey = normalizedCourse.toLowerCase();
+
+      // M.Pharm has two distinct values:
+      // branch is the course label ("M.Pharm"), while mpharmBranch is
+      // the selected specialization (e.g. "Pharmaceutics").
+      // Support older admin forms that send the specialization in branch.
+      const rawBranch = String(branch || "").trim();
+      const normalizedMPharmBranch =
+        courseKey === "m.pharm"
+          ? String(
+              req.body.mpharmBranch ||
+              (rawBranch && rawBranch.toLowerCase() !== "m.pharm" ? rawBranch : "")
+            ).trim()
+          : "";
+      const normalizedBranch =
+        courseKey === "m.pharm"
+          ? "M.Pharm"
+          : String(branch || course || "").trim();
 
       const isDPharm = courseKey === "d.pharm";
       const isPharmD = courseKey === "pharm.d";
@@ -416,6 +432,13 @@ router.post(
           return res.status(400).json({
             success: false,
             message: "Course is required"
+          });
+        }
+
+        if (courseKey === "m.pharm" && !normalizedMPharmBranch) {
+          return res.status(400).json({
+            success: false,
+            message: "M.Pharm specialization/branch is required"
           });
         }
 
@@ -455,10 +478,7 @@ router.post(
           description: cleanDescription,
           course: normalizedCourse,
           branch: normalizedBranch || normalizedCourse,
-          mpharmBranch:
-            courseKey === "m.pharm"
-              ? String(req.body.mpharmBranch || "").trim()
-              : "",
+          mpharmBranch: normalizedMPharmBranch,
           category: normalizedCategory,
           language: isDPharm
             ? String(language || "").trim().toLowerCase()
@@ -520,7 +540,7 @@ router.post(
       // =========================
       // EXISTING NOTES FLOW
       // =========================
-      if (courseKey === "m.pharm" && !normalizedBranch) {
+      if (courseKey === "m.pharm" && !normalizedMPharmBranch) {
         return res.status(400).json({
           success: false,
           message: "M.Pharm specialization/branch is required"
@@ -650,10 +670,7 @@ router.post(
         branch:
           normalizedBranch || "B.Pharm",
 
-        mpharmBranch:
-          normalizedCourse.toLowerCase() === "m.pharm"
-            ? normalizedBranch
-            : "",
+        mpharmBranch: normalizedMPharmBranch,
 
         category: normalizedCategory,
 
