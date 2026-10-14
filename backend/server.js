@@ -1,3 +1,4 @@
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -8,6 +9,7 @@ const authRoutes = require("./routes/auth");
 const adminRoutesModule = require("./routes/admin");
 const paymentRoutes = require("./routes/payment");
 const doubtsRoutes = require("./routes/doubts");
+const notificationsRoutes = require("./routes/notifications");
 
 const app = express();
 
@@ -17,7 +19,6 @@ const app = express();
 
 const adminRoutes =
   adminRoutesModule?.router || adminRoutesModule;
-
 
 /* ============================================================
    MIDDLEWARE
@@ -38,238 +39,142 @@ app.use(
   })
 );
 
-
 /* ============================================================
    ROUTE TYPE CHECK
    ============================================================ */
 
 console.log("");
 console.log("=================================");
-console.log("🔍 PHARMAVERSE ROUTE CHECK");
+console.log("PHARMAVERSE ROUTE CHECK");
 console.log("=================================");
 
-console.log(
-  "authRoutes    =",
-  typeof authRoutes
-);
-
-console.log(
-  "adminRoutesModule =",
-  typeof adminRoutesModule
-);
-
-console.log(
-  "adminRoutes   =",
-  typeof adminRoutes
-);
-
-console.log(
-  "paymentRoutes =",
-  typeof paymentRoutes
-);
-
-console.log(
-  "doubtsRoutes  =",
-  typeof doubtsRoutes
-);
+console.log("authRoutes =", typeof authRoutes);
+console.log("adminRoutesModule =", typeof adminRoutesModule);
+console.log("adminRoutes =", typeof adminRoutes);
+console.log("paymentRoutes =", typeof paymentRoutes);
+console.log("doubtsRoutes =", typeof doubtsRoutes);
+console.log("notificationsRoutes =", typeof notificationsRoutes);
 
 console.log("=================================");
 console.log("");
 
-
 /* ============================================================
-   SAFETY CHECK
+   SAFETY CHECKS
    ============================================================ */
 
-if (typeof authRoutes !== "function") {
-  console.error(
-    "❌ ERROR: ./routes/auth.js is not exporting a router"
-  );
+const requiredRouters = [
+  ["./routes/auth.js", authRoutes],
+  ["./routes/admin.js", adminRoutes],
+  ["./routes/payment.js", paymentRoutes],
+  ["./routes/doubts.js", doubtsRoutes],
+  ["./routes/notifications.js", notificationsRoutes]
+];
 
-  process.exit(1);
+for (const [file, router] of requiredRouters) {
+  if (typeof router !== "function") {
+    console.error(
+      `ERROR: ${file} is not exporting a valid Express router`
+    );
+
+    process.exit(1);
+  }
 }
-
-if (typeof adminRoutes !== "function") {
-  console.error(
-    "❌ ERROR: ./routes/admin.js is not exporting a valid router"
-  );
-
-  console.error(
-    "adminRoutesModule:",
-    adminRoutesModule
-  );
-
-  process.exit(1);
-}
-
-if (typeof paymentRoutes !== "function") {
-  console.error(
-    "❌ ERROR: ./routes/payment.js is not exporting a router"
-  );
-
-  process.exit(1);
-}
-
-if (typeof doubtsRoutes !== "function") {
-  console.error(
-    "❌ ERROR: ./routes/doubts.js is not exporting a router"
-  );
-
-  process.exit(1);
-}
-
 
 /* ============================================================
-   TEST ROUTE
+   ROOT TEST ROUTE
    ============================================================ */
 
 app.get("/", (req, res) => {
-
   res.json({
     success: true,
-    message: "PharmaVerse API is running 🚀",
+    message: "PharmaVerse API is running",
     status: "active",
-
     endpoints: {
       auth: "/api/auth",
       admin: "/api/admin",
       payment: "/api/payment",
       doubts: "/api/doubts",
+      notifications: "/api/notifications",
       collections: "/api/collections"
     }
   });
-
 });
-
 
 /* ============================================================
    DATABASE COLLECTIONS ROUTE
    ============================================================ */
 
 app.get("/api/collections", async (req, res) => {
-
   try {
-
     if (!mongoose.connection.db) {
-
       return res.status(503).json({
         success: false,
         message: "Database not connected"
       });
-
     }
 
-    const collections =
-      await mongoose.connection.db
-        .listCollections()
-        .toArray();
+    const collections = await mongoose.connection.db
+      .listCollections()
+      .toArray();
 
-    const collectionNames =
-      collections.map(
-        collection => collection.name
-      );
+    const collectionNames = collections.map(
+      (collection) => collection.name
+    );
 
     const counts = {};
 
     for (const name of collectionNames) {
-
-      counts[name] =
-        await mongoose.connection.db
-          .collection(name)
-          .countDocuments();
-
+      counts[name] = await mongoose.connection.db
+        .collection(name)
+        .countDocuments();
     }
 
-    res.json({
+    return res.json({
       success: true,
       database: mongoose.connection.name,
       collections: collectionNames,
       counts,
-      totalCollections:
-        collectionNames.length
+      totalCollections: collectionNames.length
     });
-
   } catch (error) {
+    console.error("Error fetching collections:", error);
 
-    console.error(
-      "❌ Error fetching collections:",
-      error
-    );
-
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Failed to fetch collections",
       error: error.message
     });
-
   }
-
 });
-
 
 /* ============================================================
    API ROUTES
    ============================================================ */
 
-app.use(
-  "/api/auth",
-  authRoutes
-);
+app.use("/api/auth", authRoutes);
+console.log("Auth router mounted");
 
-console.log(
-  "✅ Auth router mounted"
-);
+app.use("/api/admin", adminRoutes);
+console.log("Admin router mounted");
 
+app.use("/api/payment", paymentRoutes);
+console.log("Payment router mounted");
 
-app.use(
-  "/api/admin",
-  adminRoutes
-);
+app.use("/api/doubts", doubtsRoutes);
+console.log("Doubts router mounted");
 
-console.log(
-  "✅ Admin router mounted"
-);
-
-
-app.use(
-  "/api/payment",
-  paymentRoutes
-);
-
-console.log(
-  "✅ Payment router mounted"
-);
-
-
-/* ============================================================
-   DOUBTS ROUTE
-   ============================================================ */
-
-app.use(
-  "/api/doubts",
-  doubtsRoutes
-);
-
-console.log(
-  "✅ Doubts router mounted"
-);
-
+app.use("/api/notifications", notificationsRoutes);
+console.log("Notifications router mounted");
 
 /* ============================================================
    404 HANDLER
    ============================================================ */
 
 app.use((req, res) => {
-
-  res.status(404).json({
-
+  return res.status(404).json({
     success: false,
-
     message: "Route not found",
-
-    requestedUrl:
-      req.originalUrl,
-
+    requestedUrl: req.originalUrl,
     availableRoutes: [
       "/",
       "/api/auth",
@@ -277,248 +182,136 @@ app.use((req, res) => {
       "/api/payment",
       "/api/doubts",
       "/api/doubts/test/health",
+      "/api/notifications",
       "/api/collections"
     ]
-
   });
-
 });
-
 
 /* ============================================================
    ERROR HANDLER
    ============================================================ */
 
-app.use(
-  (err, req, res, next) => {
+app.use((err, req, res, next) => {
+  console.error("EXPRESS ERROR:", err);
 
-    console.error(
-      "❌ EXPRESS ERROR:",
-      err
-    );
-
-    res.status(
-      err.status || 500
-    ).json({
-
-      success: false,
-
-      message:
-        err.message ||
-        "Internal Server Error",
-
-      error:
-        process.env.NODE_ENV === "development"
-          ? err.stack
-          : undefined
-
-    });
-
+  if (res.headersSent) {
+    return next(err);
   }
-);
 
+  return res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    error:
+      process.env.NODE_ENV === "development"
+        ? err.stack
+        : undefined
+  });
+});
 
 /* ============================================================
    MONGODB CONNECTION
    ============================================================ */
 
 mongoose
-  .connect(
-    process.env.MONGODB_URI
-  )
-
+  .connect(process.env.MONGODB_URI)
   .then(async () => {
-
-    console.log(
-      "✅ MongoDB connected successfully"
-    );
-
-    console.log(
-      `📁 Database: ${mongoose.connection.name}`
-    );
+    console.log("MongoDB connected successfully");
+    console.log(`Database: ${mongoose.connection.name}`);
 
     try {
+      const collections = await mongoose.connection.db
+        .listCollections()
+        .toArray();
 
-      const collections =
-        await mongoose.connection.db
-          .listCollections()
-          .toArray();
-
-      const collectionNames =
-        collections.map(
-          collection => collection.name
-        );
+      const collectionNames = collections.map(
+        (collection) => collection.name
+      );
 
       console.log(
-        "📚 Existing collections:",
+        "Existing collections:",
         collectionNames.length
           ? collectionNames.join(", ")
           : "(none)"
       );
 
-      if (
-        !collectionNames.includes(
-          "admins"
-        )
-      ) {
-
+      if (!collectionNames.includes("admins")) {
         console.log(
-          "⚠️ admins collection not found yet"
+          "Admins collection will be created when admin data is saved."
         );
-
-        console.log(
-          "It will be created automatically when admin data is saved."
-        );
-
       }
 
-      if (
-        !collectionNames.includes(
-          "doubts"
-        )
-      ) {
-
+      if (!collectionNames.includes("doubts")) {
         console.log(
-          "ℹ️ doubts collection not found yet"
+          "Doubts collection will be created when the first doubt is saved."
         );
-
-        console.log(
-          "It will be created automatically when the first doubt is saved."
-        );
-
       } else {
-
-        console.log(
-          "✅ doubts collection found"
-        );
-
+        console.log("Doubts collection found");
       }
 
+      if (!collectionNames.includes("notices")) {
+        console.log(
+          "Notices collection will be created when the first notice is saved."
+        );
+      } else {
+        console.log("Notices collection found");
+      }
     } catch (error) {
-
-      console.error(
-        "❌ Collection check error:",
-        error.message
-      );
-
+      console.error("Collection check error:", error.message);
     }
-
   })
-
   .catch((error) => {
-
-    console.error(
-      "❌ MongoDB connection error:",
-      error.message
-    );
-
+    console.error("MongoDB connection error:", error.message);
     process.exit(1);
-
   });
-
 
 /* ============================================================
    SERVER
    ============================================================ */
 
-const PORT =
-  process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
-
-const server =
-  app.listen(
-    PORT,
-    () => {
-
-      console.log("");
-      console.log(
-        "================================="
-      );
-
-      console.log(
-        `🚀 PharmaVerse Server Running`
-      );
-
-      console.log(
-        `📍 Local: http://localhost:${PORT}`
-      );
-
-      console.log(
-        `📍 Admin: http://localhost:${PORT}/api/admin`
-      );
-
-      console.log(
-        `📍 Upload: http://localhost:${PORT}/api/admin/upload`
-      );
-
-      console.log(
-        `📍 Auth: http://localhost:${PORT}/api/auth`
-      );
-
-      console.log(
-        `📍 Payment: http://localhost:${PORT}/api/payment`
-      );
-
-      console.log(
-        `📍 Doubts: http://localhost:${PORT}/api/doubts`
-      );
-
-      console.log(
-        `📍 Doubt Health: http://localhost:${PORT}/api/doubts/test/health`
-      );
-
-      console.log(
-        "================================="
-      );
-
-      console.log("");
-
-    }
+const server = app.listen(PORT, () => {
+  console.log("");
+  console.log("=================================");
+  console.log("PharmaVerse Server Running");
+  console.log(`Local: http://localhost:${PORT}`);
+  console.log(`Admin: http://localhost:${PORT}/api/admin`);
+  console.log(`Auth: http://localhost:${PORT}/api/auth`);
+  console.log(`Payment: http://localhost:${PORT}/api/payment`);
+  console.log(`Doubts: http://localhost:${PORT}/api/doubts`);
+  console.log(
+    `Notifications: http://localhost:${PORT}/api/notifications`
   );
-
+  console.log("=================================");
+  console.log("");
+});
 
 /* ============================================================
    GRACEFUL SHUTDOWN
    ============================================================ */
 
-process.on(
-  "SIGINT",
-  async () => {
+let isShuttingDown = false;
 
-    console.log(
-      "\n🛑 Shutting down server..."
-    );
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
 
-    server.close(
-      async () => {
+  isShuttingDown = true;
+  console.log(`\n${signal} received. Shutting down server...`);
 
-        console.log(
-          "✅ HTTP server closed"
-        );
+  server.close(async () => {
+    console.log("HTTP server closed");
 
-        try {
+    try {
+      await mongoose.connection.close();
+      console.log("MongoDB connection closed");
+      process.exit(0);
+    } catch (error) {
+      console.error("MongoDB close error:", error.message);
+      process.exit(1);
+    }
+  });
+}
 
-          await mongoose.connection.close();
-
-          console.log(
-            "✅ MongoDB connection closed"
-          );
-
-          process.exit(0);
-
-        } catch (error) {
-
-          console.error(
-            "❌ MongoDB close error:",
-            error.message
-          );
-
-          process.exit(1);
-
-        }
-
-      }
-    );
-
-  }
-);
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));

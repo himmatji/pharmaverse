@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const noticeSchema = new mongoose.Schema({
   title: {
@@ -6,33 +6,47 @@ const noticeSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+
   description: {
     type: String,
-    default: ''
+    default: ""
   },
+
   type: {
     type: String,
-    enum: ['info', 'warning', 'success', 'danger'],
-    default: 'info'
+    enum: ["info", "warning", "success", "danger"],
+    default: "info"
   },
+
   startDate: {
-    type: Date
+    type: Date,
+    default: null
   },
+
   endDate: {
-    type: Date
+    type: Date,
+    default: null
   },
+
   isActive: {
     type: Boolean,
     default: true
   },
+
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Admin'
+    ref: "Admin"
   },
+
+  readBy: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }],
+
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-module.exports = mongoose.model('Notice', noticeSchema);
+module.exports = mongoose.model("Notice", noticeSchema);

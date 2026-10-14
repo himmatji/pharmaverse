@@ -10,6 +10,7 @@ import {
   UserCircle,
   Trash2,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import axios from "axios";
@@ -1821,6 +1822,40 @@ const Navbar = () => {
                 </li>
               )
             )}
+
+            {/* =====================================================
+                NOTIFICATION BELL (SIMPLE)
+                Right of "Job Interview Material"
+            ====================================================== */}
+
+            <li>
+              <button
+                onClick={() => navigate("/notifications")}
+                aria-label="Notifications"
+                className={`
+                  flex
+                  items-center
+                  justify-center
+                  w-8
+                  h-8
+                  xl:w-9
+                  xl:h-9
+                  rounded-full
+                  transition-all
+                  duration-200
+                  hover:bg-[#18c1b7]/10
+                  hover:text-[#18c1b7]
+
+                  ${
+                    activeBanner === 1
+                      ? "text-black"
+                      : "text-white"
+                  }
+                `}
+              >
+                <Bell size={18} className="xl:w-5 xl:h-5" />
+              </button>
+            </li>
           </ul>
 
           {/* RIGHT SECTION */}
@@ -2627,6 +2662,38 @@ const Navbar = () => {
                   </div>
                 );
               })()}
+
+              {/* MOBILE NOTIFICATION BELL (SIMPLE) */}
+
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  navigate("/notifications");
+                }}
+                className={`
+                  flex
+                  items-center
+                  gap-2
+                  w-full
+                  py-1.5
+                  sm:py-2
+                  px-2
+                  sm:px-3
+                  rounded-lg
+                  transition
+                  text-sm
+                  sm:text-base
+
+                  ${
+                    activeBanner === 1
+                      ? "text-black hover:bg-gray-100"
+                      : "text-white hover:bg-white/10"
+                  }
+                `}
+              >
+                <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
+                Notifications
+              </button>
 
               {/* MOBILE USER */}
 
