@@ -1121,28 +1121,38 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
+  // API responses can omit price/discount fields. Normalize them before formatting
+  // so an undefined value never crashes the entire dashboard during render.
+  const toSafeNumber = (value, fallback = 0) => {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : fallback;
+  };
+
+  const formatPrice = (value) => `₹${toSafeNumber(value).toFixed(2)}`;
+
   const getDiscountedPrice = (price, discount) => {
-    if (discount > 0) {
-      const discounted = price - (price * discount / 100);
-      return parseFloat(discounted.toFixed(2));
-    }
-    return parseFloat(price.toFixed(2));
+    const safePrice = toSafeNumber(price);
+    const safeDiscount = Math.min(100, Math.max(0, toSafeNumber(discount)));
+    const discounted = safePrice - (safePrice * safeDiscount / 100);
+    return Number(discounted.toFixed(2));
   };
 
   const getDiscountDisplay = (price, discount) => {
-    const discounted = getDiscountedPrice(price, discount);
-    if (discount > 0) {
+    const safePrice = toSafeNumber(price);
+    const safeDiscount = Math.min(100, Math.max(0, toSafeNumber(discount)));
+    const discounted = getDiscountedPrice(safePrice, safeDiscount);
+    if (safeDiscount > 0) {
       return {
-        original: price,
-        discounted: discounted,
-        display: `₹${discounted.toFixed(2)}`,
-        badge: `${discount}% OFF`
+        original: safePrice,
+        discounted,
+        display: formatPrice(discounted),
+        badge: `${safeDiscount}% OFF`
       };
     }
     return {
-      original: price,
-      discounted: price,
-      display: `₹${price.toFixed(2)}`,
+      original: safePrice,
+      discounted: safePrice,
+      display: formatPrice(safePrice),
       badge: null
     };
   };
@@ -1274,7 +1284,22 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       if (pricesRes.status === "fulfilled") {
         const response = pricesRes.value?.data;
         if (response && typeof response === "object" && !Array.isArray(response)) {
-          setCoursePrices(response);
+          const receivedPrices = response.prices && typeof response.prices === "object"
+            ? response.prices
+            : response;
+          setCoursePrices((current) => {
+            const next = { ...current };
+            for (const course of Object.keys(current)) {
+              const incoming = receivedPrices[course];
+              if (incoming && typeof incoming === "object") {
+                next[course] = {
+                  price: toSafeNumber(incoming.price, current[course].price),
+                  discount: toSafeNumber(incoming.discount, current[course].discount)
+                };
+              }
+            }
+            return next;
+          });
         }
       } else {
         console.error("Course prices API error:", pricesRes.reason);
@@ -2644,16 +2669,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     <div className="flex items-center gap-3 flex-wrap">
                       {data.discount > 0 ? (
                         <>
-                          <span className="text-gray-400 line-through">₹{Number(data.price).toFixed(2)}</span>
+                          <span className="text-gray-400 line-through">{formatPrice(data?.price)}</span>
                           <span className="text-2xl font-bold text-green-600">
-                            ₹{getDiscountedPrice(data.price, data.discount).toFixed(2)}
+                            {formatPrice(getDiscountedPrice(data?.price, data?.discount))}
                           </span>
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
                             {data.discount}% OFF
                           </span>
                         </>
                       ) : (
-                        <span className="text-2xl font-bold text-gray-800">₹{Number(data.price).toFixed(2)}</span>
+                        <span className="text-2xl font-bold text-gray-800">{formatPrice(data?.price)}</span>
                       )}
                     </div>
                   </div>
