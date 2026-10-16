@@ -1,717 +1,1274 @@
-import { useState, useEffect } from "react";
+
+
+import React, { useState, useEffect, useRef } from "react";
+
 import axios from "axios";
-import { 
-  Bell, 
-  Calendar, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle, 
-  Plus, 
-  X, 
-  Edit2, 
+
+import {
+
+  Plus,
+
+  Pencil,
+
   Trash2,
+
+  X,
+
+  AlertCircle,
+
+  Bell,
+
+  Save,
+
+  Search,
+
   Eye,
-  EyeOff,
-  Info,
-  AlertTriangle,
-  CheckCircle as CheckCircleIcon,
-  XCircle,
-  Sparkles,
-  TrendingUp,
-  Zap,
-  Award,
-  Shield,
-  Star,
-  Flame,
-  Gem,
-  Rocket,
-  Activity,
-  BarChart3,
-  Heart,
-  ThumbsUp,
-  MessageCircle,
-  Share2
+
+  CheckCheck,
+
 } from "lucide-react";
 
-const API_URL = "https://api.pharmaverse.co.in/api/admin";
+/* =========================================================
+
+   API HELPERS
+
+========================================================= */
+
+const ADMIN_API_BASE = (
+
+  import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in"
+
+).replace(/\/$/, "");
+
+const ADMIN_NOTICES_API = `${ADMIN_API_BASE}/api/admin/notices`;
+
+const getAdminToken = () =>
+
+  localStorage.getItem("adminToken") ||
+
+  localStorage.getItem("token") ||
+
+  localStorage.getItem("admin_token");
+
+const adminHeaders = () => {
+
+  const token = getAdminToken();
+
+  if (!token) throw new Error("Admin login token nahi mila. Dobara admin login karein.");
+
+  return { headers: { Authorization: `Bearer ${token}` } };
+
+};
+
+const normalizeNotice = (notice) => ({
+
+  ...notice,
+
+  id: notice?._id || notice?.id,
+
+  message: notice?.description ?? notice?.message ?? "",
+
+  priority: notice?.type === "danger" ? "urgent" : notice?.type === "warning" ? "important" : "normal",
+
+  target: notice?.target || "all",
+
+  readBy: Array.isArray(notice?.readBy) ? notice.readBy : [],
+
+  createdAt: notice?.createdAt || new Date().toISOString(),
+
+  updatedAt: notice?.updatedAt || notice?.createdAt || new Date().toISOString(),
+
+});
+
+const getNoticeRows = (data) => {
+
+  if (Array.isArray(data?.notices)) return data.notices;
+
+  if (Array.isArray(data?.data)) return data.data;
+
+  if (Array.isArray(data?.data?.notices)) return data.data.notices;
+
+  return [];
+
+};
+
+const toApiPayload = (form) => ({
+
+  title: form.title.trim(),
+
+  description: form.message.trim(),
+
+  type: form.priority === "urgent" ? "danger" : form.priority === "important" ? "warning" : "info",
+
+  isActive: true,
+
+});
+
+/* =========================================================
+
+   CONSTANTS
+
+========================================================= */
+
+const EMPTY_FORM = {
+
+  title: "",
+
+  message: "",
+
+  priority: "normal",
+
+  target: "all",
+
+};
+
+const PRIORITY_OPTIONS = [
+
+  { value: "normal", label: "Normal", color: "bg-[#18c1b7]/10 text-[#0e8b83] border-[#18c1b7]" },
+
+  { value: "important", label: "Important", color: "bg-amber-50 text-amber-700 border-amber-500" },
+
+  { value: "urgent", label: "Urgent", color: "bg-red-50 text-red-700 border-red-500" },
+
+];
+
+const TARGET_OPTIONS = [
+
+  { value: "all", label: "All Students" },
+
+  { value: "bpharm", label: "B.Pharm" },
+
+  { value: "dpharm", label: "D.Pharm" },
+
+  { value: "mpharm", label: "M.Pharm" },
+
+  { value: "pharmd", label: "Pharm.D" },
+
+  { value: "phd", label: "PhD" },
+
+];
+
+const PRIORITY_BORDER = {
+
+  normal: "border-[#18c1b7]",
+
+  important: "border-amber-500",
+
+  urgent: "border-red-500",
+
+};
+
+const PRIORITY_BADGE = {
+
+  normal: "bg-[#18c1b7]/10 text-[#0e8b83] border-[#18c1b7]",
+
+  important: "bg-amber-50 text-amber-700 border-amber-500",
+
+  urgent: "bg-red-50 text-red-700 border-red-500",
+
+};
+
+/* =========================================================
+
+   HELPERS
+
+========================================================= */
+
+const timeAgo = (iso) => {
+
+  const diff = Date.now() - new Date(iso).getTime();
+
+  const m = Math.floor(diff / 60000);
+
+  if (m < 1) return "just now";
+
+  if (m < 60) return `${m}m ago`;
+
+  const h = Math.floor(m / 60);
+
+  if (h < 24) return `${h}h ago`;
+
+  const d = Math.floor(h / 24);
+
+  if (d < 30) return `${d}d ago`;
+
+  return new Date(iso).toLocaleDateString();
+
+};
+
+/* =========================================================
+
+   MAIN COMPONENT
+
+========================================================= */
 
 const AdminNotice = () => {
+
+  /* ---------- STATE ---------- */
+
   const [notices, setNotices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [editingNotice, setEditingNotice] = useState(null);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  const [hoveredCard, setHoveredCard] = useState(null);
-  const [selectedFilter, setSelectedFilter] = useState("all");
 
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    type: "info",
-    startDate: "",
-    endDate: "",
-    isActive: true
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  // Get auth headers
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("adminToken") || sessionStorage.getItem("adminToken");
-    return {
-      headers: { Authorization: `Bearer ${token}` }
-    };
-  };
+  const [editingId, setEditingId] = useState(null);
 
-  // Fetch notices
+  const [showFormModal, setShowFormModal] = useState(false);
+
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+
+  const [formError, setFormError] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [filterPriority, setFilterPriority] = useState("all");
+
+  const [filterTarget, setFilterTarget] = useState("all");
+
+  const [toast, setToast] = useState(null);
+
+  const toastTimerRef = useRef(null);
+
+  /* ---------- LOAD FROM BACKEND ---------- */
+
   const fetchNotices = async () => {
+
     try {
-      const headers = getAuthHeaders();
-      const response = await axios.get(`${API_URL}/notices`, headers);
-      setNotices(response.data.notices || []);
+
+      const response = await axios.get(ADMIN_NOTICES_API, adminHeaders());
+
+      setNotices(getNoticeRows(response.data).map(normalizeNotice));
+
     } catch (error) {
-      console.error("Error fetching notices:", error);
-      setMessage({ type: "error", text: "Failed to load notices" });
-    } finally {
-      setLoading(false);
+
+      console.error("Failed to load notices:", error);
+
+      showToast(error.response?.data?.message || error.message || "Notices load nahi ho sake.", "danger");
+
     }
+
   };
 
   useEffect(() => {
+
     fetchNotices();
+
+    return () => {
+
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+
+    };
+
   }, []);
 
-  // Filter active notices (last 24 hours)
-  const getActiveNotices = () => {
-    const now = new Date();
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    
-    return notices.filter(notice => {
-      if (!notice.isActive) return false;
-      const noticeDate = new Date(notice.createdAt);
-      return noticeDate >= twentyFourHoursAgo;
+  /* ---------- AUTO CLEAR TOAST ---------- */
+
+  useEffect(() => {
+
+    if (!toast) return;
+
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
+
+    return () => {
+
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+
+    };
+
+  }, [toast]);
+
+  const showToast = (message, type = "success") => {
+
+    setToast({ message, type });
+
+  };
+
+  /* ---------- CRUD ---------- */
+
+  const handleOpenCreate = () => {
+
+    setForm(EMPTY_FORM);
+
+    setEditingId(null);
+
+    setFormError("");
+
+    setShowFormModal(true);
+
+  };
+
+  const handleOpenEdit = (notice) => {
+
+    setForm({
+
+      title: notice.title,
+
+      message: notice.message,
+
+      priority: notice.priority,
+
+      target: notice.target,
+
     });
+
+    setEditingId(notice.id);
+
+    setFormError("");
+
+    setShowFormModal(true);
+
   };
 
-  // Filter upcoming notices
-  const getUpcomingNotices = () => {
-    const now = new Date();
-    return notices.filter(notice => {
-      if (!notice.isActive) return false;
-      if (notice.startDate) {
-        const startDate = new Date(notice.startDate);
-        return startDate > now;
-      }
-      return false;
-    });
+  const handleCloseForm = () => {
+
+    setShowFormModal(false);
+
+    setForm(EMPTY_FORM);
+
+    setEditingId(null);
+
+    setFormError("");
+
   };
 
-  // Filter expired notices
-  const getExpiredNotices = () => {
-    const now = new Date();
-    return notices.filter(notice => {
-      if (notice.endDate) {
-        const endDate = new Date(notice.endDate);
-        return endDate < now;
-      }
-      return false;
-    });
-  };
-
-  // Get notices based on filter
-  const getFilteredNotices = () => {
-    switch(selectedFilter) {
-      case "active": return getActiveNotices();
-      case "upcoming": return getUpcomingNotices();
-      case "expired": return getExpiredNotices();
-      default: return notices;
-    }
-  };
-
-  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
+    // Read the submitted fields directly; names are set on both controls.
+    const submittedForm = e.currentTarget;
+    const formData = new FormData(submittedForm);
+    const title = String(formData.get("title") ?? "").trim();
+    const message = String(formData.get("message") ?? "").trim();
+
+    if (!title || !message) {
+      const validationMessage = "Title and message are required";
+      setFormError(validationMessage);
+      showToast(validationMessage, "danger");
+      return;
+    }
+
+    const payload = {
+      title,
+      description: message,
+      type:
+        form.priority === "urgent"
+          ? "danger"
+          : form.priority === "important"
+            ? "warning"
+            : "info",
+      isActive: true,
+    };
+
     try {
-      const headers = getAuthHeaders();
-      
-      if (editingNotice) {
-        await axios.put(`${API_URL}/notices/${editingNotice._id}`, formData, headers);
-        setMessage({ type: "success", text: "Notice updated successfully!" });
+      setFormError("");
+
+      if (editingId) {
+        await axios.put(
+          `${ADMIN_NOTICES_API}/${editingId}`,
+          payload,
+          adminHeaders()
+        );
+        showToast("Notice updated successfully");
       } else {
-        await axios.post(`${API_URL}/notices`, formData, headers);
-        setMessage({ type: "success", text: "Notice created successfully!" });
+        await axios.post(ADMIN_NOTICES_API, payload, adminHeaders());
+        showToast("Notice created successfully");
       }
-      
-      setShowModal(false);
-      resetForm();
-      fetchNotices();
-      
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+
+      await fetchNotices();
+      handleCloseForm();
     } catch (error) {
-      console.error(error);
-      setMessage({ type: "error", text: error.response?.data?.message || "Operation failed" });
+      console.error("Failed to save notice:", error);
+      console.error("NOTICE API ERROR:", error.response?.data);
+      console.error("NOTICE STATUS:", error.response?.status);
+      console.error("NOTICE PAYLOAD:", payload);
+
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        (typeof error.response?.data === "string" ? error.response.data : null) ||
+        error.message ||
+        "Notice save nahi hua. Backend/API aur admin login check karein.";
+
+      setFormError(errorMessage);
+      showToast(errorMessage, "danger");
     }
   };
 
-  // Handle delete
   const handleDelete = async (id) => {
-    if (!window.confirm("⚠️ Delete this notice? This action cannot be undone.")) return;
-    
+
     try {
-      const headers = getAuthHeaders();
-      await axios.delete(`${API_URL}/notices/${id}`, headers);
-      fetchNotices();
-      setMessage({ type: "success", text: "Notice deleted successfully!" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+
+      await axios.delete(`${ADMIN_NOTICES_API}/${id}`, adminHeaders());
+
+      setNotices((current) => current.filter((n) => n.id !== id));
+
+      setConfirmDeleteId(null);
+
+      showToast("Notice deleted", "danger");
+
     } catch (error) {
-      console.error(error);
-      setMessage({ type: "error", text: "Delete failed" });
+
+      console.error("Failed to delete notice:", error);
+
+      setConfirmDeleteId(null);
+
+      showToast(
+
+        error.response?.data?.message || error.message || "Notice delete nahi hua",
+
+        "danger"
+
+      );
+
     }
+
   };
 
-  // Handle edit
-  const handleEdit = (notice) => {
-    setEditingNotice(notice);
-    setFormData({
-      title: notice.title,
-      description: notice.description,
-      type: notice.type,
-      startDate: notice.startDate ? notice.startDate.split('T')[0] : "",
-      endDate: notice.endDate ? notice.endDate.split('T')[0] : "",
-      isActive: notice.isActive
-    });
-    setShowModal(true);
-  };
+  /* ---------- FILTERS ---------- */
 
-  // Reset form
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      description: "",
-      type: "info",
-      startDate: "",
-      endDate: "",
-      isActive: true
-    });
-    setEditingNotice(null);
-  };
+  const filteredNotices = notices.filter((n) => {
 
-  // Get type styles
-  const getTypeStyles = (type) => {
-    switch(type) {
-      case 'info': return 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 border-blue-200';
-      case 'warning': return 'bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-700 border-yellow-200';
-      case 'success': return 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-green-200';
-      case 'danger': return 'bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
+    const q = searchQuery.trim().toLowerCase();
 
-  const getTypeIcon = (type) => {
-    switch(type) {
-      case 'info': return <Info size={16} />;
-      case 'warning': return <AlertTriangle size={16} />;
-      case 'success': return <CheckCircleIcon size={16} />;
-      case 'danger': return <XCircle size={16} />;
-      default: return <Bell size={16} />;
-    }
-  };
+    const matchSearch =
 
-  const getBorderColor = (type) => {
-    switch(type) {
-      case 'info': return 'border-blue-500';
-      case 'warning': return 'border-yellow-500';
-      case 'success': return 'border-green-500';
-      case 'danger': return 'border-red-500';
-      default: return 'border-gray-500';
-    }
-  };
+      !q ||
 
-  const formatDate = (date) => {
-    if (!date) return "N/A";
-    return new Date(date).toLocaleString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+      n.title.toLowerCase().includes(q) ||
 
-  const formatShortDate = (date) => {
-    if (!date) return "N/A";
-    return new Date(date).toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric' 
-    });
-  };
+      n.message.toLowerCase().includes(q);
 
-  const activeNotices = getActiveNotices();
-  const upcomingNotices = getUpcomingNotices();
-  const expiredNotices = getExpiredNotices();
-  const filteredNotices = getFilteredNotices();
+    const matchPriority =
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[70vh]">
-        <div className="text-center">
-          <div className="relative w-24 h-24 mx-auto mb-6">
-            <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
-            <div className="absolute inset-0 border-4 border-purple-500 rounded-full border-t-transparent animate-spin"></div>
-            <div className="absolute inset-2 border-4 border-pink-500 rounded-full border-b-transparent animate-spin animation-delay-300"></div>
-          </div>
-          <div className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse">
-            Loading Notices...
-          </div>
-          <p className="text-gray-400 text-sm mt-2">Fetching announcements</p>
-        </div>
-      </div>
-    );
-  }
+      filterPriority === "all" || n.priority === filterPriority;
+
+    const matchTarget =
+
+      filterTarget === "all" || n.target === filterTarget;
+
+    return matchSearch && matchPriority && matchTarget;
+
+  });
+
+  /* ---------- STATS ---------- */
+
+  const total = notices.length;
+
+  const urgent = notices.filter((n) => n.priority === "urgent").length;
+
+  const important = notices.filter((n) => n.priority === "important").length;
+
+  /* ---------- RENDER ---------- */
 
   return (
-    <div className="animate-fadeIn">
-      {/* Background Effects */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-20 right-10 w-96 h-96 bg-gradient-to-r from-purple-300 to-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-gradient-to-r from-blue-300 to-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-indigo-300 to-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
 
-      <div className="relative z-10">
-        {/* HEADER */}
-        <div className="flex justify-between items-start flex-wrap gap-4 mb-8">
+    <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-3 sm:px-6">
+
+      <div className="max-w-6xl mx-auto">
+
+        {/* ============ HEADER ============ */}
+
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+
           <div>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 transition-opacity duration-500"></div>
-                <div className="relative w-14 h-14 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl animate-float">
-                  <Bell size={28} className="text-white" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-gray-800 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Notices & Announcements
-                </h1>
-                <p className="text-gray-500 ml-2">Manage your platform announcements and alerts</p>
-              </div>
-            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
+
+              <Bell className="text-[#18c1b7]" /> Manage Notices
+
+            </h1>
+
+            <p className="text-sm text-gray-500 mt-1">
+
+              Create, edit, delete and send notices to students
+
+            </p>
+
           </div>
 
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            className="group relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white px-8 py-4 rounded-2xl flex items-center gap-3 transition-all duration-500 hover:scale-105 shadow-2xl"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/30 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-            <Plus size={22} className="relative z-10" />
-            <span className="relative z-10 font-semibold text-lg">Create Notice</span>
-            <Sparkles size={18} className="relative z-10 animate-pulse" />
-          </button>
+          <div className="flex items-center gap-2">
+
+            <button
+
+              onClick={() => setShowPreviewModal(true)}
+
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-white border border-gray-200 hover:border-[#18c1b7] text-gray-700 rounded-xl font-medium text-sm shadow-sm"
+
+            >
+
+              <Eye size={16} /> Preview
+
+            </button>
+
+            <button
+
+              onClick={handleOpenCreate}
+
+              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-[#18c1b7] hover:bg-[#0fa39a] text-white rounded-xl font-medium text-sm shadow-md"
+
+            >
+
+              <Plus size={18} /> New Notice
+
+            </button>
+
+          </div>
+
         </div>
 
-        {/* MESSAGE */}
-        {message.text && (
-          <div
-            className={`mb-6 p-5 rounded-2xl flex items-center gap-3 animate-slideDown backdrop-blur-sm shadow-lg ${
-              message.type === "success" 
-                ? "bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200" 
-                : "bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border border-red-200"
-            }`}
-          >
-            {message.type === "success" ? (
-              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle size={16} className="text-white" />
-              </div>
-            ) : (
-              <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
-                <AlertCircle size={16} className="text-white" />
-              </div>
-            )}
-            <span className="flex-1 font-medium">{message.text}</span>
-            <button onClick={() => setMessage({ type: "", text: "" })} className="hover:opacity-70 transition-opacity p-1 rounded-full hover:bg-white/50">
-              <X size={18} />
-            </button>
+        {/* ============ STATS ============ */}
+
+        <div className="grid grid-cols-3 gap-3 mb-6">
+
+          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#18c1b7]">
+
+            <p className="text-xs text-gray-500 font-medium">Total Notices</p>
+
+            <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{total}</p>
+
           </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-amber-500">
+
+            <p className="text-xs text-gray-500 font-medium">Important</p>
+
+            <p className="text-xl sm:text-2xl font-bold text-amber-600 mt-1">{important}</p>
+
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-red-500">
+
+            <p className="text-xs text-gray-500 font-medium">Urgent</p>
+
+            <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">{urgent}</p>
+
+          </div>
+
+        </div>
+
+        {/* ============ FILTERS ============ */}
+
+        <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-5 flex flex-col sm:flex-row gap-3">
+
+          <div className="flex-1 relative">
+
+            <Search
+
+              size={16}
+
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+
+            />
+
+            <input
+
+              type="text"
+
+              placeholder="Search notices..."
+
+              value={searchQuery}
+
+              onChange={(e) => setSearchQuery(e.target.value)}
+
+              className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
+
+            />
+
+          </div>
+
+          <select
+
+            value={filterPriority}
+
+            onChange={(e) => setFilterPriority(e.target.value)}
+
+            className="border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
+
+          >
+
+            <option value="all">All Priority</option>
+
+            <option value="normal">Normal</option>
+
+            <option value="important">Important</option>
+
+            <option value="urgent">Urgent</option>
+
+          </select>
+
+          <select
+
+            value={filterTarget}
+
+            onChange={(e) => setFilterTarget(e.target.value)}
+
+            className="border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
+
+          >
+
+            <option value="all">All Courses</option>
+
+            {TARGET_OPTIONS.map((t) => (
+
+              <option key={t.value} value={t.value}>
+
+                {t.label}
+
+              </option>
+
+            ))}
+
+          </select>
+
+        </div>
+
+        {/* ============ LIST ============ */}
+
+        {filteredNotices.length === 0 ? (
+
+          <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
+
+            <Bell size={48} className="mx-auto text-gray-300 mb-3" />
+
+            <p className="text-gray-500">
+
+              {notices.length === 0
+
+                ? "No notices created yet"
+
+                : "No notices match your filters"}
+
+            </p>
+
+            <p className="text-gray-400 text-sm mt-1">
+
+              {notices.length === 0
+
+                ? 'Click "New Notice" to add one'
+
+                : "Try changing the filters"}
+
+            </p>
+
+          </div>
+
+        ) : (
+
+          <div className="space-y-3">
+
+            {filteredNotices.map((n) => {
+
+              const readCount = n.readBy?.length || 0;
+
+              return (
+
+                <div
+
+                  key={n.id}
+
+                  className={`bg-white rounded-xl shadow-sm p-4 sm:p-5 border-l-4 ${PRIORITY_BORDER[n.priority] || "border-gray-300"} hover:shadow-md transition`}
+
+                >
+
+                  <div className="flex items-start justify-between gap-3">
+
+                    <div className="flex-1 min-w-0">
+
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+
+                        <h3 className="font-semibold text-gray-800">
+
+                          {n.title}
+
+                        </h3>
+
+                        <span
+
+                          className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_BADGE[n.priority]}`}
+
+                        >
+
+                          {n.priority}
+
+                        </span>
+
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium uppercase">
+
+                          {n.target === "all"
+
+                            ? "All"
+
+                            : n.target}
+
+                        </span>
+
+                      </div>
+
+                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">
+
+                        {n.message}
+
+                      </p>
+
+                      <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-gray-400">
+
+                        <span>Created {timeAgo(n.createdAt)}</span>
+
+                        {n.updatedAt !== n.createdAt && (
+
+                          <>
+
+                            <span>•</span>
+
+                            <span>Edited {timeAgo(n.updatedAt)}</span>
+
+                          </>
+
+                        )}
+
+                        <span>•</span>
+
+                        <span className="flex items-center gap-1">
+
+                          <CheckCheck size={12} />
+
+                          {readCount} read
+
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                    <div className="flex items-center gap-1 shrink-0">
+
+                      <button
+
+                        onClick={() => handleOpenEdit(n)}
+
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+
+                        title="Edit"
+
+                      >
+
+                        <Pencil size={16} />
+
+                      </button>
+
+                      <button
+
+                        onClick={() => setConfirmDeleteId(n.id)}
+
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+
+                        title="Delete"
+
+                      >
+
+                        <Trash2 size={16} />
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              );
+
+            })}
+
+          </div>
+
         )}
 
-        {/* STATS CARDS */}
-        <div className="grid md:grid-cols-4 gap-6 mb-10">
-          <div 
-            onClick={() => setSelectedFilter("all")}
-            className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border ${
-              selectedFilter === "all" ? "border-purple-500 shadow-purple-100" : "border-white/50"
-            }`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500 to-pink-500 rounded-bl-full opacity-10 group-hover:opacity-20 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-                  <Bell size={28} className="text-white" />
-                </div>
-                <TrendingUp size={20} className="text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="text-gray-500 text-sm font-medium">Total Notices</p>
-              <p className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mt-2">{notices.length}</p>
-              <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-slideIn" style={{ width: `${Math.min((notices.length / 50) * 100, 100)}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => setSelectedFilter("active")}
-            className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border ${
-              selectedFilter === "active" ? "border-green-500 shadow-green-100" : "border-white/50"
-            }`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500 to-emerald-500 rounded-bl-full opacity-10 group-hover:opacity-20 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-                  <Zap size={28} className="text-white" />
-                </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              </div>
-              <p className="text-gray-500 text-sm font-medium">Active Notices</p>
-              <p className="text-4xl font-bold text-green-600 mt-2">{activeNotices.length}</p>
-              <p className="text-xs text-gray-400 mt-2">Last 24 hours</p>
-              <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-green-500 to-emerald-500 rounded-full animate-slideIn" style={{ width: `${(activeNotices.length / (notices.length || 1)) * 100}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => setSelectedFilter("upcoming")}
-            className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border ${
-              selectedFilter === "upcoming" ? "border-yellow-500 shadow-yellow-100" : "border-white/50"
-            }`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-bl-full opacity-10 group-hover:opacity-20 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-14 h-14 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-                  <Calendar size={28} className="text-white" />
-                </div>
-                <Rocket size={20} className="text-yellow-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="text-gray-500 text-sm font-medium">Upcoming Notices</p>
-              <p className="text-4xl font-bold text-yellow-600 mt-2">{upcomingNotices.length}</p>
-              <p className="text-xs text-gray-400 mt-2">Scheduled for future</p>
-              <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full animate-slideIn" style={{ width: `${(upcomingNotices.length / (notices.length || 1)) * 100}%` }}></div>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => setSelectedFilter("expired")}
-            className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 cursor-pointer border ${
-              selectedFilter === "expired" ? "border-gray-500 shadow-gray-100" : "border-white/50"
-            }`}
-          >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-gray-500 to-gray-600 rounded-bl-full opacity-10 group-hover:opacity-20 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-14 h-14 bg-gradient-to-br from-gray-500 to-gray-600 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500">
-                  <Clock size={28} className="text-white" />
-                </div>
-                <Activity size={20} className="text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="text-gray-500 text-sm font-medium">Expired Notices</p>
-              <p className="text-4xl font-bold text-gray-600 mt-2">{expiredNotices.length}</p>
-              <p className="text-xs text-gray-400 mt-2">Past announcements</p>
-              <div className="mt-3 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-gray-500 to-gray-600 rounded-full animate-slideIn" style={{ width: `${(expiredNotices.length / (notices.length || 1)) * 100}%` }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* NOTICES LIST */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent flex items-center gap-2">
-              {selectedFilter === "all" && <Bell size={22} className="text-purple-500" />}
-              {selectedFilter === "active" && <Zap size={22} className="text-green-500" />}
-              {selectedFilter === "upcoming" && <Calendar size={22} className="text-yellow-500" />}
-              {selectedFilter === "expired" && <Clock size={22} className="text-gray-500" />}
-              {selectedFilter === "all" && "All Notices"}
-              {selectedFilter === "active" && "Active Notices (Last 24 Hours)"}
-              {selectedFilter === "upcoming" && "Upcoming Notices"}
-              {selectedFilter === "expired" && "Expired Notices"}
-            </h2>
-            <div className="text-sm text-gray-400">{filteredNotices.length} notices found</div>
-          </div>
-          
-          {filteredNotices.length === 0 ? (
-            <div className="relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-3xl p-16 text-center border border-white/50 shadow-xl">
-              <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-bl-full"></div>
-              <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-blue-500/10 to-cyan-500/10 rounded-tr-full"></div>
-              <div className="relative">
-                <div className="w-28 h-28 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
-                  <Bell size={56} className="text-gray-300" />
-                </div>
-                <p className="text-gray-500 text-2xl font-medium">No notices found</p>
-                <p className="text-gray-400 mt-2">Click "Create Notice" to add your first announcement</p>
-              </div>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredNotices.map((notice, index) => (
-                <div
-                  key={notice._id}
-                  className={`group relative overflow-hidden bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border animate-slideUp`}
-                  style={{ animationDelay: `${index * 80}ms` }}
-                  onMouseEnter={() => setHoveredCard(notice._id)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                >
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/5 to-pink-500/5 rounded-bl-full"></div>
-                  <div className={`absolute -inset-px bg-gradient-to-r ${getBorderColor(notice.type)} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur`}></div>
-                  <div className={`relative p-6 transition-all duration-500 ${hoveredCard === notice._id ? 'scale-[1.01]' : ''}`}>
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2.5 rounded-xl ${getTypeStyles(notice.type)} shadow-md group-hover:scale-110 transition-transform`}>
-                          {getTypeIcon(notice.type)}
-                        </div>
-                        <h3 className="font-bold text-gray-800 text-lg line-clamp-1">{notice.title}</h3>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => handleEdit(notice)}
-                          className="p-2 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 hover:from-indigo-100 hover:to-purple-100 transition-all duration-300 hover:scale-110 shadow-md"
-                          title="Edit"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(notice._id)}
-                          className="p-2 rounded-xl bg-gradient-to-r from-red-50 to-rose-50 text-red-600 hover:from-red-100 hover:to-rose-100 transition-all duration-300 hover:scale-110 shadow-md"
-                          title="Delete"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{notice.description || "No description provided"}</p>
-                    
-                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1.5">
-                        <div className="p-1 bg-gray-100 rounded-lg">
-                          <Calendar size={12} className="text-gray-500" />
-                        </div>
-                        {formatShortDate(notice.createdAt)}
-                      </span>
-                      {notice.endDate && (
-                        <span className="flex items-center gap-1.5">
-                          <div className="p-1 bg-gray-100 rounded-lg">
-                            <Clock size={12} className="text-gray-500" />
-                          </div>
-                          Until {formatShortDate(notice.endDate)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <span className={`text-xs px-3 py-1.5 rounded-xl ${getTypeStyles(notice.type)} font-medium flex items-center gap-1.5`}>
-                        {getTypeIcon(notice.type)}
-                        {notice.type.toUpperCase()}
-                      </span>
-                      {notice.isActive && (
-                        <span className="text-xs bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-medium">
-                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                          Active
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Premium animated border */}
-                    <div className={`absolute bottom-0 left-0 h-1 bg-gradient-to-r ${notice.type === 'info' ? 'from-blue-500 to-indigo-500' : notice.type === 'warning' ? 'from-yellow-500 to-orange-500' : notice.type === 'success' ? 'from-green-500 to-emerald-500' : 'from-red-500 to-rose-500'} transition-all duration-700 ${hoveredCard === notice._id ? 'w-full' : 'w-0'}`}></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 animate-fadeIn">
-          <div className="relative bg-white rounded-3xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl animate-scaleIn border border-white/50">
-            <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-bl-full"></div>
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/10 to-cyan-500/10 rounded-tr-full"></div>
-            
-            <div className="relative">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl blur-lg opacity-70 group-hover:opacity-100 transition-opacity duration-500"></div>
-                    <div className="relative w-14 h-14 bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 rounded-2xl flex items-center justify-center shadow-2xl">
-                      {editingNotice ? <Edit2 size={24} className="text-white" /> : <Bell size={24} className="text-white" />}
-                    </div>
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                      {editingNotice ? "Edit Notice" : "Create Notice"}
-                    </h2>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {editingNotice ? "Update announcement details" : "Add a new announcement"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="hover:bg-gray-100 p-2 rounded-full transition-all duration-200"
-                >
-                  <X size={22} />
-                </button>
+      {/* =====================================================
+
+          CREATE / EDIT MODAL
+
+      ====================================================== */}
+
+      {showFormModal && (
+
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
+
+          <div
+
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+
+            onClick={handleCloseForm}
+
+          />
+
+          <form
+
+            onSubmit={handleSubmit}
+
+            className="relative bg-white rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+
+          >
+
+            <div className="flex items-center justify-between mb-4">
+
+              <h3 className="text-lg font-bold text-gray-800">
+
+                {editingId ? "Edit Notice" : "Create New Notice"}
+
+              </h3>
+
+              <button
+
+                type="button"
+
+                onClick={handleCloseForm}
+
+                className="text-gray-400 hover:text-gray-600"
+
+              >
+
+                <X size={20} />
+
+              </button>
+
+            </div>
+
+            {formError && (
+
+              <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg mb-3">
+
+                <AlertCircle size={16} /> {formError}
+
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Title *</label>
-                  <input
-                    type="text"
-                    placeholder="Enter notice title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    required
-                  />
-                </div>
+            )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-                  <textarea
-                    rows="3"
-                    placeholder="Enter notice description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
-                  />
-                </div>
+            {/* Title */}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Notice Type</label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {['info', 'warning', 'success', 'danger'].map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, type })}
-                        className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 ${
-                          formData.type === type
-                            ? `bg-gradient-to-r ${
-                                type === 'info' ? 'from-blue-600 to-indigo-600' :
-                                type === 'warning' ? 'from-yellow-600 to-orange-600' :
-                                type === 'success' ? 'from-green-600 to-emerald-600' :
-                                'from-red-600 to-rose-600'
-                              } text-white shadow-lg scale-105`
-                            : `bg-gray-100 text-gray-600 hover:bg-gray-200`
-                        }`}
-                      >
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                    <input
-                      type="date"
-                      value={formData.startDate}
-                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                    <input
-                      type="date"
-                      value={formData.endDate}
-                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
+              Title <span className="text-red-500">*</span>
 
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <input
-                    type="checkbox"
-                    checked={formData.isActive}
-                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                  />
-                  <label className="text-sm text-gray-700">Active (show in notices)</label>
-                </div>
+            </label>
 
-                <button
-                  type="submit"
-                  className="relative group w-full bg-gradient-to-r from-purple-600 via-pink-600 to-red-600 hover:from-purple-700 hover:via-pink-700 hover:to-red-700 text-white py-3.5 rounded-xl font-semibold transition-all duration-300 mt-4 shadow-xl overflow-hidden"
+            <input
+              name="title"
+              type="text"
+              value={form.title}
+
+              onChange={(e) =>
+
+                setForm({ ...form, title: e.target.value })
+
+              }
+
+              placeholder="e.g., New Notes Uploaded"
+
+              maxLength={120}
+
+              className="w-full border border-gray-300 rounded-xl px-3 py-2 mb-3 focus:outline-none focus:border-[#18c1b7] text-sm"
+
+            />
+
+            {/* Message */}
+
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+
+              Message <span className="text-red-500">*</span>
+
+            </label>
+
+            <textarea
+              name="message"
+              value={form.message}
+
+              onChange={(e) =>
+
+                setForm({ ...form, message: e.target.value })
+
+              }
+
+              placeholder="Write the notice details..."
+
+              rows={5}
+
+              maxLength={1000}
+
+              className="w-full border border-gray-300 rounded-xl px-3 py-2 mb-1 focus:outline-none focus:border-[#18c1b7] text-sm resize-none"
+
+            />
+
+            <p className="text-[11px] text-gray-400 text-right mb-3">
+
+              {form.message.length}/1000
+
+            </p>
+
+            {/* Priority + Target */}
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                  Priority
+
+                </label>
+
+                <select
+
+                  value={form.priority}
+
+                  onChange={(e) =>
+
+                    setForm({ ...form, priority: e.target.value })
+
+                  }
+
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
+
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    {editingNotice ? <Edit2 size={18} /> : <Plus size={18} />}
-                    {editingNotice ? "Update Notice" : "Create Notice"}
-                  </span>
-                </button>
-              </form>
+
+                  {PRIORITY_OPTIONS.map((p) => (
+
+                    <option key={p.value} value={p.value}>
+
+                      {p.label}
+
+                    </option>
+
+                  ))}
+
+                </select>
+
+              </div>
+
+              <div>
+
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                  Send To
+
+                </label>
+
+                <select
+
+                  value={form.target}
+
+                  onChange={(e) =>
+
+                    setForm({ ...form, target: e.target.value })
+
+                  }
+
+                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
+
+                >
+
+                  {TARGET_OPTIONS.map((t) => (
+
+                    <option key={t.value} value={t.value}>
+
+                      {t.label}
+
+                    </option>
+
+                  ))}
+
+                </select>
+
+              </div>
+
             </div>
-          </div>
+
+            {/* Actions */}
+
+            <div className="flex gap-3">
+
+              <button
+
+                type="button"
+
+                onClick={handleCloseForm}
+
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm"
+
+              >
+
+                Cancel
+
+              </button>
+
+              <button
+
+                type="submit"
+
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#18c1b7] hover:bg-[#0fa39a] text-white rounded-xl text-sm font-medium"
+
+              >
+
+                <Save size={16} />
+
+                {editingId ? "Update Notice" : "Send Notice"}
+
+              </button>
+
+            </div>
+
+          </form>
+
         </div>
+
       )}
 
-      {/* Global Animations */}
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleIn {
-          from { opacity: 0; transform: scale(0.9); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(30px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideIn {
-          from { width: 0; }
-          to { width: 100%; }
-        }
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes blob {
-          0%, 100% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-        }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
-        .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
-        .animate-slideUp { animation: slideUp 0.5s ease-out forwards; opacity: 0; }
-        .animate-slideDown { animation: slideDown 0.3s ease-out; }
-        .animate-slideIn { animation: slideIn 1s ease-out; }
-        .animate-float { animation: float 3s ease-in-out infinite; }
-        .animate-blob { animation: blob 7s infinite; }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .animation-delay-300 { animation-delay: 0.3s; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-      `}</style>
+      {/* =====================================================
+
+          PREVIEW MODAL (Student's View Simulation)
+
+      ====================================================== */}
+
+      {showPreviewModal && (
+
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
+
+          <div
+
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+
+            onClick={() => setShowPreviewModal(false)}
+
+          />
+
+          <div className="relative bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-[#f8fdfc]">
+
+              <h3 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
+
+                <Eye size={16} className="text-[#18c1b7]" /> Student's Bell Preview
+
+              </h3>
+
+              <button
+
+                onClick={() => setShowPreviewModal(false)}
+
+                className="text-gray-400 hover:text-gray-600"
+
+              >
+
+                <X size={18} />
+
+              </button>
+
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto">
+
+              {notices.length === 0 ? (
+
+                <div className="py-10 text-center">
+
+                  <Bell size={32} className="mx-auto text-gray-300 mb-2" />
+
+                  <p className="text-gray-400 text-sm">
+
+                    No notices to preview
+
+                  </p>
+
+                </div>
+
+              ) : (
+
+                notices.slice(0, 6).map((n) => (
+
+                  <div
+
+                    key={n.id}
+
+                    className={`px-4 py-3 border-b border-gray-50 last:border-0 border-l-4 ${PRIORITY_BORDER[n.priority]}`}
+
+                  >
+
+                    <p className="text-sm font-semibold text-gray-800">
+
+                      {n.title}
+
+                    </p>
+
+                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+
+                      {n.message}
+
+                    </p>
+
+                    <div className="flex items-center gap-2 mt-1.5">
+
+                      <span className="text-[10px] text-gray-400">
+
+                        {timeAgo(n.createdAt)}
+
+                      </span>
+
+                      <span className="text-[10px] text-gray-400">•</span>
+
+                      <span className="text-[10px] text-[#18c1b7] font-medium uppercase">
+
+                        {n.target === "all" ? "All" : n.target}
+
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                ))
+
+              )}
+
+            </div>
+
+            <div className="border-t border-gray-100 px-4 py-2 bg-[#f8fdfc]">
+
+              <p className="text-[11px] text-gray-500 text-center">
+
+                This is how it appears on the student's bell icon
+
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+
+          DELETE CONFIRM MODAL
+
+      ====================================================== */}
+
+      {confirmDeleteId && (
+
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+
+          <div
+
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+
+            onClick={() => setConfirmDeleteId(null)}
+
+          />
+
+          <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+
+            <div className="flex items-center gap-3 mb-3">
+
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+
+                <Trash2 size={20} className="text-red-600" />
+
+              </div>
+
+              <h3 className="text-lg font-bold text-gray-800">
+
+                Delete Notice?
+
+              </h3>
+
+            </div>
+
+            <p className="text-gray-600 text-sm mb-5">
+
+              This action cannot be undone. The notice will be removed from
+
+              all students' bells.
+
+            </p>
+
+            <div className="flex gap-3">
+
+              <button
+
+                onClick={() => setConfirmDeleteId(null)}
+
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm"
+
+              >
+
+                Cancel
+
+              </button>
+
+              <button
+
+                onClick={() => handleDelete(confirmDeleteId)}
+
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium"
+
+              >
+
+                Yes, Delete
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+      {/* =====================================================
+
+          TOAST
+
+      ====================================================== */}
+
+      {toast && (
+
+        <div
+
+          className={`fixed bottom-6 right-6 z-[400] px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium flex items-center gap-2 transition-all ${
+
+            toast.type === "danger" ? "bg-red-600" : "bg-[#18c1b7]"
+
+          }`}
+
+        >
+
+          {toast.type === "danger" ? (
+
+            <Trash2 size={16} />
+
+          ) : (
+
+            <CheckCheck size={16} />
+
+          )}
+
+          {toast.message}
+
+        </div>
+
+      )}
+
     </div>
+
   );
+
 };
 
 export default AdminNotice;
+

@@ -17,6 +17,7 @@ import axios from "axios";
 import AuthModal from "./AuthModal";
 
 const API_URL = "https://api.pharmaverse.co.in/api/auth";
+const NOTIFICATIONS_API_URL = "https://api.pharmaverse.co.in/api/notifications";
 
 const Navbar = () => {
   const [activeBanner, setActiveBanner] = useState(1);
@@ -29,6 +30,12 @@ const Navbar = () => {
 
   const [user, setUser] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [notificationsError, setNotificationsError] = useState("");
 
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -80,6 +87,144 @@ const Navbar = () => {
       window.removeEventListener("storage", checkAuth);
     };
   }, []);
+
+  /* =========================================================
+     NOTIFICATION UNREAD COUNT
+     Reads the count from the backend shared with all users.
+  ========================================================= */
+
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId;
+
+    const loadUnreadNotifications = async () => {
+      const token =
+        localStorage.getItem("token") ||
+        localStorage.getItem("userToken");
+
+      if (!token) {
+        if (isMounted) setNotificationCount(0);
+        return;
+      }
+
+      try {
+        const response = await axios.get(NOTIFICATIONS_API_URL, {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 15000,
+        });
+
+        if (!isMounted) return;
+
+        const payload = response?.data || {};
+        const count = Number(
+          payload.unreadCount ??
+          payload.data?.unreadCount ??
+          payload.unread ??
+          0
+        );
+
+        setNotificationCount(
+          Number.isFinite(count) ? Math.max(0, count) : 0
+        );
+      } catch (error) {
+        // Keep the navbar working if notifications are temporarily unavailable.
+        if (error.response?.status === 401) {
+          setNotificationCount(0);
+        }
+      }
+    };
+
+    loadUnreadNotifications();
+    intervalId = window.setInterval(loadUnreadNotifications, 30000);
+
+    const handleNotificationUpdate = () => loadUnreadNotifications();
+    window.addEventListener("notificationsUpdated", handleNotificationUpdate);
+    window.addEventListener("storage", handleNotificationUpdate);
+
+    return () => {
+      isMounted = false;
+      if (intervalId) window.clearInterval(intervalId);
+      window.removeEventListener("notificationsUpdated", handleNotificationUpdate);
+      window.removeEventListener("storage", handleNotificationUpdate);
+    };
+  }, [isLoggedIn]);
+
+  /* =========================================================
+     NOTIFICATIONS PANEL (kept inside navbar.jsx)
+  ========================================================= */
+
+  const loadNotifications = async () => {
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("userToken");
+
+    if (!token) {
+      setNotificationItems([]);
+      setNotificationCount(0);
+      setNotificationsError("Please log in to view notifications.");
+      return;
+    }
+
+    setNotificationsLoading(true);
+    setNotificationsError("");
+    try {
+      const response = await axios.get(NOTIFICATIONS_API_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 15000,
+      });
+      const payload = response?.data || {};
+      const items = Array.isArray(payload.notices)
+        ? payload.notices
+        : Array.isArray(payload.data?.notices)
+        ? payload.data.notices
+        : Array.isArray(payload.notifications)
+        ? payload.notifications
+        : [];
+      setNotificationItems(items);
+      const count = Number(payload.unreadCount ?? payload.data?.unreadCount ?? 0);
+      setNotificationCount(Number.isFinite(count) ? Math.max(0, count) : 0);
+    } catch (error) {
+      setNotificationsError(
+        error.response?.data?.message ||
+        "Notifications load nahi ho paayi. Backend API check karein."
+      );
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const openNotifications = () => {
+    setShowNotifications(true);
+    setSelectedNotification(null);
+    loadNotifications();
+  };
+
+  const openNotificationDetails = async (notice) => {
+    setSelectedNotification(notice);
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("userToken");
+    const isRead = Array.isArray(notice.readBy)
+      ? notice.readBy.some((entry) => String(entry?._id || entry) === String(user?._id || user?.id))
+      : Boolean(notice.isRead || notice.read);
+
+    if (!isRead && token && notice._id) {
+      try {
+        await axios.post(
+          `${NOTIFICATIONS_API_URL}/${notice._id}/read`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 15000 }
+        );
+        setNotificationItems((previous) => previous.map((item) =>
+          item._id === notice._id ? { ...item, isRead: true, read: true } : item
+        ));
+        setNotificationCount((previous) => Math.max(0, previous - 1));
+        window.dispatchEvent(new Event("notificationsUpdated"));
+      } catch (error) {
+        // Details remain readable even if marking as read temporarily fails.
+      }
+    }
+  };
 
   /* =========================================================
      USER OUTSIDE CLICK
@@ -1830,7 +1975,7 @@ const Navbar = () => {
 
             <li>
               <button
-                onClick={() => navigate("/notifications")}
+                onClick={openNotifications}
                 aria-label="Notifications"
                 className={`
                   flex
@@ -1853,7 +1998,14 @@ const Navbar = () => {
                   }
                 `}
               >
-                <Bell size={18} className="xl:w-5 xl:h-5" />
+                <span className="relative inline-flex">
+                  <Bell size={18} className="xl:w-5 xl:h-5" />
+                  {notificationCount > 0 && (
+                    <span className="absolute -right-2 -top-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-white" aria-label={`${notificationCount} unread notifications`}>
+                      {notificationCount > 99 ? "99+" : notificationCount}
+                    </span>
+                  )}
+                </span>
               </button>
             </li>
           </ul>
@@ -2668,7 +2820,7 @@ const Navbar = () => {
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  navigate("/notifications");
+                  openNotifications();
                 }}
                 className={`
                   flex
@@ -2691,7 +2843,14 @@ const Navbar = () => {
                   }
                 `}
               >
-                <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="relative inline-flex shrink-0">
+                  <Bell size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  {notificationCount > 0 && (
+                    <span className="absolute -right-2 -top-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center leading-none ring-2 ring-white" aria-label={`${notificationCount} unread notifications`}>
+                      {notificationCount > 99 ? "99+" : notificationCount}
+                    </span>
+                  )}
+                </span>
                 Notifications
               </button>
 
@@ -2819,6 +2978,76 @@ const Navbar = () => {
       </nav>
 
       {/* AUTH MODAL */}
+
+      {/* NOTIFICATIONS MODAL: implemented in this navbar file; no separate page needed */}
+      {showNotifications && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true" aria-label="Student notifications">
+          <button className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default" aria-label="Close notifications" onClick={() => { setShowNotifications(false); setSelectedNotification(null); }} />
+          <div className="relative z-[181] flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-[#e9f9f7] px-4 py-4 sm:px-6">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 sm:text-xl">Student Notifications</h2>
+                <p className="mt-1 text-xs text-gray-600 sm:text-sm">{notificationCount} unread notification{notificationCount === 1 ? "" : "s"}</p>
+              </div>
+              <button onClick={() => { setShowNotifications(false); setSelectedNotification(null); }} className="rounded-full p-2 text-gray-600 transition hover:bg-white hover:text-gray-900" aria-label="Close"><X size={20} /></button>
+            </div>
+            {selectedNotification ? (
+              <div className="overflow-y-auto p-4 sm:p-6">
+                <button onClick={() => setSelectedNotification(null)} className="mb-4 text-sm font-semibold text-teal-700 hover:text-teal-900">← Back to all notifications</button>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${selectedNotification.type === "danger" ? "bg-red-100 text-red-700" : selectedNotification.type === "warning" ? "bg-amber-100 text-amber-800" : selectedNotification.type === "success" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>{String(selectedNotification.type || "info").toUpperCase()}</span>
+                  {selectedNotification.createdAt && <span className="text-xs text-gray-500">{new Date(selectedNotification.createdAt).toLocaleString()}</span>}
+                </div>
+                <h3 className="mb-3 break-words text-xl font-bold text-gray-900">{selectedNotification.title || "Notification"}</h3>
+                <p className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-700">{selectedNotification.description || selectedNotification.message || "No additional details."}</p>
+              </div>
+            ) : (
+              <div className="min-h-[180px] overflow-y-auto p-3 sm:p-4">
+                {notificationsLoading ? (
+                  <div className="py-12 text-center text-sm text-gray-500">Loading notifications...</div>
+                ) : notificationsError ? (
+                  <div className="py-10 text-center">
+                    <p className="text-sm text-red-600">{notificationsError}</p>
+                    <button onClick={loadNotifications} className="mt-3 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-700">Try again</button>
+                  </div>
+                ) : notificationItems.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Bell size={30} className="mx-auto mb-3 text-gray-300" />
+                    <p className="font-semibold text-gray-700">No notifications yet</p>
+                    <p className="mt-1 text-sm text-gray-500">New notices from PharmaVerse will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {notificationItems.map((notice) => {
+                      const currentUserId = user?._id || user?.id;
+                      const isRead = Boolean(notice.isRead || notice.read) || (Array.isArray(notice.readBy) && notice.readBy.some((entry) => String(entry?._id || entry) === String(currentUserId)));
+                      return (
+                        <button key={notice._id || notice.id || notice.title} onClick={() => openNotificationDetails(notice)} className={`block w-full rounded-xl border p-3 text-left transition sm:p-4 ${isRead ? "border-gray-100 bg-white hover:bg-gray-50" : "border-teal-100 bg-teal-50/70 hover:bg-teal-50"}`}>
+                          <div className="flex items-start gap-3">
+                            <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${isRead ? "bg-gray-300" : "bg-red-500"}`} />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="break-words text-sm font-bold text-gray-900 sm:text-base">{notice.title || "Notification"}</span>
+                                {!isRead && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase text-red-700">New</span>}
+                              </span>
+                              <span className="mt-1 block line-clamp-2 whitespace-pre-wrap break-words text-sm text-gray-600">{notice.description || notice.message || "Open to view details."}</span>
+                              {notice.createdAt && <span className="mt-2 block text-xs text-gray-400">{new Date(notice.createdAt).toLocaleString()}</span>}
+                            </span>
+                            <ChevronRight size={18} className="mt-1 shrink-0 text-gray-400" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="flex justify-end border-t border-gray-100 px-4 py-3">
+              <button onClick={() => { setShowNotifications(false); setSelectedNotification(null); }} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AuthModal
         isOpen={showLoginModal}

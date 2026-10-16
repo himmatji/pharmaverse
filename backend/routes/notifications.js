@@ -6,35 +6,39 @@ const jwt = require("jsonwebtoken");
 const Notice = require("../models/Notice");
 const User = require("../models/User");
 
-// Verify logged-in user
-const userAuth = async (req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+async function userAuth(req, res, next) {
+  try {
+    const authHeader = req.headers.authorization || "";
+
+    if (!authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
         success: false,
         message: "Please login first."
       });
     }
 
-    const token = authHeader.split(" ")[1];
+    if (!JWT_SECRET) {
+      console.error("JWT_SECRET/JWT_SECRET_KEY is not configured.");
+      return res.status(500).json({
+        success: false,
+        message: "Authentication is not configured on the server."
+      });
+    }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || process.env.JWT_SECRET_KEY
-    );
-
+    const token = authHeader.slice(7);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId || decoded.id || decoded._id;
 
-    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+    if (!userId || !mongoose.Types.ObjectId.isValid(String(userId))) {
       return res.status(401).json({
         success: false,
         message: "Invalid login session."
       });
     }
 
-    const user = await User.findById(userId).select("_id");
+    const user = await User.findById(userId).select("_id isActive");
 
     if (!user) {
       return res.status(401).json({
@@ -43,66 +47,69 @@ const userAuth = async (req, res, next) => {
       });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is inactive."
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
-    console.error("Notification authentication error:", error.message);
+    if (
+      error.name === "JsonWebTokenError" ||
+      error.name === "TokenExpiredError"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Session expired. Please login again."
+      });
+    }
 
-    return res.status(401).json({
+    console.error("Notification authentication error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Session expired. Please login again."
+      message: "Could not authenticate notification request."
     });
   }
-};
+}
 
-// Check whether a notice is currently visible
-const isNoticeVisible = (notice) => {
-  const now = new Date();
-
-  if (notice.isActive === false) {
-    return false;
-  }
-
-  if (notice.startDate && new Date(notice.startDate) > now) {
-    return false;
-  }
-
-  if (notice.endDate && new Date(notice.endDate) < now) {
-    return false;
-  }
-
-  return true;
-};
+function visibleNoticeFilter(now = new Date()) {
+  return {
+    isActive: { $ne: false },
+    $and: [
+      {
+        $or: [
+          { startDate: null },
+          { startDate: { $exists: false } },
+          { startDate: { $lte: now } }
+        ]
+      },
+      {
+        $or: [
+          { endDate: null },
+          { endDate: { $exists: false } },
+          { endDate: { $gte: now } }
+        ]
+      }
+    ]
+  };
+}
 
 // GET /api/notifications
-// Fetch notices and unread count for the logged-in user
 router.get("/", userAuth, async (req, res) => {
   try {
-    const notices = await Notice.find({
-      isActive: true,
-      $and: [
-        {
-          $or: [
-            { startDate: null },
-            { startDate: { $exists: false } },
-            { startDate: { $lte: new Date() } }
-          ]
-        },
-        {
-          $or: [
-            { endDate: null },
-            { endDate: { $exists: false } },
-            { endDate: { $gte: new Date() } }
-          ]
-        }
-      ]
-    }).sort({ createdAt: -1 });
+    const userId = req.user._id;
 
-    const visibleNotices = notices.filter(isNoticeVisible);
+    const notices = await Notice.find(visibleNoticeFilter())
+      .select("title description type startDate endDate isActive createdAt readBy")
+      .sort({ createdAt: -1 })
+      .lean();
 
-    const formattedNotices = visibleNotices.map((notice) => {
+    const formattedNotices = notices.map((notice) => {
       const isRead = (notice.readBy || []).some(
-        (id) => id.toString() === req.user._id.toString()
+        (readUserId) => String(readUserId) === String(userId)
       );
 
       return {
@@ -110,25 +117,20 @@ router.get("/", userAuth, async (req, res) => {
         title: notice.title,
         description: notice.description || "",
         type: notice.type || "info",
-        startDate: notice.startDate,
-        endDate: notice.endDate,
+        startDate: notice.startDate || null,
+        endDate: notice.endDate || null,
         createdAt: notice.createdAt,
         isRead
       };
     });
 
-    const unreadCount = formattedNotices.filter(
-      (notice) => !notice.isRead
-    ).length;
-
     return res.status(200).json({
       success: true,
       notices: formattedNotices,
-      unreadCount
+      unreadCount: formattedNotices.filter((notice) => !notice.isRead).length
     });
   } catch (error) {
     console.error("Fetch notifications error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to fetch notifications."
@@ -137,7 +139,6 @@ router.get("/", userAuth, async (req, res) => {
 });
 
 // POST /api/notifications/:id/read
-// Mark a notice as read for the logged-in user
 router.post("/:id/read", userAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -149,43 +150,55 @@ router.post("/:id/read", userAuth, async (req, res) => {
       });
     }
 
+    const userId = req.user._id;
     const notice = await Notice.findOneAndUpdate(
       {
         _id: id,
-        isActive: true
+        ...visibleNoticeFilter(),
+        readBy: { $ne: userId }
       },
-      {
-        $addToSet: {
-          readBy: req.user._id
-        }
-      },
-      {
-        new: true
-      }
+      { $addToSet: { readBy: userId } },
+      { new: true }
     );
 
-    if (!notice || !isNoticeVisible(notice)) {
-      return res.status(404).json({
-        success: false,
-        message: "Notice not found or no longer available."
-      });
+    if (!notice) {
+      const existing = await Notice.findOne({
+        _id: id,
+        ...visibleNoticeFilter()
+      }).select("_id readBy");
+
+      if (!existing) {
+        return res.status(404).json({
+          success: false,
+          message: "Notice not found or no longer available."
+        });
+      }
+
+      const alreadyRead = (existing.readBy || []).some(
+        (readUserId) => String(readUserId) === String(userId)
+      );
+
+      if (!alreadyRead) {
+        return res.status(500).json({
+          success: false,
+          message: "Could not mark notice as read."
+        });
+      }
     }
 
     const unreadCount = await Notice.countDocuments({
-      isActive: true,
-      _id: { $ne: notice._id },
-      readBy: { $ne: req.user._id }
+      ...visibleNoticeFilter(),
+      readBy: { $ne: userId }
     });
 
     return res.status(200).json({
       success: true,
       message: "Notice marked as read.",
-      noticeId: notice._id,
+      noticeId: id,
       unreadCount
     });
   } catch (error) {
     console.error("Mark notification read error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to mark notice as read."

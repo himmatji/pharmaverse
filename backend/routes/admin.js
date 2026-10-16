@@ -3329,35 +3329,172 @@ router.delete(
 );
 
 /* =========================================================
+   ADMIN PAID PDFs
+========================================================= */
+
+// Dashboard: list paid PDFs without sending large Base64 file data.
+router.get("/paid-pdfs", adminAuth, async (req, res) => {
+  try {
+    const filter = {};
+    if (req.admin?.role !== "super_admin") {
+      filter.course = { $in: req.admin?.permissions?.courses || [] };
+    }
+
+    const paidPDFs = await PaidPDF.find(filter)
+      .select("-fileData")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return res.json(paidPDFs);
+  } catch (error) {
+    console.error("Admin paid PDFs GET error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch paid PDFs"
+    });
+  }
+});
+
+/* =========================================================
+   ADMIN COURSE PRICES
+========================================================= */
+
+const DEFAULT_COURSE_PRICES = {
+  BPharm: { price: 99, discount: 0 },
+  DPharm: { price: 79, discount: 0 },
+  MPharm: { price: 149, discount: 0 },
+  PharmD: { price: 129, discount: 0 },
+  PhD: { price: 199, discount: 0 }
+};
+
+const COURSE_PRICE_ALIASES = {
+  BPharm: ["BPharm", "B.Pharm"],
+  DPharm: ["DPharm", "D.Pharm"],
+  MPharm: ["MPharm", "M.Pharm"],
+  PharmD: ["PharmD", "Pharm.D"],
+  PhD: ["PhD"]
+};
+
+const normalizeCoursePrices = (source = {}) => {
+  const result = {};
+  for (const [key, aliases] of Object.entries(COURSE_PRICE_ALIASES)) {
+    let value;
+    for (const alias of aliases) {
+      if (source && source[alias] !== undefined) {
+        value = source[alias];
+        break;
+      }
+    }
+    if (value && typeof value === "object") {
+      const price = Number(value.price);
+      const discount = Number(value.discount ?? 0);
+      result[key] = {
+        price: Number.isFinite(price) && price >= 0
+          ? price
+          : DEFAULT_COURSE_PRICES[key].price,
+        discount: Number.isFinite(discount) && discount >= 0 && discount <= 100
+          ? discount
+          : DEFAULT_COURSE_PRICES[key].discount
+      };
+    } else {
+      result[key] = { ...DEFAULT_COURSE_PRICES[key] };
+    }
+  }
+  return result;
+};
+
+router.get("/course-prices", adminAuth, async (req, res) => {
+  try {
+    let record = await CoursePrice.findOne().lean();
+    const stored = record?.prices;
+    const storedObject = stored instanceof Map
+      ? Object.fromEntries(stored)
+      : (stored || {});
+    const normalized = normalizeCoursePrices(storedObject);
+
+    return res.json({
+      success: true,
+      prices: normalized,
+      data: normalized,
+      coursePrices: {
+        "B.Pharm": normalized.BPharm,
+        "D.Pharm": normalized.DPharm,
+        "M.Pharm": normalized.MPharm,
+        "Pharm.D": normalized.PharmD,
+        PhD: normalized.PhD
+      }
+    });
+  } catch (error) {
+    console.error("Admin course prices GET error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch course prices"
+    });
+  }
+});
+
+router.put("/course-prices", adminAuth, async (req, res) => {
+  try {
+    const input = req.body?.prices || req.body?.coursePrices || req.body;
+    const normalized = normalizeCoursePrices(input);
+
+    let record = await CoursePrice.findOne();
+    if (!record) record = new CoursePrice();
+
+    // Mongoose Map schema uses the internal keys below.
+    if (record.prices && typeof record.prices.set === "function") {
+      for (const [key, value] of Object.entries(normalized)) {
+        record.prices.set(key, value);
+      }
+    } else {
+      record.prices = normalized;
+    }
+
+    await record.save();
+
+    return res.json({
+      success: true,
+      message: "Course prices updated successfully",
+      prices: normalized,
+      data: normalized
+    });
+  } catch (error) {
+    console.error("Admin course prices PUT error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update course prices"
+    });
+  }
+});
+
+/* =========================================================
    NOTICES
 ========================================================= */
+
+// Notice API uses the existing Notice model fields:
+// title, description, type, startDate, endDate, isActive, createdBy, readBy.
+// The API accepts legacy AdminNotice fields (message, priority, active) too.
 
 router.get(
   "/notices",
   adminAuth,
   async (req, res) => {
     try {
-      const notices =
-        await Notice.find()
-          .sort({
-            createdAt: -1
-          });
+      const notices = await Notice.find()
+        .select("-readBy")
+        .sort({ createdAt: -1 })
+        .lean();
 
       return res.json({
         success: true,
+        notices,
         data: notices
       });
-
     } catch (error) {
-      console.error(
-        "Notices error:",
-        error
-      );
-
+      console.error("Admin fetch notices error:", error);
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to fetch notices"
+        message: "Failed to fetch notices"
       });
     }
   }
@@ -3368,53 +3505,183 @@ router.post(
   adminAuth,
   async (req, res) => {
     try {
-      const {
-        title,
-        message,
-        course,
-        active
-      } = req.body;
+      const title = String(req.body.title || "").trim();
+      const description = String(
+        req.body.description ?? req.body.message ?? ""
+      ).trim();
 
-      if (
-        !title ||
-        !message
-      ) {
+      const typeMap = {
+        normal: "info",
+        important: "warning",
+        urgent: "danger"
+      };
+
+      const requestedType = req.body.type || req.body.priority || "info";
+      const type = typeMap[requestedType] || requestedType;
+      const activeInput = req.body.isActive ?? req.body.active ?? true;
+      const startDate = req.body.startDate ? new Date(req.body.startDate) : null;
+      const endDate = req.body.endDate ? new Date(req.body.endDate) : null;
+
+      if (!title) {
         return res.status(400).json({
           success: false,
-          message:
-            "Title and message are required"
+          message: "Notice title is required"
         });
       }
 
-      const notice =
-        new Notice({
-          title,
-          message,
-          course:
-            course || "",
-          active:
-            active !== false,
-          createdAt:
-            new Date()
+      if (!["info", "warning", "success", "danger"].includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid notice type"
         });
+      }
 
-      await notice.save();
+      if (startDate && Number.isNaN(startDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid start date"
+        });
+      }
+
+      if (endDate && Number.isNaN(endDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid end date"
+        });
+      }
+
+      if (startDate && endDate && endDate < startDate) {
+        return res.status(400).json({
+          success: false,
+          message: "End date cannot be before start date"
+        });
+      }
+
+      const notice = await Notice.create({
+        title,
+        description,
+        type,
+        startDate,
+        endDate,
+        isActive: activeInput !== false,
+        createdBy: req.admin?._id || req.admin?.id || undefined
+      });
 
       return res.status(201).json({
         success: true,
+        message: "Notice published successfully",
+        notice,
         data: notice
       });
-
     } catch (error) {
-      console.error(
-        "Create notice error:",
-        error
-      );
-
+      console.error("Admin create notice error:", error);
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to create notice"
+        message: "Failed to publish notice"
+      });
+    }
+  }
+);
+
+router.put(
+  "/notices/:id",
+  adminAuth,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid notice ID"
+        });
+      }
+
+      const title = String(req.body.title || "").trim();
+      const description = String(
+        req.body.description ?? req.body.message ?? ""
+      ).trim();
+
+      const typeMap = {
+        normal: "info",
+        important: "warning",
+        urgent: "danger"
+      };
+
+      const requestedType = req.body.type || req.body.priority || "info";
+      const type = typeMap[requestedType] || requestedType;
+      const activeInput = req.body.isActive ?? req.body.active ?? true;
+      const startDate = req.body.startDate ? new Date(req.body.startDate) : null;
+      const endDate = req.body.endDate ? new Date(req.body.endDate) : null;
+
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: "Notice title is required"
+        });
+      }
+
+      if (!["info", "warning", "success", "danger"].includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid notice type"
+        });
+      }
+
+      if (startDate && Number.isNaN(startDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid start date"
+        });
+      }
+
+      if (endDate && Number.isNaN(endDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid end date"
+        });
+      }
+
+      if (startDate && endDate && endDate < startDate) {
+        return res.status(400).json({
+          success: false,
+          message: "End date cannot be before start date"
+        });
+      }
+
+      const notice = await Notice.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            title,
+            description,
+            type,
+            startDate,
+            endDate,
+            isActive: activeInput !== false
+          }
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!notice) {
+        return res.status(404).json({
+          success: false,
+          message: "Notice not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Notice updated successfully",
+        notice,
+        data: notice
+      });
+    } catch (error) {
+      console.error("Admin update notice error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update notice"
       });
     }
   }
@@ -3425,39 +3692,33 @@ router.delete(
   adminAuth,
   async (req, res) => {
     try {
-      const {
-        id
-      } = req.params;
+      const { id } = req.params;
 
-      if (
-        !mongoose.Types.ObjectId.isValid(
-          id
-        )
-      ) {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
         return res.status(400).json({
           success: false,
           message: "Invalid notice ID"
         });
       }
 
-      await Notice.findByIdAndDelete(id);
+      const deleted = await Notice.findByIdAndDelete(id);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: "Notice not found"
+        });
+      }
 
       return res.json({
         success: true,
-        message:
-          "Notice deleted successfully"
+        message: "Notice deleted successfully"
       });
-
     } catch (error) {
-      console.error(
-        "Delete notice error:",
-        error
-      );
-
+      console.error("Admin delete notice error:", error);
       return res.status(500).json({
         success: false,
-        message:
-          "Failed to delete notice"
+        message: "Failed to delete notice"
       });
     }
   }
