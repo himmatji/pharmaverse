@@ -1659,6 +1659,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       return;
     }
 
+    if (!uploadForm.title || !uploadForm.title.trim()) {
+      alert("Please enter a title");
+      return;
+    }
+
+    if (!uploadForm.description || !uploadForm.description.trim()) {
+      alert("Please enter a description");
+      return;
+    }
+
     if (!uploadForm.file) {
       alert("Please select a file to upload");
       return;
@@ -1697,23 +1707,17 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         formData.append("year", uploadForm.semester);
       }
 
+      // Manual title and description are required for every upload category.
+      formData.append("title", uploadForm.title.trim());
+      formData.append("description", uploadForm.description.trim());
+
       if (isNotes) {
-        // NOTES — full data with unit
+        // Notes require unit metadata.
         formData.append("unit", uploadForm.unit);
         formData.append("units", JSON.stringify(uploadForm.units));
-        formData.append(
-          "title",
-          uploadForm.title || `${uploadForm.subject} - ${uploadForm.category}`
-        );
-        formData.append(
-          "description",
-          uploadForm.description || `${uploadForm.category} for ${uploadForm.subject}`
-        );
       } else {
-        // ✅ CRASH / PYQs — direct file (NO unit, NO manual title/desc)
+        // Crash Course / PYQs use disk-backed direct file storage.
         formData.append("isDirectFile", "true");
-        formData.append("title", `${uploadForm.subject} - ${uploadForm.category}`);
-        formData.append("description", `${uploadForm.category} for ${uploadForm.subject}`);
       }
 
       const response = await axios.post(
@@ -2202,36 +2206,42 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Optional details (SIRF NOTES ke liye) */}
-              {isNotes && (
-                <details className="group rounded-2xl border border-gray-200 bg-gray-50/70">
-                  <summary className="cursor-pointer list-none px-4 py-3 font-['Inter'] text-sm font-semibold text-gray-700 flex items-center justify-between">
-                    <span>Optional details</span>
-                    <span className="text-xs text-gray-400 group-open:hidden">Title & description</span>
-                    <span className="text-xs text-gray-400 hidden group-open:inline">Hide</span>
-                  </summary>
-                  <div className="px-4 pb-4 pt-1 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        name="title"
-                        value={uploadForm.title}
-                        onChange={handleUploadChange}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
-                        placeholder="Title (optional)"
-                      />
-                      <input
-                        type="text"
-                        name="description"
-                        value={uploadForm.description}
-                        onChange={handleUploadChange}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
-                        placeholder="Description (optional)"
-                      />
-                    </div>
-                  </div>
-                </details>
-              )}
+              {/* Required manual title and description for every category */}
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4 space-y-4">
+                <div>
+                  <label htmlFor="upload-title" className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="upload-title"
+                    type="text"
+                    name="title"
+                    value={uploadForm.title}
+                    onChange={handleUploadChange}
+                    required
+                    maxLength={200}
+                    autoComplete="off"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm"
+                    placeholder="Enter title"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="upload-description" className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="upload-description"
+                    name="description"
+                    value={uploadForm.description}
+                    onChange={handleUploadChange}
+                    required
+                    maxLength={5000}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:border-sky-400 focus:ring-2 focus:ring-sky-100 outline-none font-['Inter'] text-sm resize-y"
+                    placeholder="Enter description"
+                  />
+                </div>
+              </div>
 
               {/* Premium toggle — SIRF NOTES ke liye */}
               {isNotes && (

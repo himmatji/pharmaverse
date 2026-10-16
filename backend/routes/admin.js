@@ -397,6 +397,27 @@ router.post(
       } = req.body;
 
       const normalizedCategory = String(category || "").trim();
+      const cleanTitle = String(title || "").trim();
+      const cleanDescription = String(description || "").trim();
+
+      // Every upload category requires manually entered title and description.
+      // Remove the multer temp file on validation failure to avoid orphan files.
+      if (!cleanTitle || !cleanDescription) {
+        try {
+          if (tempFilePath && fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (cleanupError) {
+          console.error("Upload temp-file cleanup failed:", cleanupError.message);
+        }
+        return res.status(400).json({
+          success: false,
+          message: !cleanTitle
+            ? "Title is required"
+            : "Description is required"
+        });
+      }
+
       const directCategory =
         normalizedCategory === "Exam Crash Course" ||
         normalizedCategory === "PYQs";
@@ -439,23 +460,6 @@ router.post(
           return res.status(400).json({
             success: false,
             message: "M.Pharm specialization/branch is required"
-          });
-        }
-
-        const cleanTitle = String(title || "").trim();
-        const cleanDescription = String(description || "").trim();
-
-        if (!cleanTitle) {
-          return res.status(400).json({
-            success: false,
-            message: "Title is required"
-          });
-        }
-
-        if (!cleanDescription) {
-          return res.status(400).json({
-            success: false,
-            message: "Description is required"
           });
         }
 
@@ -656,13 +660,8 @@ router.post(
       }
 
       const contentData = {
-        title:
-          title ||
-          `${subject} - ${normalizedCategory}`,
-
-        description:
-          description ||
-          `${normalizedCategory} for ${subject}`,
+        title: cleanTitle,
+        description: cleanDescription,
 
         course:
           normalizedCourse || "B.Pharm",

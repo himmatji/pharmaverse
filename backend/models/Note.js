@@ -21,124 +21,41 @@ const noteSchema = new mongoose.Schema(
       trim: true
     },
 
-    branch: {
-      type: String,
-      default: "",
-      trim: true
-    },
-
-    mpharmBranch: {
-      type: String,
-      default: "",
-      trim: true
-    },
+    branch: { type: String, default: "", trim: true },
+    mpharmBranch: { type: String, default: "", trim: true },
 
     // ================= CATEGORY =================
-    // Notes, Exam Crash Course, PYQs
-    category: {
-      type: String,
-      default: "Notes",
-      trim: true
-    },
+    category: { type: String, default: "Notes", trim: true },
 
     // ================= SEMESTER / YEAR =================
-    semester: {
-      type: Number,
-      default: 1
-    },
+    semester: { type: Number, default: 1 },
+    year: { type: String, default: "", trim: true },
+    language: { type: String, default: "", trim: true, lowercase: true },
 
-    year: {
-      type: String,
-      default: "",
-      trim: true
-    },
-
-    language: {
-      type: String,
-      default: "",
-      trim: true,
-      lowercase: true
-    },
-
-    // ================= SUBJECT =================
-    subject: {
-      type: String,
-      default: "",
-      trim: true
-    },
-
-    // ================= UNIT =================
-    unit: {
-      type: Number,
-      default: 1
-    },
-
-    units: {
-      type: mongoose.Schema.Types.Mixed,
-      default: []
-    },
+    // ================= SUBJECT / UNIT =================
+    subject: { type: String, default: "", trim: true },
+    unit: { type: Number, default: 1 },
+    units: { type: mongoose.Schema.Types.Mixed, default: [] },
 
     // ================= CONTENT TYPE =================
-    type: {
-      type: String,
-      default: "note",
-      trim: true
-    },
-
-    // ================= PREMIUM STATUS =================
-    isPremium: {
-      type: Boolean,
-      default: false
-    },
+    type: { type: String, default: "note", trim: true },
+    isPremium: { type: Boolean, default: false },
 
     // ================= FILE INFORMATION =================
-    thumbnail: {
-      type: String,
-      default: ""
-    },
-
-    fileName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    fileType: {
-      type: String,
-      required: true,
-      trim: true
-    },
-
-    fileSize: {
-      type: String,
-      required: true
-    },
-
-    // Normal Notes store Base64 in fileData.
-    // Direct Crash Course/PYQs files are stored on disk in filePath.
+    thumbnail: { type: String, default: "" },
+    fileName: { type: String, required: true, trim: true },
+    fileType: { type: String, required: true, trim: true },
+    fileSize: { type: String, required: true },
     fileData: {
       type: String,
-      required: function () {
-        return this.isDirectFile !== true;
-      },
+      required: function () { return this.isDirectFile !== true; },
       default: ""
     },
-
-    isDirectFile: {
-      type: Boolean,
-      default: false
-    },
-
-    filePath: {
-      type: String,
-      default: ""
-    },
+    isDirectFile: { type: Boolean, default: false },
+    filePath: { type: String, default: "" },
 
     // ================= VIDEO URL =================
-    videoUrl: {
-      type: String,
-      default: ""
-    },
+    videoUrl: { type: String, default: "" },
 
     // ================= DIFFICULTY =================
     difficulty: {
@@ -148,23 +65,11 @@ const noteSchema = new mongoose.Schema(
     },
 
     // ================= STATS =================
-    views: {
-      type: Number,
-      default: 0
-    },
-
-    downloadCount: {
-      type: Number,
-      default: 0
-    },
+    views: { type: Number, default: 0 },
+    downloadCount: { type: Number, default: 0 },
 
     // ================= PRICE =================
-    price: {
-      type: Number,
-      default: 0
-    },
-
-    // ================= PURCHASED BY =================
+    price: { type: Number, default: 0 },
     purchasedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -172,15 +77,8 @@ const noteSchema = new mongoose.Schema(
     },
 
     // ================= LIFECYCLE =================
-    createdAt: {
-      type: Date,
-      default: Date.now
-    },
-
-    updatedAt: {
-      type: Date,
-      default: Date.now
-    }
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
   },
   {
     strict: true,
@@ -198,9 +96,7 @@ noteSchema.index({ createdAt: -1 });
 // ================= VIRTUAL: UNIT NAME =================
 noteSchema.virtual("unitName").get(function () {
   if (this.units && this.units.length > 0) {
-    const unit = this.units.find(
-      (item) => Number(item.id) === Number(this.unit)
-    );
+    const unit = this.units.find((item) => Number(item.id) === Number(this.unit));
     return unit ? unit.name : `Unit ${this.unit}`;
   }
   return `Unit ${this.unit}`;
@@ -209,9 +105,7 @@ noteSchema.virtual("unitName").get(function () {
 // ================= VIRTUAL: UNIT TOPICS =================
 noteSchema.virtual("unitTopics").get(function () {
   if (this.units && this.units.length > 0) {
-    const unit = this.units.find(
-      (item) => Number(item.id) === Number(this.unit)
-    );
+    const unit = this.units.find((item) => Number(item.id) === Number(this.unit));
     return unit ? unit.topics || [] : [];
   }
   return [];
