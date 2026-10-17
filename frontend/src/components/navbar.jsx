@@ -11,6 +11,7 @@ import {
   Trash2,
   ChevronRight,
   Bell,
+  ExternalLink,
 } from "lucide-react";
 import logo from "../assets/logo.png";
 import axios from "axios";
@@ -90,7 +91,6 @@ const Navbar = () => {
 
   /* =========================================================
      NOTIFICATION UNREAD COUNT
-     Reads the count from the backend shared with all users.
   ========================================================= */
 
   useEffect(() => {
@@ -127,7 +127,6 @@ const Navbar = () => {
           Number.isFinite(count) ? Math.max(0, count) : 0
         );
       } catch (error) {
-        // Keep the navbar working if notifications are temporarily unavailable.
         if (error.response?.status === 401) {
           setNotificationCount(0);
         }
@@ -150,7 +149,7 @@ const Navbar = () => {
   }, [isLoggedIn]);
 
   /* =========================================================
-     NOTIFICATIONS PANEL (kept inside navbar.jsx)
+     NOTIFICATIONS PANEL
   ========================================================= */
 
   const loadNotifications = async () => {
@@ -220,9 +219,7 @@ const Navbar = () => {
         ));
         setNotificationCount((previous) => Math.max(0, previous - 1));
         window.dispatchEvent(new Event("notificationsUpdated"));
-      } catch (error) {
-        // Details remain readable even if marking as read temporarily fails.
-      }
+      } catch (error) {}
     }
   };
 
@@ -1257,12 +1254,6 @@ const Navbar = () => {
 
   /* =========================================================
      SMART SUBMENU POSITIONING
-
-     IMPORTANT:
-     Agar submenu right side se viewport ke bahar ja raha
-     hai to automatically LEFT side open hoga.
-
-     Isi se D.Pharm subjects cut nahi honge.
   ========================================================= */
 
   const calculateSubmenuPosition = (
@@ -1970,7 +1961,6 @@ const Navbar = () => {
 
             {/* =====================================================
                 NOTIFICATION BELL (SIMPLE)
-                Right of "Job Interview Material"
             ====================================================== */}
 
             <li>
@@ -2999,7 +2989,30 @@ const Navbar = () => {
                   {selectedNotification.createdAt && <span className="text-xs text-gray-500">{new Date(selectedNotification.createdAt).toLocaleString()}</span>}
                 </div>
                 <h3 className="mb-3 break-words text-xl font-bold text-gray-900">{selectedNotification.title || "Notification"}</h3>
+                
+                {/* IMAGE DISPLAY */}
+                {selectedNotification.imageUrl && (
+                  <img
+                    src={selectedNotification.imageUrl}
+                    alt="Notice attachment"
+                    className="mb-4 max-h-64 w-full rounded-xl object-contain border border-gray-100 bg-slate-50"
+                  />
+                )}
+
                 <p className="whitespace-pre-wrap break-words text-sm leading-7 text-gray-700">{selectedNotification.description || selectedNotification.message || "No additional details."}</p>
+                
+                {/* LINK DISPLAY */}
+                {selectedNotification.linkUrl && (
+                  <a
+                    href={selectedNotification.linkUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#18c1b7] px-5 py-2.5 text-sm font-semibold text-white shadow-md transition hover:bg-[#0fa39a]"
+                  >
+                    {selectedNotification.linkText || "Open Link"}
+                    <ExternalLink size={16} />
+                  </a>
+                )}
               </div>
             ) : (
               <div className="min-h-[180px] overflow-y-auto p-3 sm:p-4">
@@ -3030,6 +3043,16 @@ const Navbar = () => {
                                 <span className="break-words text-sm font-bold text-gray-900 sm:text-base">{notice.title || "Notification"}</span>
                                 {!isRead && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold uppercase text-red-700">New</span>}
                               </span>
+                              
+                              {/* IMAGE THUMBNAIL IN LIST */}
+                              {notice.imageUrl && (
+                                <img
+                                  src={notice.imageUrl}
+                                  alt="Notice attachment"
+                                  className="mt-2 max-h-32 w-full rounded-lg object-contain border border-gray-100 bg-white"
+                                />
+                              )}
+
                               <span className="mt-1 block line-clamp-2 whitespace-pre-wrap break-words text-sm text-gray-600">{notice.description || notice.message || "Open to view details."}</span>
                               {notice.createdAt && <span className="mt-2 block text-xs text-gray-400">{new Date(notice.createdAt).toLocaleString()}</span>}
                             </span>

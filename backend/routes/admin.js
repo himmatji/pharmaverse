@@ -1,4 +1,3 @@
-// Corrected full backend routes file. Review and back up the original before replacing it.
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -17,6 +16,59 @@ const Notice = require("../models/Notice");
 const Payment = require("../models/Payment");
 const CoursePrice = require("../models/CoursePrice");
 const InterviewMaterial = require("../models/InterviewMaterial");
+
+// Notice media/link/target fields are added at runtime for backward compatibility
+// with older Notice.js schemas. Keep Notice.js in sync with these fields.
+if (!Notice.schema.path("imageUrl")) {
+  Notice.schema.add({ imageUrl: { type: String, default: "", maxlength: 5000000 } });
+}
+if (!Notice.schema.path("linkUrl")) {
+  Notice.schema.add({ linkUrl: { type: String, default: "", maxlength: 2048 } });
+}
+if (!Notice.schema.path("linkText")) {
+  Notice.schema.add({ linkText: { type: String, default: "Open link", maxlength: 60 } });
+}
+if (!Notice.schema.path("target")) {
+  Notice.schema.add({
+    target: {
+      type: String,
+      enum: ["all", "bpharm", "dpharm", "mpharm", "pharmd", "phd"],
+      default: "all"
+    }
+  });
+}
+
+const normalizeNoticeTarget = (value) => {
+  const target = String(value || "all").trim().toLowerCase();
+  return ["all", "bpharm", "dpharm", "mpharm", "pharmd", "phd"].includes(target)
+    ? target
+    : null;
+};
+
+const normalizeNoticeImage = (value) => {
+  if (value == null || value === "") return "";
+  if (typeof value !== "string") return null;
+  if (!/^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=\r\n]+$/i.test(value)) return null;
+  if (value.length > 4500000) return null;
+  return value;
+};
+
+const normalizeNoticeLink = (value) => {
+  if (value == null || String(value).trim() === "") return "";
+  try {
+    const url = new URL(String(value).trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+  } catch (_error) {
+    return null;
+  }
+};
+
+const normalizeNoticeActive = (value) => {
+  if (value === undefined || value === null) return true;
+  if (value === false || value === 0 || value === "false" || value === "0") return false;
+  if (value === true || value === 1 || value === "true" || value === "1") return true;
+  return Boolean(value);
+};
 
 /*
  * D.Pharm safety:
@@ -3479,8 +3531,8 @@ router.get(
   adminAuth,
   async (req, res) => {
     try {
+      // Include readBy so the admin UI can show the actual read count.
       const notices = await Notice.find()
-        .select("-readBy")
         .sort({ createdAt: -1 })
         .lean();
 
@@ -3505,55 +3557,47 @@ router.post(
   async (req, res) => {
     try {
       const title = String(req.body.title || "").trim();
-      const description = String(
-        req.body.description ?? req.body.message ?? ""
-      ).trim();
-
-      const typeMap = {
-        normal: "info",
-        important: "warning",
-        urgent: "danger"
-      };
-
+      const description = String(req.body.description ?? req.body.message ?? "").trim();
+      const typeMap = { normal: "info", important: "warning", urgent: "danger" };
       const requestedType = req.body.type || req.body.priority || "info";
       const type = typeMap[requestedType] || requestedType;
       const activeInput = req.body.isActive ?? req.body.active ?? true;
       const startDate = req.body.startDate ? new Date(req.body.startDate) : null;
       const endDate = req.body.endDate ? new Date(req.body.endDate) : null;
+      const target = normalizeNoticeTarget(req.body.target);
+      const imageUrl = normalizeNoticeImage(req.body.imageUrl);
+      const linkUrl = normalizeNoticeLink(req.body.linkUrl);
+      const linkText = String(req.body.linkText || "Open link").trim().slice(0, 60) || "Open link";
 
       if (!title) {
-        return res.status(400).json({
-          success: false,
-          message: "Notice title is required"
-        });
+        return res.status(400).json({ success: false, message: "Notice title is required" });
       }
-
+      if (title.length > 120) {
+        return res.status(400).json({ success: false, message: "Notice title cannot exceed 120 characters" });
+      }
+      if (description.length > 5000) {
+        return res.status(400).json({ success: false, message: "Notice message cannot exceed 5000 characters" });
+      }
       if (!["info", "warning", "success", "danger"].includes(type)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid notice type"
-        });
+        return res.status(400).json({ success: false, message: "Invalid notice type" });
       }
-
+      if (target === null) {
+        return res.status(400).json({ success: false, message: "Invalid notice target" });
+      }
+      if (req.body.imageUrl && imageUrl === null) {
+        return res.status(400).json({ success: false, message: "Invalid image. Select a supported image up to 3 MB." });
+      }
+      if (String(req.body.linkUrl || "").trim() && linkUrl === null) {
+        return res.status(400).json({ success: false, message: "Link must be a valid http:// or https:// URL" });
+      }
       if (startDate && Number.isNaN(startDate.getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid start date"
-        });
+        return res.status(400).json({ success: false, message: "Invalid start date" });
       }
-
       if (endDate && Number.isNaN(endDate.getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid end date"
-        });
+        return res.status(400).json({ success: false, message: "Invalid end date" });
       }
-
       if (startDate && endDate && endDate < startDate) {
-        return res.status(400).json({
-          success: false,
-          message: "End date cannot be before start date"
-        });
+        return res.status(400).json({ success: false, message: "End date cannot be before start date" });
       }
 
       const notice = await Notice.create({
@@ -3562,8 +3606,12 @@ router.post(
         type,
         startDate,
         endDate,
-        isActive: activeInput !== false,
-        createdBy: req.admin?._id || req.admin?.id || undefined
+        isActive: normalizeNoticeActive(activeInput),
+        imageUrl: imageUrl || "",
+        linkUrl: linkUrl || "",
+        linkText,
+        target,
+        createdBy: req.admin?.id || req.admin?._id || undefined
       });
 
       return res.status(201).json({
@@ -3576,7 +3624,8 @@ router.post(
       console.error("Admin create notice error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to publish notice"
+        message: "Failed to publish notice",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
       });
     }
   }
@@ -3588,64 +3637,52 @@ router.put(
   async (req, res) => {
     try {
       const { id } = req.params;
-
       if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid notice ID"
-        });
+        return res.status(400).json({ success: false, message: "Invalid notice ID" });
       }
 
       const title = String(req.body.title || "").trim();
-      const description = String(
-        req.body.description ?? req.body.message ?? ""
-      ).trim();
-
-      const typeMap = {
-        normal: "info",
-        important: "warning",
-        urgent: "danger"
-      };
-
+      const description = String(req.body.description ?? req.body.message ?? "").trim();
+      const typeMap = { normal: "info", important: "warning", urgent: "danger" };
       const requestedType = req.body.type || req.body.priority || "info";
       const type = typeMap[requestedType] || requestedType;
       const activeInput = req.body.isActive ?? req.body.active ?? true;
       const startDate = req.body.startDate ? new Date(req.body.startDate) : null;
       const endDate = req.body.endDate ? new Date(req.body.endDate) : null;
+      const target = normalizeNoticeTarget(req.body.target);
+      const imageUrl = normalizeNoticeImage(req.body.imageUrl);
+      const linkUrl = normalizeNoticeLink(req.body.linkUrl);
+      const linkText = String(req.body.linkText || "Open link").trim().slice(0, 60) || "Open link";
 
       if (!title) {
-        return res.status(400).json({
-          success: false,
-          message: "Notice title is required"
-        });
+        return res.status(400).json({ success: false, message: "Notice title is required" });
       }
-
+      if (title.length > 120) {
+        return res.status(400).json({ success: false, message: "Notice title cannot exceed 120 characters" });
+      }
+      if (description.length > 5000) {
+        return res.status(400).json({ success: false, message: "Notice message cannot exceed 5000 characters" });
+      }
       if (!["info", "warning", "success", "danger"].includes(type)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid notice type"
-        });
+        return res.status(400).json({ success: false, message: "Invalid notice type" });
       }
-
+      if (target === null) {
+        return res.status(400).json({ success: false, message: "Invalid notice target" });
+      }
+      if (req.body.imageUrl && imageUrl === null) {
+        return res.status(400).json({ success: false, message: "Invalid image. Select a supported image up to 3 MB." });
+      }
+      if (String(req.body.linkUrl || "").trim() && linkUrl === null) {
+        return res.status(400).json({ success: false, message: "Link must be a valid http:// or https:// URL" });
+      }
       if (startDate && Number.isNaN(startDate.getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid start date"
-        });
+        return res.status(400).json({ success: false, message: "Invalid start date" });
       }
-
       if (endDate && Number.isNaN(endDate.getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid end date"
-        });
+        return res.status(400).json({ success: false, message: "Invalid end date" });
       }
-
       if (startDate && endDate && endDate < startDate) {
-        return res.status(400).json({
-          success: false,
-          message: "End date cannot be before start date"
-        });
+        return res.status(400).json({ success: false, message: "End date cannot be before start date" });
       }
 
       const notice = await Notice.findByIdAndUpdate(
@@ -3657,17 +3694,19 @@ router.put(
             type,
             startDate,
             endDate,
-            isActive: activeInput !== false
+            isActive: normalizeNoticeActive(activeInput),
+            imageUrl: imageUrl || "",
+            linkUrl: linkUrl || "",
+            linkText,
+            target,
+            updatedAt: new Date()
           }
         },
         { new: true, runValidators: true }
       );
 
       if (!notice) {
-        return res.status(404).json({
-          success: false,
-          message: "Notice not found"
-        });
+        return res.status(404).json({ success: false, message: "Notice not found" });
       }
 
       return res.json({
@@ -3680,7 +3719,8 @@ router.put(
       console.error("Admin update notice error:", error);
       return res.status(500).json({
         success: false,
-        message: "Failed to update notice"
+        message: "Failed to update notice",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined
       });
     }
   }

@@ -8,6 +8,128 @@ const User = require("../models/User");
 
 const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
 
+const NOTICE_TARGETS = new Set([
+  "all",
+  "bpharm",
+  "dpharm",
+  "mpharm",
+  "pharmd",
+  "phd"
+]);
+
+/*
+ * Backward-compatible schema support:
+ * Older Notice.js versions may not define imageUrl, linkUrl, linkText, or target.
+ * Define missing paths here so this route can read them from MongoDB.
+ * It is still recommended to keep these fields in models/Notice.js as well.
+ */
+function ensureNoticeSchemaFields() {
+  const schema = Notice && Notice.schema;
+  if (!schema) return;
+
+  if (!schema.path("imageUrl")) {
+    schema.add({
+      imageUrl: {
+        type: String,
+        default: "",
+        maxlength: 5000000
+      }
+    });
+  }
+
+  if (!schema.path("linkUrl")) {
+    schema.add({
+      linkUrl: {
+        type: String,
+        default: "",
+        maxlength: 2048
+      }
+    });
+  }
+
+  if (!schema.path("linkText")) {
+    schema.add({
+      linkText: {
+        type: String,
+        default: "",
+        maxlength: 120
+      }
+    });
+  }
+
+  if (!schema.path("target")) {
+    schema.add({
+      target: {
+        type: String,
+        enum: Array.from(NOTICE_TARGETS),
+        default: "all"
+      }
+    });
+  }
+}
+
+ensureNoticeSchemaFields();
+
+function normalizeTarget(value) {
+  const target = String(value || "all")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+  return NOTICE_TARGETS.has(target) ? target : "all";
+}
+
+function normalizeUserCourseValues(user) {
+  const values = [];
+
+  const addValue = (value) => {
+    if (Array.isArray(value)) {
+      value.forEach(addValue);
+      return;
+    }
+
+    if (value && typeof value === "object") {
+      if (value.name) addValue(value.name);
+      if (value.course) addValue(value.course);
+      if (value.branch) addValue(value.branch);
+      if (value.program) addValue(value.program);
+      return;
+    }
+
+    if (typeof value === "string" && value.trim()) {
+      values.push(
+        value
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z]/g, "")
+      );
+    }
+  };
+
+  if (!user) return values;
+
+  addValue(user.course);
+  addValue(user.branch);
+  addValue(user.program);
+  addValue(user.degree);
+  addValue(user.courseName);
+  addValue(user.branchName);
+  addValue(user.enrolledCourses);
+
+  return [...new Set(values)];
+}
+
+function userCanSeeTarget(notice, user) {
+  const target = normalizeTarget(notice.target);
+  if (target === "all") return true;
+
+  const userValues = normalizeUserCourseValues(user);
+
+  // If the user model does not contain a recognizable course/branch value,
+  // keep targeted notices hidden rather than showing them to the wrong users.
+  return userValues.includes(target);
+}
+
 async function userAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization || "";
@@ -38,7 +160,9 @@ async function userAuth(req, res, next) {
       });
     }
 
-    const user = await User.findById(userId).select("_id isActive");
+    // Load the full user document so course/branch fields can be used for
+    // target-specific notices without assuming one exact User schema layout.
+    const user = await User.findById(userId);
 
     if (!user) {
       return res.status(401).json({
@@ -55,7 +179,7 @@ async function userAuth(req, res, next) {
     }
 
     req.user = user;
-    next();
+    return next();
   } catch (error) {
     if (
       error.name === "JsonWebTokenError" ||
@@ -97,32 +221,44 @@ function visibleNoticeFilter(now = new Date()) {
   };
 }
 
+function formatNotice(notice, userId) {
+  const readBy = Array.isArray(notice.readBy) ? notice.readBy : [];
+  const isRead = readBy.some(
+    (readUserId) => String(readUserId) === String(userId)
+  );
+
+  return {
+    _id: notice._id,
+    title: notice.title || "",
+    description: notice.description || "",
+    type: notice.type || "info",
+    imageUrl: notice.imageUrl || "",
+    linkUrl: notice.linkUrl || "",
+    linkText: notice.linkText || "",
+    target: normalizeTarget(notice.target),
+    startDate: notice.startDate || null,
+    endDate: notice.endDate || null,
+    createdAt: notice.createdAt || null,
+    isRead
+  };
+}
+
 // GET /api/notifications
+// Returns active notices, including optional image/link fields and unread count.
 router.get("/", userAuth, async (req, res) => {
   try {
     const userId = req.user._id;
 
     const notices = await Notice.find(visibleNoticeFilter())
-      .select("title description type startDate endDate isActive createdAt readBy")
+      .select(
+        "title description type imageUrl linkUrl linkText target startDate endDate isActive createdAt readBy"
+      )
       .sort({ createdAt: -1 })
       .lean();
 
-    const formattedNotices = notices.map((notice) => {
-      const isRead = (notice.readBy || []).some(
-        (readUserId) => String(readUserId) === String(userId)
-      );
-
-      return {
-        _id: notice._id,
-        title: notice.title,
-        description: notice.description || "",
-        type: notice.type || "info",
-        startDate: notice.startDate || null,
-        endDate: notice.endDate || null,
-        createdAt: notice.createdAt,
-        isRead
-      };
-    });
+    const formattedNotices = notices
+      .filter((notice) => userCanSeeTarget(notice, req.user))
+      .map((notice) => formatNotice(notice, userId));
 
     return res.status(200).json({
       success: true,
@@ -151,45 +287,35 @@ router.post("/:id/read", userAuth, async (req, res) => {
     }
 
     const userId = req.user._id;
-    const notice = await Notice.findOneAndUpdate(
-      {
-        _id: id,
-        ...visibleNoticeFilter(),
-        readBy: { $ne: userId }
-      },
-      { $addToSet: { readBy: userId } },
-      { new: true }
-    );
 
-    if (!notice) {
-      const existing = await Notice.findOne({
-        _id: id,
-        ...visibleNoticeFilter()
-      }).select("_id readBy");
+    const notice = await Notice.findOne({
+      _id: id,
+      ...visibleNoticeFilter()
+    }).lean();
 
-      if (!existing) {
-        return res.status(404).json({
-          success: false,
-          message: "Notice not found or no longer available."
-        });
-      }
-
-      const alreadyRead = (existing.readBy || []).some(
-        (readUserId) => String(readUserId) === String(userId)
-      );
-
-      if (!alreadyRead) {
-        return res.status(500).json({
-          success: false,
-          message: "Could not mark notice as read."
-        });
-      }
+    if (!notice || !userCanSeeTarget(notice, req.user)) {
+      return res.status(404).json({
+        success: false,
+        message: "Notice not found or no longer available."
+      });
     }
 
-    const unreadCount = await Notice.countDocuments({
-      ...visibleNoticeFilter(),
-      readBy: { $ne: userId }
-    });
+    await Notice.updateOne(
+      { _id: id },
+      { $addToSet: { readBy: userId } }
+    );
+
+    const unreadNotices = await Notice.find(visibleNoticeFilter())
+      .select("readBy target")
+      .lean();
+
+    const unreadCount = unreadNotices.filter((item) => {
+      if (!userCanSeeTarget(item, req.user)) return false;
+
+      return !(item.readBy || []).some(
+        (readUserId) => String(readUserId) === String(userId)
+      );
+    }).length;
 
     return res.status(200).json({
       success: true,

@@ -1,1274 +1,829 @@
-
-
-import React, { useState, useEffect, useRef } from "react";
-
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-
 import {
-
   Plus,
-
   Pencil,
-
   Trash2,
-
   X,
-
   AlertCircle,
-
   Bell,
-
   Save,
-
   Search,
-
   Eye,
-
   CheckCheck,
-
+  Image as ImageIcon,
+  Link as LinkIcon,
+  ExternalLink,
+  Type,
+  Sparkles,
+  MessageSquare,
+  ImagePlus,
+  Layers,
 } from "lucide-react";
 
-/* =========================================================
-
-   API HELPERS
-
-========================================================= */
-
-const ADMIN_API_BASE = (
-
+/* ================= API ================= */
+const API_BASE = (
   import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in"
+).replace(/\/+$/, "");
+const API = `${API_BASE}/api/admin/notices`;
 
-).replace(/\/$/, "");
-
-const ADMIN_NOTICES_API = `${ADMIN_API_BASE}/api/admin/notices`;
-
-const getAdminToken = () =>
-
-  localStorage.getItem("adminToken") ||
-
-  localStorage.getItem("token") ||
-
-  localStorage.getItem("admin_token");
-
-const adminHeaders = () => {
-
-  const token = getAdminToken();
-
-  if (!token) throw new Error("Admin login token nahi mila. Dobara admin login karein.");
-
-  return { headers: { Authorization: `Bearer ${token}` } };
-
-};
-
-const normalizeNotice = (notice) => ({
-
-  ...notice,
-
-  id: notice?._id || notice?.id,
-
-  message: notice?.description ?? notice?.message ?? "",
-
-  priority: notice?.type === "danger" ? "urgent" : notice?.type === "warning" ? "important" : "normal",
-
-  target: notice?.target || "all",
-
-  readBy: Array.isArray(notice?.readBy) ? notice.readBy : [],
-
-  createdAt: notice?.createdAt || new Date().toISOString(),
-
-  updatedAt: notice?.updatedAt || notice?.createdAt || new Date().toISOString(),
-
-});
-
-const getNoticeRows = (data) => {
-
-  if (Array.isArray(data?.notices)) return data.notices;
-
-  if (Array.isArray(data?.data)) return data.data;
-
-  if (Array.isArray(data?.data?.notices)) return data.data.notices;
-
-  return [];
-
-};
-
-const toApiPayload = (form) => ({
-
-  title: form.title.trim(),
-
-  description: form.message.trim(),
-
-  type: form.priority === "urgent" ? "danger" : form.priority === "important" ? "warning" : "info",
-
-  isActive: true,
-
-});
-
-/* =========================================================
-
-   CONSTANTS
-
-========================================================= */
-
-const EMPTY_FORM = {
-
+/* ================= CONSTANTS ================= */
+const EMPTY = {
   title: "",
-
   message: "",
-
-  priority: "normal",
-
-  target: "all",
-
+  imageUrl: "",
+  linkUrl: "",
+  linkText: "Open link",
+  noticeType: "text", // text, image, link, mixed
 };
-
-const PRIORITY_OPTIONS = [
-
-  { value: "normal", label: "Normal", color: "bg-[#18c1b7]/10 text-[#0e8b83] border-[#18c1b7]" },
-
-  { value: "important", label: "Important", color: "bg-amber-50 text-amber-700 border-amber-500" },
-
-  { value: "urgent", label: "Urgent", color: "bg-red-50 text-red-700 border-red-500" },
-
-];
-
-const TARGET_OPTIONS = [
-
-  { value: "all", label: "All Students" },
-
-  { value: "bpharm", label: "B.Pharm" },
-
-  { value: "dpharm", label: "D.Pharm" },
-
-  { value: "mpharm", label: "M.Pharm" },
-
-  { value: "pharmd", label: "Pharm.D" },
-
-  { value: "phd", label: "PhD" },
-
-];
 
 const PRIORITY_BORDER = {
-
   normal: "border-[#18c1b7]",
-
   important: "border-amber-500",
-
   urgent: "border-red-500",
-
 };
 
 const PRIORITY_BADGE = {
-
   normal: "bg-[#18c1b7]/10 text-[#0e8b83] border-[#18c1b7]",
-
   important: "bg-amber-50 text-amber-700 border-amber-500",
-
   urgent: "bg-red-50 text-red-700 border-red-500",
-
 };
 
-/* =========================================================
-
-   HELPERS
-
-========================================================= */
-
-const timeAgo = (iso) => {
-
-  const diff = Date.now() - new Date(iso).getTime();
-
-  const m = Math.floor(diff / 60000);
-
-  if (m < 1) return "just now";
-
-  if (m < 60) return `${m}m ago`;
-
-  const h = Math.floor(m / 60);
-
-  if (h < 24) return `${h}h ago`;
-
-  const d = Math.floor(h / 24);
-
-  if (d < 30) return `${d}d ago`;
-
-  return new Date(iso).toLocaleDateString();
-
+/* ================= HELPERS ================= */
+const safeHttpUrl = (value) => {
+  if (!value || typeof value !== "string") return "";
+  try {
+    const u = new URL(value);
+    return ["http:", "https:"].includes(u.protocol) ? u.href : "";
+  } catch {
+    return "";
+  }
 };
 
-/* =========================================================
+// Humne priority aur target normalize se hata diya hai
+const normalize = (n) => ({
+  ...n,
+  id: n?._id || n?.id,
+  message: n?.description ?? n?.message ?? "",
+  priority: n?.type === "danger" ? "urgent" : n?.type === "warning" ? "important" : "normal",
+  target: n?.target || "all",
+  imageUrl: n?.imageUrl || "",
+  linkUrl: n?.linkUrl || "",
+  linkText: n?.linkText || "Open link",
+  readBy: Array.isArray(n?.readBy) ? n.readBy : [],
+  createdAt: n?.createdAt || new Date().toISOString(),
+  updatedAt: n?.updatedAt || n?.createdAt || new Date().toISOString(),
+});
 
-   MAIN COMPONENT
+const rowsFrom = (data) => {
+  if (Array.isArray(data?.notices)) return data.notices;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.notices)) return data.data.notices;
+  if (Array.isArray(data)) return data;
+  return [];
+};
 
-========================================================= */
+/* ================= PREVIEW CARD ================= */
+function NoticePreview({ notice }) {
+  const link = safeHttpUrl(notice?.linkUrl);
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <Bell size={17} className="text-[#18c1b7]" />
+        <span className="font-semibold text-gray-800">
+          {notice?.title || "Notice title"}
+        </span>
+      </div>
+      {notice?.imageUrl && (
+        <img
+          src={notice.imageUrl}
+          alt="Notice attachment"
+          className="mb-3 max-h-64 w-full rounded-lg bg-gray-50 object-contain"
+        />
+      )}
+      {notice?.message && (
+        <p className="whitespace-pre-wrap break-words text-sm text-gray-600">
+          {notice.message}
+        </p>
+      )}
+      {link && (
+        <a
+          href={link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#18c1b7] px-4 py-2 text-sm font-semibold text-white"
+        >
+          {notice?.linkText || "Open link"}
+          <ExternalLink size={14} />
+        </a>
+      )}
+    </div>
+  );
+}
 
-const AdminNotice = () => {
-
-  /* ---------- STATE ---------- */
-
+/* ================= MAIN COMPONENT ================= */
+function AdminNotice() {
   const [notices, setNotices] = useState([]);
-
-  const [form, setForm] = useState(EMPTY_FORM);
-
+  const [form, setForm] = useState({ ...EMPTY });
   const [editingId, setEditingId] = useState(null);
-
-  const [showFormModal, setShowFormModal] = useState(false);
-
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-
-  const [formError, setFormError] = useState("");
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [filterPriority, setFilterPriority] = useState("all");
-
-  const [filterTarget, setFilterTarget] = useState("all");
-
+  const [showForm, setShowForm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
   const [toast, setToast] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [imagePreview, setImagePreview] = useState("");
+  const toastTimer = useRef(null);
+  const mountedRef = useRef(true);
 
-  const toastTimerRef = useRef(null);
+  /* ---------- AUTH ---------- */
+  const token = () =>
+    localStorage.getItem("adminToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("admin_token");
 
-  /* ---------- LOAD FROM BACKEND ---------- */
+  const headers = () => {
+    const t = token();
+    if (!t)
+      throw new Error("Admin login token nahi mila. Dobara admin login karein.");
+    return { headers: { Authorization: `Bearer ${t}` } };
+  };
 
-  const fetchNotices = async () => {
+  /* ---------- TOAST ---------- */
+  const notify = (message, kind = "success") => {
+    setToast({ message, kind });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      if (mountedRef.current) setToast(null);
+    }, 3000);
+  };
 
+  /* ---------- LOAD ---------- */
+  const load = async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     try {
-
-      const response = await axios.get(ADMIN_NOTICES_API, adminHeaders());
-
-      setNotices(getNoticeRows(response.data).map(normalizeNotice));
-
-    } catch (error) {
-
-      console.error("Failed to load notices:", error);
-
-      showToast(error.response?.data?.message || error.message || "Notices load nahi ho sake.", "danger");
-
+      const res = await axios.get(API, headers());
+      if (mountedRef.current) setNotices(rowsFrom(res.data).map(normalize));
+    } catch (err) {
+      console.error("Load notices:", err, err?.response?.data);
+      const msg =
+        err?.response?.data?.message || err?.message || "Notices load nahi hue.";
+      if (mountedRef.current && !quiet) notify(msg, "danger");
+    } finally {
+      if (mountedRef.current && !quiet) setLoading(false);
     }
-
   };
 
   useEffect(() => {
-
-    fetchNotices();
-
+    mountedRef.current = true;
+    load();
     return () => {
-
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-
+      mountedRef.current = false;
+      if (toastTimer.current) clearTimeout(toastTimer.current);
     };
-
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---------- AUTO CLEAR TOAST ---------- */
-
-  useEffect(() => {
-
-    if (!toast) return;
-
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-
-    toastTimerRef.current = setTimeout(() => setToast(null), 2500);
-
-    return () => {
-
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-
-    };
-
-  }, [toast]);
-
-  const showToast = (message, type = "success") => {
-
-    setToast({ message, type });
-
-  };
-
-  /* ---------- CRUD ---------- */
-
-  const handleOpenCreate = () => {
-
-    setForm(EMPTY_FORM);
-
+  /* ---------- FORM OPEN/CLOSE ---------- */
+  const openCreate = () => {
+    setForm({ ...EMPTY });
+    setImagePreview("");
     setEditingId(null);
-
-    setFormError("");
-
-    setShowFormModal(true);
-
+    setError("");
+    setShowForm(true);
   };
 
-  const handleOpenEdit = (notice) => {
+  const openEdit = (n) => {
+    let type = "text";
+    if (n.imageUrl && n.linkUrl) type = "mixed";
+    else if (n.imageUrl) type = "image";
+    else if (n.linkUrl) type = "link";
 
     setForm({
-
-      title: notice.title,
-
-      message: notice.message,
-
-      priority: notice.priority,
-
-      target: notice.target,
-
+      title: n.title || "",
+      message: n.message || "",
+      imageUrl: n.imageUrl || "",
+      linkUrl: n.linkUrl || "",
+      linkText: n.linkText || "Open link",
+      noticeType: type,
     });
-
-    setEditingId(notice.id);
-
-    setFormError("");
-
-    setShowFormModal(true);
-
+    setImagePreview(n.imageUrl || "");
+    setEditingId(n.id);
+    setError("");
+    setShowForm(true);
   };
 
-  const handleCloseForm = () => {
-
-    setShowFormModal(false);
-
-    setForm(EMPTY_FORM);
-
+  const closeForm = () => {
+    if (saving) return;
+    setShowForm(false);
     setEditingId(null);
-
-    setFormError("");
-
+    setForm({ ...EMPTY });
+    setImagePreview("");
+    setError("");
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Read the submitted fields directly; names are set on both controls.
-    const submittedForm = e.currentTarget;
-    const formData = new FormData(submittedForm);
-    const title = String(formData.get("title") ?? "").trim();
-    const message = String(formData.get("message") ?? "").trim();
-
-    if (!title || !message) {
-      const validationMessage = "Title and message are required";
-      setFormError(validationMessage);
-      showToast(validationMessage, "danger");
+  /* ---------- IMAGE ---------- */
+  const handleImage = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please select a valid image file.");
+      e.target.value = "";
       return;
     }
+    if (file.size > 3 * 1024 * 1024) {
+      setError("Image 3 MB se chhoti honi chahiye.");
+      e.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      if (!dataUrl.startsWith("data:image/")) {
+        setError("Selected file valid image nahi hai.");
+        return;
+      }
+      setForm((c) => ({ ...c, imageUrl: dataUrl }));
+      setImagePreview(dataUrl);
+      setError("");
+    };
+    reader.onerror = () => setError("Image read nahi ho paayi. Dobara try karein.");
+    reader.readAsDataURL(file);
+  };
 
+  const removeImage = () => {
+    setForm((c) => ({ ...c, imageUrl: "" }));
+    setImagePreview("");
+  };
+
+  /* ---------- SUBMIT ---------- */
+  const submit = async (e) => {
+    e.preventDefault();
+
+    const title = form.title.trim();
+    const message = form.message.trim();
+    const rawLink = form.linkUrl.trim();
+    const linkUrl = rawLink ? safeHttpUrl(rawLink) : "";
+
+    if (!title) return setError("Title required hai.");
+    
+    if (form.noticeType === "text" && !message) return setError("Message required hai.");
+    if (form.noticeType === "image" && !form.imageUrl) return setError("Image required hai.");
+    if (form.noticeType === "link" && !linkUrl) return setError("Valid Link required hai.");
+    if (form.noticeType === "mixed" && (!message || !form.imageUrl || !linkUrl)) {
+      return setError("Mixed notice ke liye Message, Image aur Link teeno required hain.");
+    }
+
+    if (rawLink && !linkUrl)
+      return setError("Link valid http:// ya https:// URL hona chahiye.");
+    if (form.imageUrl && !form.imageUrl.startsWith("data:image/"))
+      return setError("Image data invalid hai. Image dobara select karein.");
+
+    // Payload mein priority aur target fix kar diya gaya hai
     const payload = {
       title,
       description: message,
-      type:
-        form.priority === "urgent"
-          ? "danger"
-          : form.priority === "important"
-            ? "warning"
-            : "info",
+      type: "info", // Default normal priority
+      target: "all", // Default all students
       isActive: true,
+      imageUrl: form.imageUrl || "",
+      linkUrl,
+      linkText: form.linkText.trim() || "Open link",
     };
 
     try {
-      setFormError("");
+      setSaving(true);
+      setError("");
 
       if (editingId) {
-        await axios.put(
-          `${ADMIN_NOTICES_API}/${editingId}`,
-          payload,
-          adminHeaders()
-        );
-        showToast("Notice updated successfully");
+        await axios.put(`${API}/${editingId}`, payload, headers());
       } else {
-        await axios.post(ADMIN_NOTICES_API, payload, adminHeaders());
-        showToast("Notice created successfully");
+        await axios.post(API, payload, headers());
       }
 
-      await fetchNotices();
-      handleCloseForm();
-    } catch (error) {
-      console.error("Failed to save notice:", error);
-      console.error("NOTICE API ERROR:", error.response?.data);
-      console.error("NOTICE STATUS:", error.response?.status);
-      console.error("NOTICE PAYLOAD:", payload);
-
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        (typeof error.response?.data === "string" ? error.response.data : null) ||
-        error.message ||
-        "Notice save nahi hua. Backend/API aur admin login check karein.";
-
-      setFormError(errorMessage);
-      showToast(errorMessage, "danger");
+      await load({ quiet: true });
+      setShowForm(false);
+      setEditingId(null);
+      setForm({ ...EMPTY });
+      setImagePreview("");
+      notify(editingId ? "Notice updated." : "Notice published.");
+    } catch (err) {
+      console.error("Save notice:", err, err?.response?.data);
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Notice save nahi hua.";
+      setError(msg);
+      notify(msg, "danger");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleDelete = async (id) => {
-
+  /* ---------- DELETE ---------- */
+  const removeNotice = async (id) => {
+    if (!id) return;
     try {
-
-      await axios.delete(`${ADMIN_NOTICES_API}/${id}`, adminHeaders());
-
-      setNotices((current) => current.filter((n) => n.id !== id));
-
-      setConfirmDeleteId(null);
-
-      showToast("Notice deleted", "danger");
-
-    } catch (error) {
-
-      console.error("Failed to delete notice:", error);
-
-      setConfirmDeleteId(null);
-
-      showToast(
-
-        error.response?.data?.message || error.message || "Notice delete nahi hua",
-
+      await axios.delete(`${API}/${id}`, headers());
+      setNotices((p) => p.filter((n) => n.id !== id));
+      setDeleteId(null);
+      notify("Notice deleted.", "danger");
+    } catch (err) {
+      console.error("Delete notice:", err, err?.response?.data);
+      notify(
+        err?.response?.data?.message || err?.message || "Delete failed.",
         "danger"
-
       );
-
     }
-
   };
 
   /* ---------- FILTERS ---------- */
-
-  const filteredNotices = notices.filter((n) => {
-
-    const q = searchQuery.trim().toLowerCase();
-
+  const filtered = notices.filter((n) => {
+    const q = search.toLowerCase().trim();
     const matchSearch =
-
       !q ||
-
-      n.title.toLowerCase().includes(q) ||
-
-      n.message.toLowerCase().includes(q);
-
-    const matchPriority =
-
-      filterPriority === "all" || n.priority === filterPriority;
-
-    const matchTarget =
-
-      filterTarget === "all" || n.target === filterTarget;
-
-    return matchSearch && matchPriority && matchTarget;
-
+      (n.title || "").toLowerCase().includes(q) ||
+      (n.message || "").toLowerCase().includes(q);
+    return matchSearch;
   });
-
-  /* ---------- STATS ---------- */
 
   const total = notices.length;
 
-  const urgent = notices.filter((n) => n.priority === "urgent").length;
+  /* ----- PREMIUM UI CLASSES ----- */
+  const inputClass =
+    "w-full rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm text-gray-800 transition-all focus:bg-white focus:border-[#18c1b7] focus:outline-none focus:ring-4 focus:ring-[#18c1b7]/10 placeholder:text-gray-400";
+  const labelClass = "mb-1.5 block text-sm font-semibold text-gray-700 flex items-center gap-2";
 
-  const important = notices.filter((n) => n.priority === "important").length;
-
-  /* ---------- RENDER ---------- */
-
+  /* ================= RENDER ================= */
   return (
-
-    <div className="min-h-screen bg-gray-50 pt-24 pb-10 px-3 sm:px-6">
-
-      <div className="max-w-6xl mx-auto">
-
-        {/* ============ HEADER ============ */}
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-
+    <div className="min-h-screen bg-[#f8fafc] px-3 pb-10 pt-24 sm:px-6">
+      <div className="mx-auto max-w-6xl">
+        {/* HEADER */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 flex items-center gap-2">
-
-              <Bell className="text-[#18c1b7]" /> Manage Notices
-
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900 sm:text-3xl">
+              <div className="p-2 bg-[#18c1b7]/10 rounded-xl">
+                <Bell className="text-[#18c1b7]" size={24} />
+              </div>
+              Manage Notices
             </h1>
-
-            <p className="text-sm text-gray-500 mt-1">
-
-              Create, edit, delete and send notices to students
-
+            <p className="mt-2 text-sm text-gray-500">
+              Create and send beautiful notices with images and links to students.
             </p>
-
           </div>
-
-          <div className="flex items-center gap-2">
-
+          <div className="flex gap-3">
             <button
-
-              onClick={() => setShowPreviewModal(true)}
-
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-white border border-gray-200 hover:border-[#18c1b7] text-gray-700 rounded-xl font-medium text-sm shadow-sm"
-
+              type="button"
+              onClick={() => setShowPreview(true)}
+              className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
             >
-
-              <Eye size={16} /> Preview
-
+              <Eye size={16} />
+              Preview
             </button>
-
             <button
-
-              onClick={handleOpenCreate}
-
-              className="flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-[#18c1b7] hover:bg-[#0fa39a] text-white rounded-xl font-medium text-sm shadow-md"
-
+              type="button"
+              onClick={openCreate}
+              className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#18c1b7] to-[#0fa39a] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#18c1b7]/30 transition hover:-translate-y-0.5"
             >
-
-              <Plus size={18} /> New Notice
-
+              <Plus size={18} />
+              New Notice
             </button>
-
           </div>
-
         </div>
 
-        {/* ============ STATS ============ */}
-
-        <div className="grid grid-cols-3 gap-3 mb-6">
-
-          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-[#18c1b7]">
-
-            <p className="text-xs text-gray-500 font-medium">Total Notices</p>
-
-            <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{total}</p>
-
+        {/* STATS - Simplified since priority is gone */}
+        <div className="mb-6 grid grid-cols-1 sm:grid-cols-1">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Notices</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">{total}</p>
           </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-amber-500">
-
-            <p className="text-xs text-gray-500 font-medium">Important</p>
-
-            <p className="text-xl sm:text-2xl font-bold text-amber-600 mt-1">{important}</p>
-
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 border-l-4 border-red-500">
-
-            <p className="text-xs text-gray-500 font-medium">Urgent</p>
-
-            <p className="text-xl sm:text-2xl font-bold text-red-600 mt-1">{urgent}</p>
-
-          </div>
-
         </div>
 
-        {/* ============ FILTERS ============ */}
-
-        <div className="bg-white rounded-xl shadow-sm p-3 sm:p-4 mb-5 flex flex-col sm:flex-row gap-3">
-
-          <div className="flex-1 relative">
-
-            <Search
-
-              size={16}
-
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-
-            />
-
+        {/* FILTERS */}
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row">
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-4 top-3.5 text-gray-400" />
             <input
-
-              type="text"
-
+              className={`${inputClass} pl-11`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search notices..."
-
-              value={searchQuery}
-
-              onChange={(e) => setSearchQuery(e.target.value)}
-
-              className="w-full border border-gray-200 rounded-xl pl-9 pr-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
-
+              aria-label="Search notices"
             />
-
           </div>
-
-          <select
-
-            value={filterPriority}
-
-            onChange={(e) => setFilterPriority(e.target.value)}
-
-            className="border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
-
-          >
-
-            <option value="all">All Priority</option>
-
-            <option value="normal">Normal</option>
-
-            <option value="important">Important</option>
-
-            <option value="urgent">Urgent</option>
-
-          </select>
-
-          <select
-
-            value={filterTarget}
-
-            onChange={(e) => setFilterTarget(e.target.value)}
-
-            className="border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
-
-          >
-
-            <option value="all">All Courses</option>
-
-            {TARGET_OPTIONS.map((t) => (
-
-              <option key={t.value} value={t.value}>
-
-                {t.label}
-
-              </option>
-
-            ))}
-
-          </select>
-
         </div>
 
-        {/* ============ LIST ============ */}
-
-        {filteredNotices.length === 0 ? (
-
-          <div className="bg-white rounded-2xl shadow-sm p-12 text-center">
-
-            <Bell size={48} className="mx-auto text-gray-300 mb-3" />
-
-            <p className="text-gray-500">
-
-              {notices.length === 0
-
-                ? "No notices created yet"
-
-                : "No notices match your filters"}
-
-            </p>
-
-            <p className="text-gray-400 text-sm mt-1">
-
-              {notices.length === 0
-
-                ? 'Click "New Notice" to add one'
-
-                : "Try changing the filters"}
-
-            </p>
-
+        {/* LIST */}
+        {loading ? (
+          <div className="rounded-2xl bg-white p-12 text-center text-gray-500 shadow-sm border border-gray-100">
+            Loading notices...
           </div>
-
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl bg-white p-12 text-center text-gray-500 shadow-sm border border-gray-100">
+            <Bell size={48} className="mx-auto mb-4 text-gray-300" />
+            No notices found.
+          </div>
         ) : (
+          <div className="space-y-4">
+            {filtered.map((n) => (
+              <div
+                key={n.id}
+                className={`group relative overflow-hidden rounded-2xl border-l-4 ${
+                  PRIORITY_BORDER[n.priority] || "border-gray-300"
+                } bg-white p-5 shadow-sm transition hover:shadow-md`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900">{n.title}</h3>
+                    </div>
 
-          <div className="space-y-3">
+                    {n.imageUrl && (
+                      <img
+                        src={n.imageUrl}
+                        alt="Notice attachment"
+                        className="my-4 max-h-48 rounded-xl object-contain border border-gray-100 bg-gray-50"
+                      />
+                    )}
 
-            {filteredNotices.map((n) => {
-
-              const readCount = n.readBy?.length || 0;
-
-              return (
-
-                <div
-
-                  key={n.id}
-
-                  className={`bg-white rounded-xl shadow-sm p-4 sm:p-5 border-l-4 ${PRIORITY_BORDER[n.priority] || "border-gray-300"} hover:shadow-md transition`}
-
-                >
-
-                  <div className="flex items-start justify-between gap-3">
-
-                    <div className="flex-1 min-w-0">
-
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-
-                        <h3 className="font-semibold text-gray-800">
-
-                          {n.title}
-
-                        </h3>
-
-                        <span
-
-                          className={`text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_BADGE[n.priority]}`}
-
-                        >
-
-                          {n.priority}
-
-                        </span>
-
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium uppercase">
-
-                          {n.target === "all"
-
-                            ? "All"
-
-                            : n.target}
-
-                        </span>
-
-                      </div>
-
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-3">
-
+                    {n.message && (
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-600">
                         {n.message}
-
                       </p>
+                    )}
 
-                      <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-gray-400">
-
-                        <span>Created {timeAgo(n.createdAt)}</span>
-
-                        {n.updatedAt !== n.createdAt && (
-
-                          <>
-
-                            <span>•</span>
-
-                            <span>Edited {timeAgo(n.updatedAt)}</span>
-
-                          </>
-
-                        )}
-
-                        <span>•</span>
-
-                        <span className="flex items-center gap-1">
-
-                          <CheckCheck size={12} />
-
-                          {readCount} read
-
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-
-                      <button
-
-                        onClick={() => handleOpenEdit(n)}
-
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-
-                        title="Edit"
-
+                    {safeHttpUrl(n.linkUrl) && (
+                      <a
+                        href={safeHttpUrl(n.linkUrl)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100"
                       >
+                        <LinkIcon size={16} />
+                        {n.linkText || "Open link"}
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
 
-                        <Pencil size={16} />
-
-                      </button>
-
-                      <button
-
-                        onClick={() => setConfirmDeleteId(n.id)}
-
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-
-                        title="Delete"
-
-                      >
-
-                        <Trash2 size={16} />
-
-                      </button>
-
+                    <div className="mt-4 flex flex-wrap items-center gap-3 text-xs font-medium text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Sparkles size={14} className="text-[#18c1b7]" />
+                        {new Date(n.createdAt).toLocaleString()}
+                      </span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <CheckCheck size={14} className="text-green-500" />
+                        {n.readBy.length} read
+                      </span>
                     </div>
-
                   </div>
 
+                  <div className="flex shrink-0 flex-col gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(n)}
+                      title="Edit"
+                      className="rounded-xl p-2.5 text-blue-600 bg-blue-50 hover:bg-blue-100 transition"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteId(n.id)}
+                      title="Delete"
+                      className="rounded-xl p-2.5 text-red-600 bg-red-50 hover:bg-red-100 transition"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-
-              );
-
-            })}
-
+              </div>
+            ))}
           </div>
-
         )}
-
       </div>
 
-      {/* =====================================================
-
-          CREATE / EDIT MODAL
-
-      ====================================================== */}
-
-      {showFormModal && (
-
+      {/* ============ CREATE / EDIT MODAL ============ */}
+      {showForm && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
-
-          <div
-
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-
-            onClick={handleCloseForm}
-
+          <button
+            type="button"
+            aria-label="Close notice form"
+            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+            onClick={closeForm}
           />
-
           <form
-
-            onSubmit={handleSubmit}
-
-            className="relative bg-white rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
-
+            onSubmit={submit}
+            className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
           >
-
-            <div className="flex items-center justify-between mb-4">
-
-              <h3 className="text-lg font-bold text-gray-800">
-
-                {editingId ? "Edit Notice" : "Create New Notice"}
-
-              </h3>
-
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4 bg-white shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {editingId ? "Edit Notice" : "Create New Notice"}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">Select what you want to send.</p>
+              </div>
               <button
-
                 type="button"
-
-                onClick={handleCloseForm}
-
-                className="text-gray-400 hover:text-gray-600"
-
+                onClick={closeForm}
+                disabled={saving}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition"
               >
-
                 <X size={20} />
-
               </button>
-
             </div>
 
-            {formError && (
-
-              <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg mb-3">
-
-                <AlertCircle size={16} /> {formError}
-
-              </div>
-
-            )}
-
-            {/* Title */}
-
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-
-              Title <span className="text-red-500">*</span>
-
-            </label>
-
-            <input
-              name="title"
-              type="text"
-              value={form.title}
-
-              onChange={(e) =>
-
-                setForm({ ...form, title: e.target.value })
-
-              }
-
-              placeholder="e.g., New Notes Uploaded"
-
-              maxLength={120}
-
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 mb-3 focus:outline-none focus:border-[#18c1b7] text-sm"
-
-            />
-
-            {/* Message */}
-
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-
-              Message <span className="text-red-500">*</span>
-
-            </label>
-
-            <textarea
-              name="message"
-              value={form.message}
-
-              onChange={(e) =>
-
-                setForm({ ...form, message: e.target.value })
-
-              }
-
-              placeholder="Write the notice details..."
-
-              rows={5}
-
-              maxLength={1000}
-
-              className="w-full border border-gray-300 rounded-xl px-3 py-2 mb-1 focus:outline-none focus:border-[#18c1b7] text-sm resize-none"
-
-            />
-
-            <p className="text-[11px] text-gray-400 text-right mb-3">
-
-              {form.message.length}/1000
-
-            </p>
-
-            {/* Priority + Target */}
-
-            <div className="grid grid-cols-2 gap-3 mb-4">
-
+            {/* Modal Body */}
+            <div className="overflow-y-auto px-6 py-5 space-y-6">
+              
+              {/* NOTICE TYPE SELECTOR */}
               <div>
-
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-
-                  Priority
-
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  1. What do you want to send?
                 </label>
-
-                <select
-
-                  value={form.priority}
-
-                  onChange={(e) =>
-
-                    setForm({ ...form, priority: e.target.value })
-
-                  }
-
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
-
-                >
-
-                  {PRIORITY_OPTIONS.map((p) => (
-
-                    <option key={p.value} value={p.value}>
-
-                      {p.label}
-
-                    </option>
-
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div>
-
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-
-                  Send To
-
-                </label>
-
-                <select
-
-                  value={form.target}
-
-                  onChange={(e) =>
-
-                    setForm({ ...form, target: e.target.value })
-
-                  }
-
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 focus:outline-none focus:border-[#18c1b7] text-sm"
-
-                >
-
-                  {TARGET_OPTIONS.map((t) => (
-
-                    <option key={t.value} value={t.value}>
-
-                      {t.label}
-
-                    </option>
-
-                  ))}
-
-                </select>
-
-              </div>
-
-            </div>
-
-            {/* Actions */}
-
-            <div className="flex gap-3">
-
-              <button
-
-                type="button"
-
-                onClick={handleCloseForm}
-
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm"
-
-              >
-
-                Cancel
-
-              </button>
-
-              <button
-
-                type="submit"
-
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#18c1b7] hover:bg-[#0fa39a] text-white rounded-xl text-sm font-medium"
-
-              >
-
-                <Save size={16} />
-
-                {editingId ? "Update Notice" : "Send Notice"}
-
-              </button>
-
-            </div>
-
-          </form>
-
-        </div>
-
-      )}
-
-      {/* =====================================================
-
-          PREVIEW MODAL (Student's View Simulation)
-
-      ====================================================== */}
-
-      {showPreviewModal && (
-
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-4">
-
-          <div
-
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-
-            onClick={() => setShowPreviewModal(false)}
-
-          />
-
-          <div className="relative bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
-
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-[#f8fdfc]">
-
-              <h3 className="font-semibold text-gray-800 text-sm flex items-center gap-2">
-
-                <Eye size={16} className="text-[#18c1b7]" /> Student's Bell Preview
-
-              </h3>
-
-              <button
-
-                onClick={() => setShowPreviewModal(false)}
-
-                className="text-gray-400 hover:text-gray-600"
-
-              >
-
-                <X size={18} />
-
-              </button>
-
-            </div>
-
-            <div className="max-h-[70vh] overflow-y-auto">
-
-              {notices.length === 0 ? (
-
-                <div className="py-10 text-center">
-
-                  <Bell size={32} className="mx-auto text-gray-300 mb-2" />
-
-                  <p className="text-gray-400 text-sm">
-
-                    No notices to preview
-
-                  </p>
-
-                </div>
-
-              ) : (
-
-                notices.slice(0, 6).map((n) => (
-
-                  <div
-
-                    key={n.id}
-
-                    className={`px-4 py-3 border-b border-gray-50 last:border-0 border-l-4 ${PRIORITY_BORDER[n.priority]}`}
-
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, noticeType: "text" })}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                      form.noticeType === "text" ? "border-[#18c1b7] bg-[#18c1b7]/5 text-[#0e8b83]" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
                   >
+                    <MessageSquare size={20} className="mb-1" />
+                    <span className="text-xs font-semibold">Message</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, noticeType: "image" })}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                      form.noticeType === "image" ? "border-[#18c1b7] bg-[#18c1b7]/5 text-[#0e8b83]" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <ImagePlus size={20} className="mb-1" />
+                    <span className="text-xs font-semibold">Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, noticeType: "link" })}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                      form.noticeType === "link" ? "border-[#18c1b7] bg-[#18c1b7]/5 text-[#0e8b83]" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <LinkIcon size={20} className="mb-1" />
+                    <span className="text-xs font-semibold">Link</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, noticeType: "mixed" })}
+                    className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                      form.noticeType === "mixed" ? "border-[#18c1b7] bg-[#18c1b7]/5 text-[#0e8b83]" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                    }`}
+                  >
+                    <Layers size={20} className="mb-1" />
+                    <span className="text-xs font-semibold">Mixed</span>
+                  </button>
+                </div>
+              </div>
 
-                    <p className="text-sm font-semibold text-gray-800">
+              <hr className="border-gray-100" />
 
-                      {n.title}
-
-                    </p>
-
-                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-
-                      {n.message}
-
-                    </p>
-
-                    <div className="flex items-center gap-2 mt-1.5">
-
-                      <span className="text-[10px] text-gray-400">
-
-                        {timeAgo(n.createdAt)}
-
-                      </span>
-
-                      <span className="text-[10px] text-gray-400">•</span>
-
-                      <span className="text-[10px] text-[#18c1b7] font-medium uppercase">
-
-                        {n.target === "all" ? "All" : n.target}
-
-                      </span>
-
-                    </div>
-
-                  </div>
-
-                ))
-
+              {error && (
+                <div className="flex items-start gap-3 rounded-xl bg-red-50 p-4 text-sm font-medium text-red-700 border border-red-100">
+                  <AlertCircle size={18} className="mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
               )}
 
-            </div>
+              {/* DYNAMIC FIELDS BASED ON TYPE */}
+              <div className="space-y-4">
+                {/* Title (Always Required) */}
+                <div>
+                  <label className={labelClass} htmlFor="notice-title">
+                    <Type size={16} className="text-gray-400" /> Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="notice-title"
+                    className={inputClass}
+                    maxLength={120}
+                    value={form.title}
+                    onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))}
+                    placeholder="e.g. Exam Schedule Update"
+                    required
+                  />
+                </div>
 
-            <div className="border-t border-gray-100 px-4 py-2 bg-[#f8fdfc]">
+                {/* Message Field */}
+                {(form.noticeType === "text" || form.noticeType === "mixed") && (
+                  <div>
+                    <label className={labelClass} htmlFor="notice-message">
+                      <Bell size={16} className="text-gray-400" /> Message
+                    </label>
+                    <textarea
+                      id="notice-message"
+                      className={inputClass}
+                      rows={4}
+                      maxLength={5000}
+                      value={form.message}
+                      onChange={(e) => setForm((c) => ({ ...c, message: e.target.value }))}
+                      placeholder="Write your notice details here..."
+                    />
+                  </div>
+                )}
 
-              <p className="text-[11px] text-gray-500 text-center">
+                {/* Image Field */}
+                {(form.noticeType === "image" || form.noticeType === "mixed") && (
+                  <div>
+                    <label className={`${labelClass} justify-between`} htmlFor="notice-image">
+                      <span className="flex items-center gap-2"><ImageIcon size={16} className="text-gray-400" /> Attach Image</span>
+                      <span className="text-xs font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Max 3MB</span>
+                    </label>
+                    
+                    {!imagePreview ? (
+                      <div className="mt-1 flex justify-center rounded-xl border-2 border-dashed border-gray-200 bg-slate-50 px-6 py-8 transition hover:bg-slate-100">
+                        <div className="text-center">
+                          <ImageIcon className="mx-auto h-10 w-10 text-gray-300" />
+                          <div className="mt-3 flex text-sm text-gray-600">
+                            <label
+                              htmlFor="notice-image"
+                              className="relative cursor-pointer rounded-md bg-white font-semibold text-[#18c1b7] focus-within:outline-none hover:text-[#0fa39a] px-2 py-1"
+                            >
+                              <span>Upload a file</span>
+                              <input
+                                id="notice-image"
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImage}
+                                className="sr-only"
+                              />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="relative mt-2 inline-block w-full">
+                        <img
+                          src={imagePreview}
+                          alt="Selected notice preview"
+                          className="max-h-60 w-full rounded-xl border border-gray-200 object-contain bg-slate-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeImage}
+                          className="absolute right-2 top-2 rounded-full bg-red-500 p-2 text-white shadow-md hover:bg-red-600 transition"
+                          title="Remove image"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                This is how it appears on the student's bell icon
-
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      )}
-
-      {/* =====================================================
-
-          DELETE CONFIRM MODAL
-
-      ====================================================== */}
-
-      {confirmDeleteId && (
-
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
-
-          <div
-
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-
-            onClick={() => setConfirmDeleteId(null)}
-
-          />
-
-          <div className="relative bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-
-            <div className="flex items-center gap-3 mb-3">
-
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-
-                <Trash2 size={20} className="text-red-600" />
-
+                {/* Link Fields */}
+                {(form.noticeType === "link" || form.noticeType === "mixed") && (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className={labelClass} htmlFor="notice-link">
+                        <LinkIcon size={16} className="text-gray-400" /> Link URL
+                      </label>
+                      <input
+                        id="notice-link"
+                        className={inputClass}
+                        type="url"
+                        value={form.linkUrl}
+                        onChange={(e) => setForm((c) => ({ ...c, linkUrl: e.target.value }))}
+                        placeholder="https://example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass} htmlFor="notice-link-text">
+                        Button Text
+                      </label>
+                      <input
+                        id="notice-link-text"
+                        className={inputClass}
+                        maxLength={60}
+                        value={form.linkText}
+                        onChange={(e) => setForm((c) => ({ ...c, linkText: e.target.value }))}
+                        placeholder="e.g. Click Here"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-
-              <h3 className="text-lg font-bold text-gray-800">
-
-                Delete Notice?
-
-              </h3>
-
             </div>
 
-            <p className="text-gray-600 text-sm mb-5">
-
-              This action cannot be undone. The notice will be removed from
-
-              all students' bells.
-
-            </p>
-
-            <div className="flex gap-3">
-
+            {/* Modal Footer */}
+            <div className="border-t border-gray-100 bg-slate-50 px-6 py-4 flex gap-3 shrink-0 rounded-b-3xl">
               <button
-
-                onClick={() => setConfirmDeleteId(null)}
-
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-xl hover:bg-gray-50 text-sm"
-
+                type="button"
+                onClick={closeForm}
+                disabled={saving}
+                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-60"
               >
-
                 Cancel
-
               </button>
-
               <button
-
-                onClick={() => handleDelete(confirmDeleteId)}
-
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium"
-
+                disabled={saving}
+                type="submit"
+                className="flex-1 flex items-center justify-center rounded-xl bg-gradient-to-r from-[#18c1b7] to-[#0fa39a] px-4 py-3 text-sm font-semibold text-white shadow-md shadow-[#18c1b7]/30 transition hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0"
               >
-
-                Yes, Delete
-
+                <Save size={18} className="mr-2" />
+                {saving ? "Saving..." : editingId ? "Update Notice" : "Send Notice"}
               </button>
-
             </div>
+          </form>
+        </div>
+      )}
 
+      {/* ============ PREVIEW MODAL ============ */}
+      {showPreview && (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center p-3 sm:p-4">
+          <button
+            type="button"
+            aria-label="Close preview"
+            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => setShowPreview(false)}
+          />
+          <div className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-bold text-gray-900 text-lg">Notification Preview</h2>
+              <button
+                type="button"
+                onClick={() => setShowPreview(false)}
+                className="rounded-full p-2 text-gray-400 hover:bg-gray-100 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {notices.length > 0 ? (
+              notices.slice(0, 5).map((n) => (
+                <div className="mb-4" key={n.id}>
+                  <NoticePreview notice={n} />
+                </div>
+              ))
+            ) : (
+              <NoticePreview notice={form} />
+            )}
           </div>
-
         </div>
-
       )}
 
-      {/* =====================================================
+      {/* ============ DELETE CONFIRM ============ */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close delete dialog"
+            className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"
+            onClick={() => setDeleteId(null)}
+          />
+          <div className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mb-4">
+              <Trash2 size={24} className="text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900">Delete this notice?</h3>
+            <p className="mt-2 text-sm text-gray-500 mb-6">
+              This action cannot be undone. The notice will be permanently removed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteId(null)}
+                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => removeNotice(deleteId)}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-red-600/30 transition hover:bg-red-700"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-          TOAST
-
-      ====================================================== */}
-
+      {/* ============ TOAST ============ */}
       {toast && (
-
         <div
-
-          className={`fixed bottom-6 right-6 z-[400] px-4 py-3 rounded-xl shadow-2xl text-white text-sm font-medium flex items-center gap-2 transition-all ${
-
-            toast.type === "danger" ? "bg-red-600" : "bg-[#18c1b7]"
-
+          role="status"
+          className={`fixed bottom-6 right-6 z-[300] flex items-center gap-3 rounded-xl px-5 py-3.5 text-sm font-medium text-white shadow-xl transition-all ${
+            toast.kind === "danger" ? "bg-red-600" : "bg-gray-900"
           }`}
-
         >
-
-          {toast.type === "danger" ? (
-
-            <Trash2 size={16} />
-
-          ) : (
-
-            <CheckCheck size={16} />
-
-          )}
-
+          {toast.kind === "danger" ? <AlertCircle size={18} /> : <CheckCheck size={18} />}
           {toast.message}
-
         </div>
-
       )}
-
     </div>
-
   );
-
-};
+}
 
 export default AdminNotice;
-
