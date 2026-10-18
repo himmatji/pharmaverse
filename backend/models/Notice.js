@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const noticeSchema = new mongoose.Schema(
@@ -22,8 +23,7 @@ const noticeSchema = new mongoose.Schema(
       default: "info"
     },
 
-    // Optional notice image. Supports hosted URLs or validated data URLs
-    // when the admin route is configured to accept base64 image uploads.
+    // Optional notice image: hosted URL or validated image data URL.
     imageUrl: {
       type: String,
       default: "",
@@ -31,7 +31,7 @@ const noticeSchema = new mongoose.Schema(
       trim: true
     },
 
-    // Only http/https links should be accepted by the admin route.
+    // Only HTTP/HTTPS URLs should be accepted by the admin route.
     linkUrl: {
       type: String,
       default: "",
@@ -46,7 +46,7 @@ const noticeSchema = new mongoose.Schema(
       trim: true
     },
 
-    // Target audience for notices: everyone or a specific course/branch.
+    // Target audience: all students or a specific course.
     target: {
       type: String,
       enum: ["all", "bpharm", "dpharm", "mpharm", "pharmd", "phd"],
@@ -100,11 +100,12 @@ const noticeSchema = new mongoose.Schema(
   }
 );
 
-noticeSchema.pre("save", function updateNoticeTimestamp(next) {
+// Mongoose-compatible save middleware: do not call next().
+noticeSchema.pre("save", function updateNoticeTimestamp() {
   this.updatedAt = new Date();
-  next();
 });
 
+// Update timestamp for findOneAndUpdate operations.
 noticeSchema.pre("findOneAndUpdate", function updateNoticeTimestamp() {
   this.set({ updatedAt: new Date() });
 });
