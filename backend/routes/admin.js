@@ -48,9 +48,29 @@ const normalizeNoticeTarget = (value) => {
 const normalizeNoticeImage = (value) => {
   if (value == null || value === "") return "";
   if (typeof value !== "string") return null;
-  if (!/^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=\r\n]+$/i.test(value)) return null;
-  if (value.length > 4500000) return null;
-  return value;
+
+  const imageValue = value.trim();
+  if (!imageValue) return "";
+
+  // Support externally hosted images using HTTP/HTTPS URLs.
+  // Never allow javascript:, file:, or other unsafe URL schemes.
+  if (/^https?:\/\//i.test(imageValue)) {
+    try {
+      const parsedUrl = new URL(imageValue);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) return null;
+      if (imageValue.length > 2048) return null;
+      return parsedUrl.href;
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  // Backward compatibility: admin form can send a Base64 data URL.
+  const dataUrlPattern = /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,[a-z0-9+/=\r\n]+$/i;
+  if (!dataUrlPattern.test(imageValue)) return null;
+  if (imageValue.length > 4500000) return null;
+
+  return imageValue;
 };
 
 const normalizeNoticeLink = (value) => {
@@ -3650,7 +3670,8 @@ router.put(
       const startDate = req.body.startDate ? new Date(req.body.startDate) : null;
       const endDate = req.body.endDate ? new Date(req.body.endDate) : null;
       const target = normalizeNoticeTarget(req.body.target);
-      const imageUrl = normalizeNoticeImage(req.body.imageUrl);
+      const imageWasProvided = Object.prototype.hasOwnProperty.call(req.body, "imageUrl");
+      const imageUrl = imageWasProvided ? normalizeNoticeImage(req.body.imageUrl) : undefined;
       const linkUrl = normalizeNoticeLink(req.body.linkUrl);
       const linkText = String(req.body.linkText || "Open link").trim().slice(0, 60) || "Open link";
 
@@ -3669,8 +3690,8 @@ router.put(
       if (target === null) {
         return res.status(400).json({ success: false, message: "Invalid notice target" });
       }
-      if (req.body.imageUrl && imageUrl === null) {
-        return res.status(400).json({ success: false, message: "Invalid image. Select a supported image up to 3 MB." });
+      if (imageWasProvided && String(req.body.imageUrl || "").trim() && imageUrl === null) {
+        return res.status(400).json({ success: false, message: "Invalid image. Use a valid HTTP/HTTPS image URL or a supported Base64 image up to 3 MB." });
       }
       if (String(req.body.linkUrl || "").trim() && linkUrl === null) {
         return res.status(400).json({ success: false, message: "Link must be a valid http:// or https:// URL" });
@@ -3685,23 +3706,28 @@ router.put(
         return res.status(400).json({ success: false, message: "End date cannot be before start date" });
       }
 
+      // Preserve the existing image when an edit request omits imageUrl or
+      // sends an empty string. A new image replaces it only when supplied.
+      const updateFields = {
+        title,
+        description,
+        type,
+        startDate,
+        endDate,
+        isActive: normalizeNoticeActive(activeInput),
+        linkUrl: linkUrl || "",
+        linkText,
+        target,
+        updatedAt: new Date()
+      };
+
+      if (imageWasProvided && String(req.body.imageUrl || "").trim()) {
+        updateFields.imageUrl = imageUrl;
+      }
+
       const notice = await Notice.findByIdAndUpdate(
         id,
-        {
-          $set: {
-            title,
-            description,
-            type,
-            startDate,
-            endDate,
-            isActive: normalizeNoticeActive(activeInput),
-            imageUrl: imageUrl || "",
-            linkUrl: linkUrl || "",
-            linkText,
-            target,
-            updatedAt: new Date()
-          }
-        },
+        { $set: updateFields },
         { new: true, runValidators: true }
       );
 

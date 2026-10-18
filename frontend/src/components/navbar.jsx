@@ -20,6 +20,31 @@ import AuthModal from "./AuthModal";
 const API_URL = "https://api.pharmaverse.co.in/api/auth";
 const NOTIFICATIONS_API_URL = "https://api.pharmaverse.co.in/api/notifications";
 
+// Normalize notice payloads from both current and legacy API response shapes.
+const getNotificationArray = (payload) => {
+  const candidates = [
+    payload?.notices,
+    payload?.notifications,
+    payload?.data?.notices,
+    payload?.data?.notifications,
+    payload?.data,
+    payload?.results,
+  ];
+  return candidates.find(Array.isArray) || [];
+};
+
+const normalizeNotification = (notice) => ({
+  ...notice,
+  _id: notice?._id || notice?.id || notice?.noticeId,
+  title: notice?.title || notice?.name || "Notification",
+  description: notice?.description ?? notice?.message ?? notice?.body ?? "",
+  imageUrl:
+    notice?.imageUrl || notice?.imageURL || notice?.image_url ||
+    notice?.image || notice?.bannerUrl || notice?.banner || "",
+  linkUrl: notice?.linkUrl || notice?.url || "",
+  readBy: Array.isArray(notice?.readBy) ? notice.readBy : [],
+});
+
 const Navbar = () => {
   const [activeBanner, setActiveBanner] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -116,16 +141,23 @@ const Navbar = () => {
         if (!isMounted) return;
 
         const payload = response?.data || {};
-        const count = Number(
+        const items = getNotificationArray(payload).map(normalizeNotification);
+        const explicitCount =
           payload.unreadCount ??
           payload.data?.unreadCount ??
           payload.unread ??
-          0
-        );
+          payload.data?.unread;
+        const count = explicitCount == null
+          ? items.filter((notice) => {
+              const currentUserId = user?._id || user?.id;
+              const hasReadBy = Array.isArray(notice.readBy) && notice.readBy.some(
+                (entry) => String(entry?._id || entry) === String(currentUserId)
+              );
+              return !(notice.isRead || notice.read || hasReadBy);
+            }).length
+          : Number(explicitCount);
 
-        setNotificationCount(
-          Number.isFinite(count) ? Math.max(0, count) : 0
-        );
+        setNotificationCount(Number.isFinite(count) ? Math.max(0, count) : 0);
       } catch (error) {
         if (error.response?.status === 401) {
           setNotificationCount(0);
@@ -172,16 +204,18 @@ const Navbar = () => {
         timeout: 15000,
       });
       const payload = response?.data || {};
-      const items = Array.isArray(payload.notices)
-        ? payload.notices
-        : Array.isArray(payload.data?.notices)
-        ? payload.data.notices
-        : Array.isArray(payload.notifications)
-        ? payload.notifications
-        : [];
+      const items = getNotificationArray(payload).map(normalizeNotification);
       setNotificationItems(items);
-      const count = Number(payload.unreadCount ?? payload.data?.unreadCount ?? 0);
-      setNotificationCount(Number.isFinite(count) ? Math.max(0, count) : 0);
+      const explicitCount = payload.unreadCount ?? payload.data?.unreadCount ?? payload.unread ?? payload.data?.unread;
+      const currentUserId = user?._id || user?.id;
+      const calculatedCount = items.filter((notice) => {
+        const hasReadBy = Array.isArray(notice.readBy) && notice.readBy.some(
+          (entry) => String(entry?._id || entry) === String(currentUserId)
+        );
+        return !(notice.isRead || notice.read || hasReadBy);
+      }).length;
+      const count = explicitCount == null ? calculatedCount : Number(explicitCount);
+      setNotificationCount(Number.isFinite(count) ? Math.max(0, count) : calculatedCount);
     } catch (error) {
       setNotificationsError(
         error.response?.data?.message ||
@@ -2995,6 +3029,7 @@ const Navbar = () => {
                   <img
                     src={selectedNotification.imageUrl}
                     alt="Notice attachment"
+                    onError={(event) => { event.currentTarget.style.display = "none"; }}
                     className="mb-4 max-h-64 w-full rounded-xl object-contain border border-gray-100 bg-slate-50"
                   />
                 )}
@@ -3049,6 +3084,7 @@ const Navbar = () => {
                                 <img
                                   src={notice.imageUrl}
                                   alt="Notice attachment"
+                                  onError={(event) => { event.currentTarget.style.display = "none"; }}
                                   className="mt-2 max-h-32 w-full rounded-lg object-contain border border-gray-100 bg-white"
                                 />
                               )}

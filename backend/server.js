@@ -2,6 +2,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
 
 require("dotenv").config();
 
@@ -14,15 +16,34 @@ const notificationsRoutes = require("./routes/notifications");
 const app = express();
 
 /* ============================================================
-   ADMIN ROUTER FIX
-   ============================================================ */
+   ADMIN ROUTER COMPATIBILITY
+============================================================ */
 
 const adminRoutes =
   adminRoutesModule?.router || adminRoutesModule;
 
 /* ============================================================
+   UPLOAD DIRECTORY
+   Persistent directory: backend/uploads
+============================================================ */
+
+const UPLOADS_DIR = path.join(__dirname, "uploads");
+
+try {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+} catch (error) {
+  console.error(
+    "Failed to create uploads directory:",
+    error.message
+  );
+  process.exit(1);
+}
+
+/* ============================================================
    MIDDLEWARE
-   ============================================================ */
+============================================================ */
+
+app.disable("x-powered-by");
 
 app.use(cors());
 
@@ -40,27 +61,31 @@ app.use(
 );
 
 /* ============================================================
-   ROUTE TYPE CHECK
-   ============================================================ */
+   PUBLIC NOTICE IMAGE URLS
 
-console.log("");
-console.log("=================================");
-console.log("PHARMAVERSE ROUTE CHECK");
-console.log("=================================");
+   Example:
+   https://api.pharmaverse.co.in/uploads/notices/example.jpg
 
-console.log("authRoutes =", typeof authRoutes);
-console.log("adminRoutesModule =", typeof adminRoutesModule);
-console.log("adminRoutes =", typeof adminRoutes);
-console.log("paymentRoutes =", typeof paymentRoutes);
-console.log("doubtsRoutes =", typeof doubtsRoutes);
-console.log("notificationsRoutes =", typeof notificationsRoutes);
+   The admin upload route must save files inside this directory
+   and store the corresponding public URL in Notice.imageUrl.
+============================================================ */
 
-console.log("=================================");
-console.log("");
+app.use(
+  "/uploads",
+  express.static(UPLOADS_DIR, {
+    index: false,
+    dotfiles: "deny",
+    fallthrough: true,
+    maxAge: "1d",
+    setHeaders(res) {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+    }
+  })
+);
 
 /* ============================================================
-   SAFETY CHECKS
-   ============================================================ */
+   ROUTER VALIDATION
+============================================================ */
 
 const requiredRouters = [
   ["./routes/auth.js", authRoutes],
@@ -70,19 +95,29 @@ const requiredRouters = [
   ["./routes/notifications.js", notificationsRoutes]
 ];
 
+console.log("");
+console.log("=================================");
+console.log("PHARMAVERSE ROUTE CHECK");
+console.log("=================================");
+
 for (const [file, router] of requiredRouters) {
+  console.log(`${file}:`, typeof router);
+
   if (typeof router !== "function") {
     console.error(
       `ERROR: ${file} is not exporting a valid Express router`
     );
-
     process.exit(1);
   }
 }
 
+console.log("Uploads directory:", UPLOADS_DIR);
+console.log("=================================");
+console.log("");
+
 /* ============================================================
-   ROOT TEST ROUTE
-   ============================================================ */
+   ROOT HEALTH CHECK
+============================================================ */
 
 app.get("/", (req, res) => {
   res.json({
@@ -95,18 +130,20 @@ app.get("/", (req, res) => {
       payment: "/api/payment",
       doubts: "/api/doubts",
       notifications: "/api/notifications",
-      collections: "/api/collections"
+      collections: "/api/collections",
+      uploads: "/uploads/"
     }
   });
 });
 
 /* ============================================================
-   DATABASE COLLECTIONS ROUTE
-   ============================================================ */
+   DATABASE COLLECTIONS
+============================================================ */
 
 app.get("/api/collections", async (req, res) => {
   try {
-    if (!mongoose.connection.db) {
+    if (mongoose.connection.readyState !== 1 ||
+        !mongoose.connection.db) {
       return res.status(503).json({
         success: false,
         message: "Database not connected"
@@ -141,15 +178,14 @@ app.get("/api/collections", async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch collections",
-      error: error.message
+      message: "Failed to fetch collections"
     });
   }
 });
 
 /* ============================================================
    API ROUTES
-   ============================================================ */
+============================================================ */
 
 app.use("/api/auth", authRoutes);
 console.log("Auth router mounted");
@@ -168,7 +204,7 @@ console.log("Notifications router mounted");
 
 /* ============================================================
    404 HANDLER
-   ============================================================ */
+============================================================ */
 
 app.use((req, res) => {
   return res.status(404).json({
@@ -183,25 +219,33 @@ app.use((req, res) => {
       "/api/doubts",
       "/api/doubts/test/health",
       "/api/notifications",
-      "/api/collections"
+      "/api/collections",
+      "/uploads/"
     ]
   });
 });
 
 /* ============================================================
-   ERROR HANDLER
-   ============================================================ */
+   CENTRAL ERROR HANDLER
+============================================================ */
 
 app.use((err, req, res, next) => {
-  console.error("EXPRESS ERROR:", err);
+  console.error("EXPRESS ERROR:", err.message);
 
   if (res.headersSent) {
     return next(err);
   }
 
-  return res.status(err.status || 500).json({
+  const status = Number(err.status || err.statusCode) || 500;
+
+  return res.status(status).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message:
+      status === 413
+        ? "Request too large. Please use a smaller image."
+        : status >= 500
+          ? "Internal Server Error"
+          : err.message || "Request failed",
     error:
       process.env.NODE_ENV === "development"
         ? err.stack
@@ -211,7 +255,7 @@ app.use((err, req, res, next) => {
 
 /* ============================================================
    MONGODB CONNECTION
-   ============================================================ */
+============================================================ */
 
 mongoose
   .connect(process.env.MONGODB_URI)
@@ -257,17 +301,23 @@ mongoose
         console.log("Notices collection found");
       }
     } catch (error) {
-      console.error("Collection check error:", error.message);
+      console.error(
+        "Collection check error:",
+        error.message
+      );
     }
   })
   .catch((error) => {
-    console.error("MongoDB connection error:", error.message);
+    console.error(
+      "MongoDB connection error:",
+      error.message
+    );
     process.exit(1);
   });
 
 /* ============================================================
-   SERVER
-   ============================================================ */
+   START SERVER
+============================================================ */
 
 const PORT = process.env.PORT || 5000;
 
@@ -283,13 +333,16 @@ const server = app.listen(PORT, () => {
   console.log(
     `Notifications: http://localhost:${PORT}/api/notifications`
   );
+  console.log(
+    `Uploads: http://localhost:${PORT}/uploads/`
+  );
   console.log("=================================");
   console.log("");
 });
 
 /* ============================================================
    GRACEFUL SHUTDOWN
-   ============================================================ */
+============================================================ */
 
 let isShuttingDown = false;
 
@@ -297,20 +350,31 @@ async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
 
   isShuttingDown = true;
-  console.log(`\n${signal} received. Shutting down server...`);
+
+  console.log(
+    `\n${signal} received. Shutting down server...`
+  );
 
   server.close(async () => {
     console.log("HTTP server closed");
 
     try {
-      await mongoose.connection.close();
+      await mongoose.disconnect();
       console.log("MongoDB connection closed");
       process.exit(0);
     } catch (error) {
-      console.error("MongoDB close error:", error.message);
+      console.error(
+        "MongoDB close error:",
+        error.message
+      );
       process.exit(1);
     }
   });
+
+  setTimeout(() => {
+    console.error("Graceful shutdown timed out");
+    process.exit(1);
+  }, 10000).unref();
 }
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
