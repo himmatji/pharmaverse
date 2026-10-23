@@ -325,7 +325,7 @@ const Footer = () => {
         <p>If you have any questions about this policy, please contact us:</p>
         <div className="bg-gray-50 rounded-xl p-4 mt-2">
           <p className="text-gray-700"><span className="font-semibold">Email:</span> pharmaversehelpline@gmail.com</p>
-          <p className="text-gray-700"><span className="font-semibold">Phone:</span> +91 9548787579</p>
+          {/* <p className="text-gray-700"><span className="font-semibold">Phone:</span> +91 9548787579</p> */}
           <p className="text-gray-700"><span className="font-semibold">Support Hours:</span> Mon-Sat, 1PM - 4 PM</p>
         </div>
       </section>
@@ -441,7 +441,7 @@ const Footer = () => {
               </div>
             </div>
 
-            {/* Column 2: Founders
+            {/* Column 2: Founders */}
             <div className="text-center md:text-left">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Our Founders</h3>
               <ul className="space-y-2 sm:space-y-2.5">
@@ -451,21 +451,21 @@ const Footer = () => {
                   </li>
                 ))}
               </ul>
-            </div> */}
+            </div>
 
             {/* Column 3: Contact & Social */}
             <div className="text-center md:text-left">
               <h3 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4 sm:mb-5">Connect With Us</h3>
-              
+
               <div className="space-y-2.5 sm:space-y-3 mb-5 sm:mb-6">
                 <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <Mail size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
                   <span className="break-all">pharmaversehelpline@gmail.com</span>
                 </div>
-                <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
+                {/* <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <Phone size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
                   <span>+91 9548787579</span>
-                </div>
+                </div> */}
                 <div className="flex items-center justify-center md:justify-start gap-2.5 text-gray-600 text-sm sm:text-base">
                   <MapPin size={16} className="sm:w-5 sm:h-5 text-amber-500 flex-shrink-0" />
                   <span>Greater Noida, India</span>
@@ -478,17 +478,18 @@ const Footer = () => {
 
               <div>
                 <p className="text-sm sm:text-base font-medium text-gray-700 mb-3 sm:mb-4">Follow us on</p>
-                <div className="flex gap-2 sm:gap-3 justify-center md:justify-start overflow-x-auto">
-                  {socialLinks.map((social, idx) => {
+                <div className="flex flex-nowrap items-center gap-2 sm:gap-3 justify-center md:justify-start">
+                  {socialLinks.map((social) => {
                     const Icon = social.icon;
                     return (
                       <a
-                        key={idx}
+                        key={social.label}
                         href={social.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-amber-500 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-amber-500/20 cursor-pointer"
                         aria-label={social.label}
+                        title={social.label}
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 hover:bg-amber-500 hover:text-white transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-amber-500/20"
                       >
                         <Icon size={18} className="sm:w-5 sm:h-5" />
                       </a>

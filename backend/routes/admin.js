@@ -981,6 +981,356 @@ router.post("/login", async (req, res) => {
   }
 });
 
+
+/* =========================================================
+   SUB-ADMIN MANAGEMENT
+   Super-admin only. Uses Admin model's existing password
+   hashing hook; never returns password hashes to the client.
+========================================================= */
+
+const VALID_ADMIN_COURSES = [
+  "B.Pharm",
+  "D.Pharm",
+  "M.Pharm",
+  "Pharm.D",
+  "PhD"
+];
+
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.admin || req.admin.role !== "super_admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Only the super admin can manage sub-admins"
+    });
+  }
+  return next();
+};
+
+const normalizeAdminCourses = (body = {}) => {
+  const rawCourses =
+    body.courses ??
+    body.selectedCourses ??
+    body.permissions?.courses ??
+    [];
+
+  if (!Array.isArray(rawCourses)) {
+    return { error: "Courses must be an array" };
+  }
+
+  const courses = [...new Set(rawCourses.map((course) => String(course).trim()))];
+
+  const invalidCourses = courses.filter(
+    (course) => !VALID_ADMIN_COURSES.includes(course)
+  );
+
+  if (invalidCourses.length) {
+    return {
+      error: `Invalid course permission(s): ${invalidCourses.join(", ")}`
+    };
+  }
+
+  return { courses };
+};
+
+const publicSubAdmin = (admin) => ({
+  _id: admin._id,
+  id: admin._id,
+  name: admin.name,
+  email: admin.email,
+  role: admin.role,
+  permissions: {
+    courses: admin.permissions?.courses || []
+  },
+  isActive: admin.isActive !== false,
+  createdAt: admin.createdAt,
+  lastLogin: admin.lastLogin
+});
+
+// GET /api/admin/subadmins
+router.get(
+  "/subadmins",
+  adminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const admins = await Admin.find({ role: "sub_admin" })
+        .select("-password")
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return res.json({
+        success: true,
+        subAdmins: admins.map(publicSubAdmin),
+        count: admins.length
+      });
+    } catch (error) {
+      console.error("Fetch sub-admins error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch sub-admins"
+      });
+    }
+  }
+);
+
+// POST /api/admin/register-subadmin
+router.post(
+  "/register-subadmin",
+  adminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const name = String(req.body?.name || "").trim();
+      const email = String(req.body?.email || "").trim().toLowerCase();
+      const password = String(req.body?.password || "");
+      const normalized = normalizeAdminCourses(req.body || {});
+
+      if (!name || !email || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Name, email and password are required"
+        });
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a valid email address"
+        });
+      }
+
+      if (password.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 8 characters long"
+        });
+      }
+
+      if (normalized.error) {
+        return res.status(400).json({
+          success: false,
+          message: normalized.error
+        });
+      }
+
+      const existing = await Admin.findOne({ email }).select("_id");
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          message: "An admin with this email already exists"
+        });
+      }
+
+      const subAdmin = new Admin({
+        name,
+        email,
+        password,
+        role: "sub_admin",
+        permissions: { courses: normalized.courses },
+        createdBy: req.admin.id,
+        isActive: req.body?.isActive === undefined
+          ? true
+          : req.body.isActive !== false && req.body.isActive !== "false"
+      });
+
+      // Admin.js hashes the password in its pre-save hook.
+      await subAdmin.save();
+
+      return res.status(201).json({
+        success: true,
+        message: "Sub-admin created successfully",
+        subAdmin: publicSubAdmin(subAdmin)
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: "An admin with this email already exists"
+        });
+      }
+
+      console.error("Register sub-admin error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to create sub-admin"
+      });
+    }
+  }
+);
+
+// PUT /api/admin/subadmins/:id
+router.put(
+  "/subadmins/:id",
+  adminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid sub-admin ID"
+        });
+      }
+
+      const subAdmin = await Admin.findOne({
+        _id: id,
+        role: "sub_admin"
+      }).select("+password");
+
+      if (!subAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: "Sub-admin not found"
+        });
+      }
+
+      const body = req.body || {};
+
+      if (body.name !== undefined) {
+        const name = String(body.name).trim();
+        if (!name) {
+          return res.status(400).json({
+            success: false,
+            message: "Name cannot be empty"
+          });
+        }
+        subAdmin.name = name;
+      }
+
+      if (body.email !== undefined) {
+        const email = String(body.email).trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return res.status(400).json({
+            success: false,
+            message: "Please provide a valid email address"
+          });
+        }
+
+        const duplicate = await Admin.findOne({
+          email,
+          _id: { $ne: subAdmin._id }
+        }).select("_id");
+
+        if (duplicate) {
+          return res.status(409).json({
+            success: false,
+            message: "An admin with this email already exists"
+          });
+        }
+        subAdmin.email = email;
+      }
+
+      if (body.password !== undefined && String(body.password) !== "") {
+        const password = String(body.password);
+        if (password.length < 8) {
+          return res.status(400).json({
+            success: false,
+            message: "Password must be at least 8 characters long"
+          });
+        }
+        subAdmin.password = password;
+      }
+
+      if (
+        body.courses !== undefined ||
+        body.selectedCourses !== undefined ||
+        body.permissions?.courses !== undefined
+      ) {
+        const normalized = normalizeAdminCourses(body);
+        if (normalized.error) {
+          return res.status(400).json({
+            success: false,
+            message: normalized.error
+          });
+        }
+        subAdmin.permissions = { courses: normalized.courses };
+      }
+
+      if (body.isActive !== undefined) {
+        if (typeof body.isActive === "boolean") {
+          subAdmin.isActive = body.isActive;
+        } else if (body.isActive === "true" || body.isActive === 1) {
+          subAdmin.isActive = true;
+        } else if (body.isActive === "false" || body.isActive === 0) {
+          subAdmin.isActive = false;
+        } else {
+          return res.status(400).json({
+            success: false,
+            message: "isActive must be true or false"
+          });
+        }
+      }
+
+      await subAdmin.save();
+
+      return res.json({
+        success: true,
+        message: "Sub-admin updated successfully",
+        subAdmin: publicSubAdmin(subAdmin)
+      });
+    } catch (error) {
+      if (error?.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: "An admin with this email already exists"
+        });
+      }
+
+      console.error("Update sub-admin error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update sub-admin"
+      });
+    }
+  }
+);
+
+// DELETE /api/admin/subadmins/:id
+router.delete(
+  "/subadmins/:id",
+  adminAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid sub-admin ID"
+        });
+      }
+
+      const subAdmin = await Admin.findOneAndDelete({
+        _id: id,
+        role: "sub_admin"
+      });
+
+      if (!subAdmin) {
+        return res.status(404).json({
+          success: false,
+          message: "Sub-admin not found"
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Sub-admin deleted successfully",
+        id: subAdmin._id
+      });
+    } catch (error) {
+      console.error("Delete sub-admin error:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to delete sub-admin"
+      });
+    }
+  }
+);
+
+
 /* =========================================================
    DASHBOARD STATS
 ========================================================= */
