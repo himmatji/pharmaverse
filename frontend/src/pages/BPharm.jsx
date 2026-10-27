@@ -1473,3 +1473,5 @@ const BPharm = () => {
 };
 
 export default BPharm;
+
+
