@@ -989,8 +989,64 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     "Pharm.D": { price: 129, discount: 0 },
     "PhD": { price: 199, discount: 0 }
   });
+  const [contentPrices, setContentPrices] = useState([]);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
+
+  const makeContentKey = (item) => {
+    const parts = [
+      item.course,
+      item.category,
+      item.semester,
+      item.year,
+      item.language,
+      item.specialization
+    ].filter(Boolean);
+    return parts.join("|").toLowerCase().replace(/\s+/g, "-");
+  };
+
+  const addContentPrice = () => {
+    const item = {
+      course: "B.Pharm",
+      category: "Notes",
+      semester: "1",
+      year: "",
+      language: "",
+      specialization: "",
+      contentKey: "",
+      accessType: "paid",
+      price: 99,
+      discount: 0,
+      isActive: true
+    };
+    item.contentKey = makeContentKey(item);
+    setContentPrices((current) => [...current, item]);
+  };
+
+  const updateContentPrice = (index, field, value) => {
+    setContentPrices((current) => current.map((item, itemIndex) => {
+      if (itemIndex !== index) return item;
+      const next = { ...item, [field]: value };
+      // Generate a stable default key from the identifying fields only when
+      // the current key is empty or was generated from the previous identity.
+      if (["course", "category", "semester", "year", "language", "specialization"].includes(field)) {
+        const previousGenerated = makeContentKey(item);
+        if (!item.contentKey || item.contentKey === previousGenerated) {
+          next.contentKey = makeContentKey(next);
+        }
+      }
+      if (field === "accessType" && value === "free") {
+        next.price = 0;
+        next.discount = 0;
+      }
+      return next;
+    }));
+  };
+
+  const removeContentPrice = (index) => {
+    if (!window.confirm("Is content pricing entry ko delete karna hai?")) return;
+    setContentPrices((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
 
   const [uploadForm, setUploadForm] = useState({
     branch: "B.Pharm",
@@ -1289,8 +1345,15 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             : response;
           setCoursePrices((current) => {
             const next = { ...current };
+            const aliases = {
+              "B.Pharm": receivedPrices["B.Pharm"] || receivedPrices.BPharm,
+              "D.Pharm": receivedPrices["D.Pharm"] || receivedPrices.DPharm,
+              "M.Pharm": receivedPrices["M.Pharm"] || receivedPrices.MPharm,
+              "Pharm.D": receivedPrices["Pharm.D"] || receivedPrices.PharmD,
+              "PhD": receivedPrices.PhD
+            };
             for (const course of Object.keys(current)) {
-              const incoming = receivedPrices[course];
+              const incoming = aliases[course] || receivedPrices[course];
               if (incoming && typeof incoming === "object") {
                 next[course] = {
                   price: toSafeNumber(incoming.price, current[course].price),
@@ -1300,6 +1363,19 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             }
             return next;
           });
+          setContentPrices(Array.isArray(response.contentPrices) ? response.contentPrices.map((item) => ({
+            course: item.course || "B.Pharm",
+            category: item.category || "Notes",
+            semester: item.semester == null ? "" : String(item.semester),
+            year: item.year == null ? "" : String(item.year),
+            language: item.language || "",
+            specialization: item.specialization || "",
+            contentKey: item.contentKey || "",
+            accessType: item.accessType === "free" ? "free" : "paid",
+            price: toSafeNumber(item.price, 0),
+            discount: toSafeNumber(item.discount, 0),
+            isActive: item.isActive !== false
+          })) : []);
         }
       } else {
         console.error("Course prices API error:", pricesRes.reason);
@@ -1341,7 +1417,35 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     try {
       const headers = getAuthHeaders();
       if (!headers) throw new Error("No token");
-      await axios.put(`${API_URL}/course-prices`, { prices: coursePrices }, headers);
+      const invalidContentPrice = contentPrices.find((item) =>
+        !item.course ||
+        !item.category?.trim() ||
+        !item.contentKey?.trim() ||
+        !["free", "paid"].includes(item.accessType) ||
+        !Number.isFinite(Number(item.price)) ||
+        Number(item.price) < 0 ||
+        !Number.isFinite(Number(item.discount)) ||
+        Number(item.discount) < 0 ||
+        Number(item.discount) > 100
+      );
+      if (invalidContentPrice) {
+        alert("Har content pricing entry mein valid course, category, contentKey, price aur 0-100 discount hona chahiye.");
+        return;
+      }
+
+      await axios.put(`${API_URL}/course-prices`, {
+        prices: coursePrices,
+        contentPrices: contentPrices.map((item) => ({
+          ...item,
+          semester: String(item.semester || ""),
+          year: String(item.year || ""),
+          language: String(item.language || ""),
+          specialization: String(item.specialization || ""),
+          price: item.accessType === "free" ? 0 : Number(item.price),
+          discount: item.accessType === "free" ? 0 : Number(item.discount),
+          isActive: item.isActive !== false
+        }))
+      }, headers);
       alert("✅ Course prices updated successfully!");
       setShowPriceModal(false);
       fetchAllData();
@@ -1818,47 +1922,47 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
-  const CoursePriceCard = () => (
-    <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-amber-100 rounded-xl">
-            <DollarSign size={24} className="text-amber-600" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-gray-800">Premium Course Prices</h3>
-            <p className="text-gray-500 text-sm">Set prices & discounts for each course</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setShowPriceModal(true)}
-          className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all duration-300 flex items-center gap-2 text-sm"
-        >
-          <Edit size={16} /> Manage Prices
-        </button>
-      </div>
+  // const CoursePriceCard = () => (
+  //   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+  //     <div className="flex items-center justify-between mb-6">
+  //       <div className="flex items-center gap-3">
+  //         <div className="p-3 bg-amber-100 rounded-xl">
+  //           <DollarSign size={24} className="text-amber-600" />
+  //         </div>
+  //         <div>
+  //           <h3 className="text-xl font-bold text-gray-800">Premium Course Prices</h3>
+  //           <p className="text-gray-500 text-sm">Set prices & discounts for each course</p>
+  //         </div>
+  //       </div>
+  //       <button
+  //         onClick={() => setShowPriceModal(true)}
+  //         className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all duration-300 flex items-center gap-2 text-sm"
+  //       >
+  //         <Edit size={16} /> Manage Prices
+  //       </button>
+  //     </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {Object.entries(coursePrices).map(([course, data]) => {
-          const discountInfo = getDiscountDisplay(data.price, data.discount);
-          return (
-            <div key={course} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200">
-              <p className="font-semibold text-gray-700 text-sm">{course}</p>
-              <p className="text-2xl font-bold text-gray-900">{discountInfo.display}</p>
-              {discountInfo.badge && (
-                <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                  {discountInfo.badge}
-                </span>
-              )}
-              {!discountInfo.badge && (
-                <span className="inline-block mt-1 text-xs text-gray-400">No Discount</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  //     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+  //       {Object.entries(coursePrices).map(([course, data]) => {
+  //         const discountInfo = getDiscountDisplay(data.price, data.discount);
+  //         return (
+  //           <div key={course} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200">
+  //             <p className="font-semibold text-gray-700 text-sm">{course}</p>
+  //             <p className="text-2xl font-bold text-gray-900">{discountInfo.display}</p>
+  //             {discountInfo.badge && (
+  //               <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+  //                 {discountInfo.badge}
+  //               </span>
+  //             )}
+  //             {!discountInfo.badge && (
+  //               <span className="inline-block mt-1 text-xs text-gray-400">No Discount</span>
+  //             )}
+  //           </div>
+  //         );
+  //       })}
+  //     </div>
+  //   </div>
+  // );
 
   // ============================================================
   // ✅ FINAL renderUploadTab
@@ -2450,10 +2554,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
               <StatCard title="Predictive Papers" value={stats.totalPapers} icon={BookOpen} color="from-green-500 to-green-700" />
               <StatCard title="Active Users" value={stats.totalUsers} icon={Users} color="from-orange-500 to-orange-700" />
             </div>
-
+{/* 
             <div className="mb-8">
               <CoursePriceCard />
-            </div>
+            </div> */}
 
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
               <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
@@ -2694,6 +2798,125 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   </div>
                 </div>
               ))}
+
+              <div className="border-t pt-6">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                  <div>
+                    <h4 className="text-lg font-bold text-gray-900">Content-wise Pricing</h4>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Har category/semester/year/language ke liye alag Free ya Paid rule set karein.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addContentPrice}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                  >
+                    <Plus size={16} /> Add Content Price
+                  </button>
+                </div>
+
+                {contentPrices.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
+                    Abhi content-wise pricing entry nahi hai. Add Content Price dabakar shuru karein.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {contentPrices.map((item, index) => (
+                      <div key={`${item.contentKey || "content"}-${index}`} className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <h5 className="font-bold text-gray-800">Content rule #{index + 1}</h5>
+                          <button
+                            type="button"
+                            onClick={() => removeContentPrice(index)}
+                            className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100"
+                          >
+                            <Trash2 size={14} /> Remove
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Course</label>
+                            <select value={item.course} onChange={(e) => updateContentPrice(index, "course", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              {Object.keys(COURSE_CONFIG).map((course) => <option key={course} value={course}>{course}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
+                            <select value={item.category} onChange={(e) => updateContentPrice(index, "category", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              <option value="Notes">Notes</option>
+                              <option value="Exam Crash Course">Exam Crash Course</option>
+                              <option value="PYQs">PYQs</option>
+                              <option value="Practical">Practical</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Semester (B.Pharm/M.Pharm/PhD)</label>
+                            <input value={item.semester} onChange={(e) => updateContentPrice(index, "semester", e.target.value)} placeholder="e.g. 1 (leave blank if not applicable)" className="w-full rounded-xl border bg-white px-3 py-2.5" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Year (D.Pharm/Pharm.D)</label>
+                            <select value={item.year} onChange={(e) => updateContentPrice(index, "year", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              <option value="">Not applicable</option>
+                              <option value="1st Year">1st Year</option>
+                              <option value="2nd Year">2nd Year</option>
+                              <option value="3rd Year">3rd Year</option>
+                              <option value="4th Year">4th Year</option>
+                              <option value="5th Year">5th Year</option>
+                              <option value="6th Year">6th Year</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Language (D.Pharm)</label>
+                            <select value={item.language} onChange={(e) => updateContentPrice(index, "language", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              <option value="">Not applicable</option>
+                              <option value="Hindi">Hindi</option>
+                              <option value="English">English</option>
+                              <option value="Both">Both</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">M.Pharm Specialization</label>
+                            <select value={item.specialization} onChange={(e) => updateContentPrice(index, "specialization", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              <option value="">Not applicable</option>
+                              {MPHARM_BRANCHES.map((branch) => <option key={branch.value} value={branch.value}>{branch.label}</option>)}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Access Type</label>
+                            <select value={item.accessType} onChange={(e) => updateContentPrice(index, "accessType", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
+                              <option value="paid">Paid</option>
+                              <option value="free">Free</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹)</label>
+                            <input type="number" min="0" step="0.01" disabled={item.accessType === "free"} value={item.accessType === "free" ? 0 : item.price} onChange={(e) => updateContentPrice(index, "price", e.target.value === "" ? 0 : Number(e.target.value))} className="w-full rounded-xl border bg-white px-3 py-2.5 disabled:bg-gray-100" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Discount (%)</label>
+                            <input type="number" min="0" max="100" step="0.1" disabled={item.accessType === "free"} value={item.accessType === "free" ? 0 : item.discount} onChange={(e) => updateContentPrice(index, "discount", e.target.value === "" ? 0 : Math.min(100, Math.max(0, Number(e.target.value))))} className="w-full rounded-xl border bg-white px-3 py-2.5 disabled:bg-gray-100" />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">Content Key (frontend must send this exact value)</label>
+                            <input value={item.contentKey} onChange={(e) => updateContentPrice(index, "contentKey", e.target.value)} placeholder="Unique key, e.g. bpharm-notes-sem1" className="w-full rounded-xl border bg-white px-3 py-2.5" />
+                            <p className="text-xs text-gray-500 mt-1">Same key must be sent by the student page and payment API. Keep each pricing rule unique.</p>
+                          </div>
+                          <label className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" checked={item.isActive !== false} onChange={(e) => updateContentPrice(index, "isActive", e.target.checked)} />
+                            Pricing rule active
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="flex flex-wrap gap-3 pt-4 border-t">
                 <button

@@ -34,8 +34,10 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 1024);
     };
+
     checkMobile();
     window.addEventListener("resize", checkMobile);
+
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
@@ -45,12 +47,19 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     const handleClickOutside = (e) => {
       const sidebar = document.getElementById("mobile-sidebar");
       const toggleBtn = document.getElementById("mobile-toggle-btn");
-      if (sidebar && !sidebar.contains(e.target) && toggleBtn && !toggleBtn.contains(e.target)) {
+
+      if (
+        sidebar &&
+        !sidebar.contains(e.target) &&
+        toggleBtn &&
+        !toggleBtn.contains(e.target)
+      ) {
         setIsMobileOpen(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMobileOpen]);
 
@@ -58,25 +67,84 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     if (isMobile && isMobileOpen) {
       setIsMobileOpen(false);
     }
-  }, [activeTab]);
+  }, [activeTab, isMobile, isMobileOpen]);
 
   const branches = [
-    { id: "bpharm", label: "B.Pharm", icon: <GraduationCap size={18} />, color: "from-blue-500 to-cyan-500" },
-    { id: "dpharm", label: "D.Pharm", icon: <Pill size={18} />, color: "from-emerald-500 to-teal-500" },
-    { id: "mpharm", label: "M.Pharm", icon: <Microscope size={18} />, color: "from-purple-500 to-indigo-500" },
-    { id: "phd", label: "PhD", icon: <FlaskRound size={18} />, color: "from-rose-500 to-pink-500" },
-    { id: "pharmd", label: "Pharm.D", icon: <HeartPulse size={18} />, color: "from-orange-500 to-amber-500" },
+    {
+      id: "bpharm",
+      label: "B.Pharm",
+      icon: <GraduationCap size={18} />,
+      color: "from-blue-500 to-cyan-500",
+    },
+    {
+      id: "dpharm",
+      label: "D.Pharm",
+      icon: <Pill size={18} />,
+      color: "from-emerald-500 to-teal-500",
+    },
+    {
+      id: "mpharm",
+      label: "M.Pharm",
+      icon: <Microscope size={18} />,
+      color: "from-purple-500 to-indigo-500",
+    },
+    {
+      id: "phd",
+      label: "PhD",
+      icon: <FlaskRound size={18} />,
+      color: "from-rose-500 to-pink-500",
+    },
+    {
+      id: "pharmd",
+      label: "Pharm.D",
+      icon: <HeartPulse size={18} />,
+      color: "from-orange-500 to-amber-500",
+    },
   ];
 
   // ========== MENU ITEMS ==========
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={22} /> },
-    { id: "branch", label: "Branch", icon: <GitBranch size={22} />, isDropdown: true },
-    { id: "interview-material", label: "Interview Material", icon: <Briefcase size={22} /> },
-    { id: "users", label: "Users", icon: <Users size={22} /> },
-    { id: "profile", label: "Profile", icon: <User size={22} /> },
-    { id: "notice", label: "Notice", icon: <Bell size={22} /> },
-    { id: "doubts", label: "Doubt Section", icon: <MessageSquare size={22} /> },
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: <LayoutDashboard size={22} />,
+    },
+    {
+      id: "branch",
+      label: "Branch",
+      icon: <GitBranch size={22} />,
+      isDropdown: true,
+    },
+    {
+      id: "interview-material",
+      label: "Interview Material",
+      icon: <Briefcase size={22} />,
+    },
+    {
+      id: "users",
+      label: "Users",
+      icon: <Users size={22} />,
+    },
+    {
+      id: "profile",
+      label: "Profile",
+      icon: <User size={22} />,
+    },
+    {
+      id: "notice",
+      label: "Notice",
+      icon: <Bell size={22} />,
+    },
+    {
+      id: "doubts",
+      label: "Doubt Section",
+      icon: <MessageSquare size={22} />,
+    },
+    {
+      id: "manage-price",
+      label: "Manage Price",
+      icon: <CreditCard size={22} />,
+    },
   ];
 
   const handleLogout = () => {
@@ -84,6 +152,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
     localStorage.removeItem("admin");
     sessionStorage.removeItem("adminToken");
     sessionStorage.removeItem("admin");
+
     if (onLogout) {
       onLogout();
     } else {
@@ -92,11 +161,11 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
   };
 
   const toggleSidebar = () => {
-    setIsMobileOpen(!isMobileOpen);
+    setIsMobileOpen((prev) => !prev);
   };
 
   const toggleBranch = () => {
-    setIsBranchOpen(!isBranchOpen);
+    setIsBranchOpen((prev) => !prev);
   };
 
   const handleBranchClick = (branchId) => {
@@ -124,9 +193,11 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
                     duration-300
                     text-left
                     rounded-xl
-                    ${activeTab === item.id || activeTab?.startsWith("branch-")
-                      ? "bg-sky-600 text-white shadow-md"
-                      : "text-sky-900 hover:bg-white hover:text-sky-700"
+                    ${
+                      activeTab === item.id ||
+                      activeTab?.startsWith("branch-")
+                        ? "bg-sky-600 text-white shadow-md"
+                        : "text-sky-900 hover:bg-white hover:text-sky-700"
                     }
                   `}
                 >
@@ -134,13 +205,20 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
                     {item.icon}
                     <span>{item.label}</span>
                   </div>
-                  {isBranchOpen ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+
+                  {isBranchOpen ? (
+                    <ChevronDown size={18} />
+                  ) : (
+                    <ChevronRight size={18} />
+                  )}
                 </button>
 
                 {isBranchOpen && (
                   <div className="ml-6 mt-1 space-y-1 border-l-2 border-sky-300 pl-3">
                     {branches.map((branch) => {
-                      const isActive = activeTab === `branch-${branch.id}`;
+                      const isActive =
+                        activeTab === `branch-${branch.id}`;
+
                       return (
                         <button
                           key={branch.id}
@@ -155,16 +233,23 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
                             duration-300
                             text-left
                             rounded-lg
-                            ${isActive
-                              ? `bg-gradient-to-r ${branch.color} text-white shadow-md`
-                              : "text-sky-800 hover:bg-white hover:text-sky-700"
+                            ${
+                              isActive
+                                ? `bg-gradient-to-r ${branch.color} text-white shadow-md`
+                                : "text-sky-800 hover:bg-white hover:text-sky-700"
                             }
                           `}
                         >
-                          <span className={isActive ? "text-white" : "text-sky-500"}>
+                          <span
+                            className={
+                              isActive ? "text-white" : "text-sky-500"
+                            }
+                          >
                             {branch.icon}
                           </span>
+
                           <span>{branch.label}</span>
+
                           {isActive && (
                             <span className="ml-auto text-[10px] bg-white/20 px-2 py-0.5 rounded-full text-white">
                               Active
@@ -193,9 +278,10 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
                 duration-300
                 text-left
                 rounded-xl
-                ${activeTab === item.id
-                  ? "bg-sky-600 text-white shadow-md"
-                  : "text-sky-900 hover:bg-white hover:text-sky-700"
+                ${
+                  activeTab === item.id
+                    ? "bg-sky-600 text-white shadow-md"
+                    : "text-sky-900 hover:bg-white hover:text-sky-700"
                 }
               `}
             >
@@ -243,6 +329,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
         id="mobile-toggle-btn"
         onClick={toggleSidebar}
         className="lg:hidden fixed top-20 left-4 z-50 p-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-sky-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        aria-label={isMobileOpen ? "Close sidebar" : "Open sidebar"}
+        aria-expanded={isMobileOpen}
       >
         {isMobileOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
@@ -250,13 +338,17 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
       <div
         className={`
           lg:hidden fixed inset-0 z-40 transition-all duration-300
-          ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
+          ${
+            isMobileOpen
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none"
+          }
         `}
       >
         <div
           className="absolute inset-0 bg-black/50 backdrop-blur-sm"
           onClick={() => setIsMobileOpen(false)}
-        ></div>
+        />
 
         <div
           id="mobile-sidebar"
@@ -264,14 +356,21 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
             absolute top-0 left-0 h-full w-[280px] bg-gradient-to-b from-sky-50 to-sky-100 shadow-2xl
             transition-transform duration-300 ease-out
             px-4 py-6
-            ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+            ${
+              isMobileOpen
+                ? "translate-x-0"
+                : "-translate-x-full"
+            }
           `}
         >
           <div className="flex flex-col h-full">
             <div className="mb-6 pb-4 border-b border-sky-200">
-              <h1 className="text-xl font-bold text-sky-800">⚕️ PharmaVerse</h1>
+              <h1 className="text-xl font-bold text-sky-800">
+                ⚕️ PharmaVerse
+              </h1>
               <p className="text-xs text-sky-600">Admin Panel</p>
             </div>
+
             <SidebarContent />
           </div>
         </div>
@@ -279,7 +378,7 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
 
       <div
         className="
-          hidden lg:block
+          hidden lg:flex
           fixed
           left-0
           top-16
@@ -292,8 +391,8 @@ const AdminSidebar = ({ activeTab, setActiveTab, onLogout }) => {
           z-40
           border-r
           border-sky-200
-          flex
           flex-col
+          overflow-y-auto
         "
       >
         <SidebarContent />

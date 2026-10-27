@@ -3792,9 +3792,18 @@ const COURSE_PRICE_ALIASES = {
   BPharm: ["BPharm", "B.Pharm"],
   DPharm: ["DPharm", "D.Pharm"],
   MPharm: ["MPharm", "M.Pharm"],
-  PharmD: ["PharmD", "Pharm.D"],
+  PharmD: ["PharmD", "Pharm.D", "PharmaD"],
   PhD: ["PhD"]
 };
+
+const VALID_CONTENT_COURSES = new Set([
+  "B.Pharm",
+  "D.Pharm",
+  "M.Pharm",
+  "Pharm.D",
+  "PharmaD",
+  "PhD"
+]);
 
 const normalizeCoursePrices = (source = {}) => {
   const result = {};
@@ -3806,6 +3815,7 @@ const normalizeCoursePrices = (source = {}) => {
         break;
       }
     }
+
     if (value && typeof value === "object") {
       const price = Number(value.price);
       const discount = Number(value.discount ?? 0);
@@ -3824,14 +3834,126 @@ const normalizeCoursePrices = (source = {}) => {
   return result;
 };
 
+const normalizeContentPrice = (raw, index) => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { error: `Content price at position ${index + 1} must be an object` };
+  }
+
+  const course = String(raw.course || "").trim();
+  const category = String(raw.category || "").trim();
+  const semester = String(raw.semester ?? "").trim();
+  const year = String(raw.year ?? "").trim();
+  const language = String(raw.language || "").trim();
+  const specialization = String(raw.specialization || raw.mpharmBranch || "").trim();
+  const contentKey = String(raw.contentKey || "").trim();
+  const accessType = String(raw.accessType || "paid").trim().toLowerCase();
+  const price = Number(raw.price ?? 0);
+  const discount = Number(raw.discount ?? 0);
+  const isActive = raw.isActive === undefined
+    ? true
+    : ![false, 0, "false", "0"].includes(raw.isActive);
+
+  if (!VALID_CONTENT_COURSES.has(course)) {
+    return { error: `Invalid course in content price at position ${index + 1}` };
+  }
+  if (!category) {
+    return { error: `Category is required in content price at position ${index + 1}` };
+  }
+  if (!contentKey) {
+    return { error: `contentKey is required in content price at position ${index + 1}` };
+  }
+  if (!["free", "paid"].includes(accessType)) {
+    return { error: `accessType must be "free" or "paid" at position ${index + 1}` };
+  }
+  if (!Number.isFinite(price) || price < 0) {
+    return { error: `Price must be a non-negative number at position ${index + 1}` };
+  }
+  if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
+    return { error: `Discount must be between 0 and 100 at position ${index + 1}` };
+  }
+
+  if (course === "D.Pharm" && category.toLowerCase() === "notes") {
+    if (!["Hindi", "English", "Both"].includes(language)) {
+      return { error: `D.Pharm Notes require language Hindi, English, or Both (position ${index + 1})` };
+    }
+    if (year && !["1st Year", "2nd Year", "Year 1", "Year 2", "1", "2"].includes(year)) {
+      return { error: `Invalid D.Pharm year at position ${index + 1}` };
+    }
+  }
+
+  return {
+    value: {
+      course,
+      category,
+      semester,
+      year,
+      language,
+      specialization,
+      contentKey,
+      accessType,
+      price: accessType === "free" ? 0 : price,
+      discount: accessType === "free" ? 0 : discount,
+      isActive
+    }
+  };
+};
+
+const normalizeContentPrices = (input) => {
+  if (!Array.isArray(input)) {
+    return { error: "contentPrices must be an array" };
+  }
+
+  const result = [];
+  const seenKeys = new Set();
+
+  for (let i = 0; i < input.length; i += 1) {
+    const normalized = normalizeContentPrice(input[i], i);
+    if (normalized.error) return normalized;
+
+    const item = normalized.value;
+    const identity = [
+      item.course,
+      item.category.toLowerCase(),
+      item.semester.toLowerCase(),
+      item.year.toLowerCase(),
+      item.language.toLowerCase(),
+      item.specialization.toLowerCase(),
+      item.contentKey.toLowerCase()
+    ].join("|");
+
+    if (seenKeys.has(identity)) {
+      return { error: `Duplicate content pricing entry at position ${i + 1}` };
+    }
+    seenKeys.add(identity);
+    result.push(item);
+  }
+
+  return { value: result };
+};
+
+const adminCanManageContentPrice = (admin, contentPrice) => {
+  if (!admin || admin.role === "super_admin") return true;
+  const allowedCourses = admin.permissions?.courses || [];
+  return allowedCourses.includes(contentPrice.course);
+};
+
 router.get("/course-prices", adminAuth, async (req, res) => {
   try {
-    let record = await CoursePrice.findOne().lean();
+    const record = await CoursePrice.findOne().lean();
     const stored = record?.prices;
     const storedObject = stored instanceof Map
       ? Object.fromEntries(stored)
       : (stored || {});
     const normalized = normalizeCoursePrices(storedObject);
+
+    let contentPrices = Array.isArray(record?.contentPrices)
+      ? record.contentPrices
+      : [];
+
+    if (req.admin?.role !== "super_admin") {
+      const allowedCourses = req.admin?.permissions?.courses || [];
+      contentPrices = contentPrices.filter((item) => allowedCourses.includes(item.course));
+    }
 
     return res.json({
       success: true,
@@ -3843,7 +3965,8 @@ router.get("/course-prices", adminAuth, async (req, res) => {
         "M.Pharm": normalized.MPharm,
         "Pharm.D": normalized.PharmD,
         PhD: normalized.PhD
-      }
+      },
+      contentPrices
     });
   } catch (error) {
     console.error("Admin course prices GET error:", error);
@@ -3856,28 +3979,98 @@ router.get("/course-prices", adminAuth, async (req, res) => {
 
 router.put("/course-prices", adminAuth, async (req, res) => {
   try {
-    const input = req.body?.prices || req.body?.coursePrices || req.body;
-    const normalized = normalizeCoursePrices(input);
+    const body = req.body || {};
+    const legacyInput = body.prices || body.coursePrices || body;
+    const legacyKeys = Object.keys(COURSE_PRICE_ALIASES).flatMap(
+      (key) => COURSE_PRICE_ALIASES[key]
+    );
+    const hasLegacyInput = Boolean(body.prices || body.coursePrices) ||
+      legacyKeys.some((key) => Object.prototype.hasOwnProperty.call(body, key));
+    const normalized = hasLegacyInput ? normalizeCoursePrices(legacyInput) : null;
 
     let record = await CoursePrice.findOne();
     if (!record) record = new CoursePrice();
 
-    // Mongoose Map schema uses the internal keys below.
-    if (record.prices && typeof record.prices.set === "function") {
-      for (const [key, value] of Object.entries(normalized)) {
-        record.prices.set(key, value);
+    // Preserve legacy course-wide prices when the request only updates the
+    // new scoped contentPrices array.
+    if (normalized) {
+      if (record.prices && typeof record.prices.set === "function") {
+        for (const [key, value] of Object.entries(normalized)) {
+          record.prices.set(key, value);
+        }
+      } else {
+        record.prices = normalized;
       }
-    } else {
-      record.prices = normalized;
+    }
+    const responsePrices = normalized || normalizeCoursePrices(
+      record.prices instanceof Map
+        ? Object.fromEntries(record.prices)
+        : (record.prices || {})
+    );
+
+    // New scoped prices are optional in legacy updates. If supplied, validate
+    // the entire array before saving so a malformed request cannot partially
+    // replace existing prices.
+    if (Object.prototype.hasOwnProperty.call(body, "contentPrices")) {
+      const normalizedContent = normalizeContentPrices(body.contentPrices);
+      if (normalizedContent.error) {
+        return res.status(400).json({
+          success: false,
+          message: normalizedContent.error
+        });
+      }
+
+      const disallowed = normalizedContent.value.find(
+        (item) => !adminCanManageContentPrice(req.admin, item)
+      );
+
+      if (disallowed) {
+        return res.status(403).json({
+          success: false,
+          message: `No permission to manage prices for ${disallowed.course}`
+        });
+      }
+
+      // A sub-admin can edit only permitted courses. Merge their submitted
+      // items with the existing entries for courses outside their permission.
+      if (req.admin?.role !== "super_admin") {
+        const allowedCourses = req.admin?.permissions?.courses || [];
+        const existing = Array.isArray(record.contentPrices)
+          ? record.contentPrices.map((entry) => (
+              typeof entry.toObject === "function" ? entry.toObject() : entry
+            ))
+          : [];
+        record.contentPrices = [
+          ...existing.filter((item) => !allowedCourses.includes(item.course)),
+          ...normalizedContent.value
+        ];
+      } else {
+        record.contentPrices = normalizedContent.value;
+      }
+    }
+
+    if (req.admin?.id && mongoose.Types.ObjectId.isValid(String(req.admin.id))) {
+      record.updatedBy = req.admin.id;
     }
 
     await record.save();
 
+    const savedContentPrices = Array.isArray(record.contentPrices)
+      ? record.contentPrices.map((entry) => (
+          typeof entry.toObject === "function" ? entry.toObject() : entry
+        ))
+      : [];
+
     return res.json({
       success: true,
       message: "Course prices updated successfully",
-      prices: normalized,
-      data: normalized
+      prices: responsePrices,
+      data: responsePrices,
+      contentPrices: req.admin?.role === "super_admin"
+        ? savedContentPrices
+        : savedContentPrices.filter((item) =>
+            (req.admin?.permissions?.courses || []).includes(item.course)
+          )
     });
   } catch (error) {
     console.error("Admin course prices PUT error:", error);
