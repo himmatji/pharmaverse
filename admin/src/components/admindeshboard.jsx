@@ -1,3 +1,49 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { useState, useEffect } from "react";
 import axios from "axios";
 import AdminSidebar from "./AdminSidebar";
@@ -1005,6 +1051,48 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [contentPrices, setContentPrices] = useState([]);
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
+  const [expandedPriceCourse, setExpandedPriceCourse] = useState("");
+  const [expandedPriceCategory, setExpandedPriceCategory] = useState("");
+  const [selectedMPharmSpecialization, setSelectedMPharmSpecialization] = useState("Pharmaceutics");
+
+  const findPricingRule = (identity) => contentPrices.findIndex((item) =>
+    item.course === identity.course &&
+    item.category === identity.category &&
+    String(item.semester || "") === String(identity.semester || "") &&
+    String(item.year || "") === String(identity.year || "") &&
+    String(item.language || "").toLowerCase() === String(identity.language || "").toLowerCase() &&
+    String(item.specialization || "") === String(identity.specialization || "")
+  );
+
+  const updatePricingIdentity = (identity, field, value) => {
+    setContentPrices((current) => {
+      const index = current.findIndex((item) =>
+        item.course === identity.course && item.category === identity.category &&
+        String(item.semester || "") === String(identity.semester || "") &&
+        String(item.year || "") === String(identity.year || "") &&
+        String(item.language || "").toLowerCase() === String(identity.language || "").toLowerCase() &&
+        String(item.specialization || "") === String(identity.specialization || "")
+      );
+      if (index >= 0) {
+        return current.map((item, i) => {
+          if (i !== index) return item;
+          const next = { ...item, [field]: value };
+          if (field === "accessType" && value === "free") { next.price = 0; next.discount = 0; }
+          return next;
+        });
+      }
+      const item = {
+        course: identity.course, category: identity.category,
+        semester: String(identity.semester || ""), year: String(identity.year || ""),
+        language: identity.language || "", specialization: identity.specialization || "",
+        accessType: "paid", price: 99, discount: 0, isActive: true, contentKey: ""
+      };
+      item.contentKey = makeContentKey(item);
+      item[field] = value;
+      if (field === "accessType" && value === "free") { item.price = 0; item.discount = 0; }
+      return [...current, item];
+    });
+  };
 
   // Open the pricing interface when the Manage Price sidebar tab is selected.
   useEffect(() => {
@@ -1443,6 +1531,10 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         !item.course ||
         !item.category?.trim() ||
         !item.contentKey?.trim() ||
+        (COURSE_CONFIG[item.course]?.type === "semester" && !String(item.semester || "").trim()) ||
+        (COURSE_CONFIG[item.course]?.type === "year" && !String(item.year || "").trim()) ||
+        (item.course === "D.Pharm" && !["Hindi", "English"].includes(item.language)) ||
+        (item.course === "M.Pharm" && !String(item.specialization || "").trim()) ||
         !["free", "paid"].includes(item.accessType) ||
         !Number.isFinite(Number(item.price)) ||
         Number(item.price) < 0 ||
@@ -2706,445 +2798,87 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             {/* ── Scrollable Body ── */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-8">
 
-              {/* ───── COURSE PRICES SECTION ───── */}
-              <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
-                    <GraduationCap size={16} />
-                  </div>
-                  <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-slate-700">
-                    Course Prices
-                  </h4>
-                  <span className="ml-auto text-[11px] font-['Inter'] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                    {Object.keys(coursePrices).length} courses
-                  </span>
+              {/* Hierarchical course -> category -> semester/year pricing */}
+              <section className="space-y-3">
+                <div className="mb-4">
+                  <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-slate-700">Choose Course</h4>
+                  <p className="text-xs text-slate-500 mt-1">Course par click karein, phir category, phir semester/year ki price set karein.</p>
                 </div>
-
-                <div className="grid gap-3">
-                  {Object.entries(coursePrices).map(([course, data]) => {
-                    const safePrice = toSafeNumber(data?.price);
-                    const safeDiscount = Math.min(100, Math.max(0, toSafeNumber(data?.discount)));
-                    const discounted = getDiscountedPrice(safePrice, safeDiscount);
-                    const hasDiscount = safeDiscount > 0;
-
-                    return (
-                      <div
-                        key={course}
-                        className="group relative bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 hover:border-amber-300/80 hover:shadow-[0_8px_30px_-12px_rgba(245,158,11,0.25)] transition-all duration-300"
-                      >
-                        <div className="absolute left-0 top-4 bottom-4 w-1 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <h5 className="font-['Space_Grotesk'] font-bold text-slate-900 text-base">
-                                {course}
-                              </h5>
-                              {hasDiscount && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                  <BadgePercent size={10} />
-                                  {safeDiscount}% OFF
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-baseline gap-2 mt-1">
-                              {hasDiscount ? (
-                                <>
-                                  <span className="text-lg font-bold text-slate-900 font-['Space_Grotesk']">
-                                    {formatPrice(discounted)}
-                                  </span>
-                                  <span className="text-xs text-slate-400 line-through font-['Inter']">
-                                    {formatPrice(safePrice)}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-lg font-bold text-slate-900 font-['Space_Grotesk']">
-                                  {formatPrice(safePrice)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2.5 sm:w-[280px] shrink-0">
-                            <div>
-                              <label className="flex items-center gap-1 text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                <IndianRupee size={10} /> Price
-                              </label>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={data.price}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                                    const newPrice = value === '' ? 0 : parseFloat(value);
-                                    setCoursePrices({
-                                      ...coursePrices,
-                                      [course]: { ...data, price: isNaN(newPrice) ? 0 : newPrice }
-                                    });
-                                  }
-                                }}
-                                placeholder="0.00"
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100 transition-all"
-                              />
-                            </div>
-                            <div>
-                              <label className="flex items-center gap-1 text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                <Percent size={10} /> Discount
-                              </label>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={data.discount}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                                    // store as STRING so "5." aur "5.5" dono type ho sakein
-                                    setCoursePrices({
-                                      ...coursePrices,
-                                      [course]: { ...data, discount: value === '' ? '' : value }
-                                    });
-                                  }
-                                }}
-                                onBlur={(e) => {
-                                  // on blur, clamp between 0-100 aur valid number banao
-                                  const raw = e.target.value;
-                                  const num = parseFloat(raw);
-                                  const clamped = isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
-                                  setCoursePrices({
-                                    ...coursePrices,
-                                    [course]: { ...data, discount: clamped }
+                {Object.keys(COURSE_CONFIG).map((course) => {
+                  const courseOpen = expandedPriceCourse === course;
+                  const categoriesForCourse = ["Notes", "Exam Crash Course", "PYQs"];
+                  const config = COURSE_CONFIG[course];
+                  return (
+                    <div key={course} className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                      <button type="button" onClick={() => { setExpandedPriceCourse(courseOpen ? "" : course); setExpandedPriceCategory(""); }} className={`w-full flex items-center justify-between p-4 text-left font-bold ${courseOpen ? "bg-amber-50 text-amber-900" : "text-slate-800 hover:bg-slate-50"}`}>
+                        <span className="flex items-center gap-3"><GraduationCap size={19} />{course}</span>
+                        {courseOpen ? <ChevronDown size={18} /> : <ArrowRight size={18} />}
+                      </button>
+                      {courseOpen && <div className="p-3 sm:p-4 space-y-2 border-t border-slate-100">
+                        {categoriesForCourse.map((category) => {
+                          const categoryKey = `${course}::${category}`;
+                          const categoryOpen = expandedPriceCategory === categoryKey;
+                          return <div key={category} className="rounded-xl border border-slate-200 overflow-hidden">
+                            <button type="button" onClick={() => setExpandedPriceCategory(categoryOpen ? "" : categoryKey)} className={`w-full flex items-center justify-between p-3 text-left font-semibold text-sm ${categoryOpen ? "bg-violet-50 text-violet-800" : "bg-white text-slate-700 hover:bg-slate-50"}`}>
+                              <span className="flex items-center gap-2"><BookOpen size={16}/>{category}</span>
+                              {categoryOpen ? <ChevronDown size={16}/> : <ArrowRight size={16}/>}
+                            </button>
+                            {categoryOpen && <div className="p-3 space-y-3 bg-slate-50/60 border-t border-slate-100">
+                              {course === "M.Pharm" && <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Specialization</label>
+                                <select value={selectedMPharmSpecialization} onChange={(e) => setSelectedMPharmSpecialization(e.target.value)} className="w-full sm:max-w-sm px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm">
+                                  {MPHARM_BRANCHES.map((branch) => <option key={branch.value} value={branch.value}>{branch.label}</option>)}
+                                </select>
+                              </div>}
+                              <div className="space-y-3">
+                                {config.options.map((option) => {
+                                  const isSemester = config.type === "semester";
+                                  const base = { course, category, semester: isSemester ? option.value : "", year: isSemester ? "" : option.value, language: "", specialization: course === "M.Pharm" ? selectedMPharmSpecialization : "" };
+                                  const languages = course === "D.Pharm" ? [{value:"Hindi", label:"Hindi"},{value:"English",label:"English"}] : [{value:"",label:""}];
+                                  return languages.map((lang) => {
+                                    const identity = { ...base, language: lang.value };
+                                    const ruleIndex = findPricingRule(identity);
+                                    const rule = ruleIndex >= 0 ? contentPrices[ruleIndex] : null;
+                                    const isFree = rule?.accessType === "free";
+                                    const itemLabel = option.label + (lang.label ? ` · ${lang.label}` : "");
+                                    return <div key={`${option.value}-${lang.value || "all"}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
+                                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <div className="sm:w-40 shrink-0">
+                                          <div className="font-bold text-sm text-slate-800">{itemLabel}</div>
+                                          <div className={`text-[11px] mt-1 font-semibold ${!rule ? "text-slate-400" : isFree ? "text-emerald-600" : "text-violet-600"}`}>{!rule ? "Not configured" : isFree ? "FREE" : `PAID · ₹${Number(rule.price || 0).toFixed(2)}`}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
+                                          <div className="col-span-2 sm:col-span-1">
+                                            <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Access</label>
+                                            <select value={rule?.accessType || "paid"} onChange={(e) => updatePricingIdentity(identity, "accessType", e.target.value)} className="w-full px-2 py-2 rounded-lg border border-slate-200 bg-white text-sm">
+                                              <option value="paid">Paid</option><option value="free">Free</option>
+                                            </select>
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Price ₹</label>
+                                            <input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" disabled={isFree} value={isFree ? "0" : (rule?.price ?? 99)} onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) updatePricingIdentity(identity, "price", value === "" || value === "." ? value : value); }} className="w-full min-w-0 px-2 py-2 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
+                                          </div>
+                                          <div>
+                                            <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Discount %</label>
+                                            <input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" disabled={isFree} value={isFree ? "0" : (rule?.discount ?? 0)} onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) updatePricingIdentity(identity, "discount", value); }} className="w-full min-w-0 px-2 py-2 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
+                                          </div>
+                                          <div className="flex items-end">
+                                            <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-2"><input type="checkbox" checked={rule?.isActive !== false} onChange={(e) => updatePricingIdentity(identity, "isActive", e.target.checked)} /> Active</label>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>;
                                   });
-                                }}
-                                placeholder="0"
-                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100 transition-all"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-
-              {/* ───── CONTENT-WISE PRICING SECTION ───── */}
-              <section>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-violet-50 text-violet-600">
-                      <Boxes size={16} />
+                                })}
+                              </div>
+                            </div>}
+                          </div>;
+                        })}
+                      </div>}
                     </div>
-                    <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-slate-700">
-                      Content-wise Pricing
-                    </h4>
-                    <span className="text-[11px] font-['Inter'] font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
-                      {contentPrices.length} rules
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={addContentPrice}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-xs font-['Inter'] font-bold shadow-md shadow-violet-200/50 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-                  >
-                    <Plus size={14} /> Add Rule
-                  </button>
-                </div>
-
-                <div className="flex items-start gap-2.5 p-3 mb-4 rounded-xl bg-sky-50/70 border border-sky-100">
-                  <Info size={14} className="text-sky-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] sm:text-xs text-sky-800 font-['Inter'] leading-relaxed">
-                    Har category, semester, year, ya language ke liye alag <b>Free</b> ya <b>Paid</b> rule set karein. Student page aur payment API ko yahi <b>contentKey</b> bhejna hoga.
-                  </p>
-                </div>
-
-                {contentPrices.length === 0 ? (
-                  <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
-                      <Package size={22} />
-                    </div>
-                    <p className="text-sm font-['Inter'] font-semibold text-slate-600">
-                      Koi content-wise pricing rule nahi hai
-                    </p>
-                    <p className="text-xs text-slate-400 font-['Inter'] mt-1">
-                      "Add Rule" dabakar apna pehla rule banaayein
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {contentPrices.map((item, index) => {
-                      const isFree = item.accessType === "free";
-                      return (
-                        <div
-                          key={`${item.contentKey || "content"}-${index}`}
-                          className="relative bg-white rounded-2xl border border-slate-200/80 overflow-hidden hover:border-violet-300/70 hover:shadow-[0_8px_30px_-12px_rgba(139,92,246,0.25)] transition-all duration-300"
-                        >
-                          <div className={`h-1 w-full ${isFree ? "bg-gradient-to-r from-emerald-400 to-teal-500" : "bg-gradient-to-r from-violet-400 to-indigo-500"}`} />
-
-                          <div className="p-4 sm:p-5">
-                            <div className="flex items-center justify-between gap-3 mb-4">
-                              <div className="flex items-center gap-2.5">
-                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold font-['Inter'] ${isFree ? "bg-emerald-50 text-emerald-700" : "bg-violet-50 text-violet-700"}`}>
-                                  {index + 1}
-                                </span>
-                                <div>
-                                  <h5 className="font-['Inter'] font-bold text-slate-800 text-sm">
-                                    {item.course} · {item.category}
-                                  </h5>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    {isFree ? (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700">
-                                        <Gift size={9} /> FREE
-                                      </span>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700">
-                                        <Coins size={9} /> PAID · {formatPrice(item.price)}
-                                        {Number(item.discount) > 0 && ` · ${item.discount}% off`}
-                                      </span>
-                                    )}
-                                    {item.isActive === false && (
-                                      <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                                        INACTIVE
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => removeContentPrice(index)}
-                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                title="Remove rule"
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Course
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={item.course}
-                                    onChange={(e) => updateContentPrice(index, "course", e.target.value)}
-                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
-                                  >
-                                    {Object.keys(COURSE_CONFIG).map((course) => (
-                                      <option key={course} value={course}>{course}</option>
-                                    ))}
-                                  </select>
-                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Category
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={item.category}
-                                    onChange={(e) => updateContentPrice(index, "category", e.target.value)}
-                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
-                                  >
-                                    <option value="Notes">Notes</option>
-                                    <option value="Exam Crash Course">Exam Crash Course</option>
-                                    <option value="PYQs">PYQs</option>
-                                    <option value="Practical">Practical</option>
-                                    <option value="Other">Other</option>
-                                  </select>
-                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Semester
-                                </label>
-                                <input
-                                  value={item.semester}
-                                  onChange={(e) => updateContentPrice(index, "semester", e.target.value)}
-                                  placeholder="e.g. 1"
-                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Year
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={item.year}
-                                    onChange={(e) => updateContentPrice(index, "year", e.target.value)}
-                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
-                                  >
-                                    <option value="">Not applicable</option>
-                                    <option value="1st Year">1st Year</option>
-                                    <option value="2nd Year">2nd Year</option>
-                                    <option value="3rd Year">3rd Year</option>
-                                    <option value="4th Year">4th Year</option>
-                                    <option value="5th Year">5th Year</option>
-                                    <option value="6th Year">6th Year</option>
-                                  </select>
-                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Language
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={item.language}
-                                    onChange={(e) => updateContentPrice(index, "language", e.target.value)}
-                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
-                                  >
-                                    <option value="">Not applicable</option>
-                                    <option value="Hindi">Hindi</option>
-                                    <option value="English">English</option>
-                                    <option value="Both">Both</option>
-                                  </select>
-                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  M.Pharm Specialization
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={item.specialization}
-                                    onChange={(e) => updateContentPrice(index, "specialization", e.target.value)}
-                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
-                                  >
-                                    <option value="">Not applicable</option>
-                                    {MPHARM_BRANCHES.map((branch) => (
-                                      <option key={branch.value} value={branch.value}>{branch.label}</option>
-                                    ))}
-                                  </select>
-                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                </div>
-                              </div>
-
-                              <div className="sm:col-span-2">
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Access Type
-                                </label>
-                                <div className="inline-flex p-1 rounded-xl bg-slate-100/80 border border-slate-200/60 w-full sm:w-auto">
-                                  <button
-                                    type="button"
-                                    onClick={() => updateContentPrice(index, "accessType", "paid")}
-                                    className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-['Inter'] font-bold transition-all ${
-                                      !isFree
-                                        ? "bg-white text-violet-700 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                                  >
-                                    <Coins size={12} /> Paid
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateContentPrice(index, "accessType", "free")}
-                                    className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-['Inter'] font-bold transition-all ${
-                                      isFree
-                                        ? "bg-white text-emerald-700 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                                  >
-                                    <Gift size={12} /> Free
-                                  </button>
-                                </div>
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Price (₹)
-                                </label>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  disabled={isFree}
-                                  value={isFree ? 0 : item.price}
-                                  onChange={(e) =>
-                                    updateContentPrice(index, "price", e.target.value === "" ? 0 : Number(e.target.value))
-                                  }
-                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                                />
-                              </div>
-
-                              <div>
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Discount (%)
-                                </label>
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  disabled={isFree}
-                                  value={isFree ? "" : (item.discount ?? "")}
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                                      // string hi rakho taaki "5." type kar sakein
-                                      updateContentPrice(index, "discount", value === '' ? '' : value);
-                                    }
-                                  }}
-                                  onBlur={(e) => {
-                                    const raw = e.target.value;
-                                    const num = parseFloat(raw);
-                                    const clamped = isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
-                                    updateContentPrice(index, "discount", clamped);
-                                  }}
-                                  placeholder="0"
-                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                                />
-                              </div>
-
-                              <div className="sm:col-span-2">
-                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                                  Content Key
-                                </label>
-                                <input
-                                  value={item.contentKey}
-                                  onChange={(e) => updateContentPrice(index, "contentKey", e.target.value)}
-                                  placeholder="e.g. bpharm-notes-sem1"
-                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-mono focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all"
-                                />
-                                <p className="text-[10px] text-slate-400 font-['Inter'] mt-1">
-                                  Frontend + payment API ko yahi exact value bhejni hogi.
-                                </p>
-                              </div>
-
-                              <label className="sm:col-span-2 flex items-center gap-2.5 cursor-pointer group p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
-                                <div className="relative">
-                                  <input
-                                    type="checkbox"
-                                    checked={item.isActive !== false}
-                                    onChange={(e) => updateContentPrice(index, "isActive", e.target.checked)}
-                                    className="peer sr-only"
-                                  />
-                                  <div className="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-emerald-500 transition-colors" />
-                                  <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm peer-checked:translate-x-4 transition-transform" />
-                                </div>
-                                <span className="text-xs font-['Inter'] font-semibold text-slate-700">
-                                  Pricing rule active
-                                </span>
-                                {item.isActive !== false && (
-                                  <Check size={13} className="text-emerald-500" />
-                                )}
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                  );
+                })}
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-sky-50 border border-sky-100 text-xs text-sky-800"><Info size={15} className="shrink-0 mt-0.5"/><p>Har category aur semester/year ka rule alag save hota hai. D.Pharm mein Hindi aur English ki pricing bhi alag hai. Save karne ke baad payment API ko isi course/category/semester/year/language/specialization identity se match karna hoga.</p></div>
               </section>
             </div>
 
@@ -3190,3 +2924,5 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 };
 
 export default AdminDashboard;
+
+

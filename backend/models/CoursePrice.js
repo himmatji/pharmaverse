@@ -1,3 +1,57 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 const mongoose = require("mongoose");
 
 /*
@@ -66,8 +120,9 @@ const ContentPriceSchema = new mongoose.Schema(
     // D.Pharm can distinguish Hindi and English; other courses may omit it.
     language: {
       type: String,
-      enum: ["Hindi", "English", "Both", "Other"],
-      default: undefined,
+      enum: ["", "Hindi", "English", "Both", "Other", "hindi", "english", "both", "other"],
+      default: "",
+      set: (value) => (value == null ? "" : value),
     },
 
     // Required when the course/category is specialization-specific, e.g. M.Pharm.
@@ -166,3 +221,5 @@ CoursePriceSchema.pre("save", function () {
 });
 
 module.exports = mongoose.model("CoursePrice", CoursePriceSchema);
+
+
