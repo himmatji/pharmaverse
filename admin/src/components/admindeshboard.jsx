@@ -50,6 +50,19 @@ import {
   Send,
   Mail,
   Crown,
+  Tag,
+  Percent,
+  Coins,
+  Package,
+  SlidersHorizontal,
+  Info,
+  ChevronDown,
+  Check,
+  IndianRupee,
+  Gift,
+  BadgePercent,
+  Boxes,
+  Settings2,
 } from "lucide-react";
 
 const API_URL = "https://api.pharmaverse.co.in/api/admin";
@@ -993,6 +1006,29 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
 
+  // Open the pricing interface when the Manage Price sidebar tab is selected.
+  useEffect(() => {
+    if (
+      activeTab === "manage-price" ||
+      activeTab === "managePrice" ||
+      activeTab === "manage-prices"
+    ) {
+      setShowPriceModal(true);
+    }
+  }, [activeTab]);
+
+  const closePriceModal = () => {
+    setShowPriceModal(false);
+    // ✅ FIX: Modal close karte hi Dashboard pe wapas le jao taaki blank screen na aaye
+    if (
+      activeTab === "manage-price" ||
+      activeTab === "managePrice" ||
+      activeTab === "manage-prices"
+    ) {
+      setActiveTab("dashboard");
+    }
+  };
+
   const makeContentKey = (item) => {
     const parts = [
       item.course,
@@ -1027,8 +1063,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     setContentPrices((current) => current.map((item, itemIndex) => {
       if (itemIndex !== index) return item;
       const next = { ...item, [field]: value };
-      // Generate a stable default key from the identifying fields only when
-      // the current key is empty or was generated from the previous identity.
       if (["course", "category", "semester", "year", "language", "specialization"].includes(field)) {
         const previousGenerated = makeContentKey(item);
         if (!item.contentKey || item.contentKey === previousGenerated) {
@@ -1177,8 +1211,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // API responses can omit price/discount fields. Normalize them before formatting
-  // so an undefined value never crashes the entire dashboard during render.
   const toSafeNumber = (value, fallback = 0) => {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -1271,7 +1303,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = notesRes.value?.data;
         setNotes(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
-        console.error("Notes API error:", notesRes.reason);
         setNotes([]);
       }
 
@@ -1279,7 +1310,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = videosRes.value?.data;
         setVideos(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
-        console.error("Videos API error:", videosRes.reason);
         setVideos([]);
       }
 
@@ -1287,7 +1317,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = paidRes.value?.data;
         setPaidPDFs(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
-        console.error("Paid PDFs API error:", paidRes.reason);
         setPaidPDFs([]);
       }
 
@@ -1295,7 +1324,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = papersRes.value?.data;
         setPapers(Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []);
       } else {
-        console.error("Papers API error:", papersRes.reason);
         setPapers([]);
       }
 
@@ -1303,7 +1331,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = popularRes.value?.data;
         setPopularContent(Array.isArray(response?.notes) ? response.notes : []);
       } else {
-        console.error("Popular content API error:", popularRes.reason);
         setPopularContent([]);
       }
 
@@ -1311,7 +1338,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         const response = activityRes.value?.data;
         setRecentActivities(Array.isArray(response?.activities) ? response.activities : []);
       } else {
-        console.error("Recent activity API error:", activityRes.reason);
         setRecentActivities([]);
       }
 
@@ -1324,8 +1350,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
           revenueGrowth: Number(data.revenueGrowth || 0),
           downloadGrowth: Number(data.downloadGrowth || 0)
         });
-      } else {
-        console.error("Revenue API error:", revenueRes.reason);
       }
 
       if (weeklyRes.status === "fulfilled") {
@@ -1333,8 +1357,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         if (Array.isArray(response?.data)) {
           setWeeklyData(response.data);
         }
-      } else {
-        console.error("Weekly API error:", weeklyRes.reason);
       }
 
       if (pricesRes.status === "fulfilled") {
@@ -1377,8 +1399,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             isActive: item.isActive !== false
           })) : []);
         }
-      } else {
-        console.error("Course prices API error:", pricesRes.reason);
       }
 
     } catch (error) {
@@ -1403,11 +1423,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
   const handleSaveCoursePrices = async () => {
     for (const [course, data] of Object.entries(coursePrices)) {
-      if (data.price < 0) {
-        alert(`${course} price cannot be negative`);
+      const p = Number(data.price);
+      const d = Number(data.discount);
+      if (!Number.isFinite(p) || p < 0) {
+        alert(`${course} price cannot be negative or invalid`);
         return;
       }
-      if (data.discount < 0 || data.discount > 100) {
+      if (!Number.isFinite(d) || d < 0 || d > 100) {
         alert(`${course} discount must be between 0 and 100`);
         return;
       }
@@ -1434,20 +1456,28 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       }
 
       await axios.put(`${API_URL}/course-prices`, {
-        prices: coursePrices,
+        prices: Object.fromEntries(
+          Object.entries(coursePrices).map(([course, data]) => [
+            course,
+            {
+              price: Number(data.price) || 0,
+              discount: Math.min(100, Math.max(0, Number(data.discount) || 0))
+            }
+          ])
+        ),
         contentPrices: contentPrices.map((item) => ({
           ...item,
           semester: String(item.semester || ""),
           year: String(item.year || ""),
           language: String(item.language || ""),
           specialization: String(item.specialization || ""),
-          price: item.accessType === "free" ? 0 : Number(item.price),
-          discount: item.accessType === "free" ? 0 : Number(item.discount),
+          price: item.accessType === "free" ? 0 : Number(item.price) || 0,
+          discount: item.accessType === "free" ? 0 : Math.min(100, Math.max(0, Number(item.discount) || 0)),
           isActive: item.isActive !== false
         }))
       }, headers);
       alert("✅ Course prices updated successfully!");
-      setShowPriceModal(false);
+      closePriceModal(); // ✅ save hone ke baad bhi dashboard pe wapas
       fetchAllData();
     } catch (error) {
       alert("❌ Failed to update prices: " + (error.response?.data?.message || error.message));
@@ -1716,11 +1746,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     }
   };
 
-  // ============================================================
-  // ✅ FINAL UPLOAD SUBMIT
-  // Notes → Category → [Lang] → [Branch] → Sem/Year → Subject → Unit → File
-  // Crash/PYQs → Category → [Lang] → [Branch] → Sem/Year → Subject → File (NO Unit)
-  // ============================================================
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
 
@@ -1735,19 +1760,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       uploadForm.category === "Exam Crash Course" ||
       uploadForm.category === "PYQs";
 
-    // M.Pharm specialization check (sab categories me)
     if (branchName === "M.Pharm" && !uploadForm.mpharmBranch) {
       alert("Please select M.Pharm specialization (branch)");
       return;
     }
 
-    // D.Pharm language check (sab categories me)
     if (branchName === "D.Pharm" && !uploadForm.language) {
       alert("Please select a language (Hindi/English)");
       return;
     }
 
-    // Semester + Subject — sab ke liye zaroori
     if (!uploadForm.semester) {
       alert(`Please select a ${COURSE_CONFIG[branchName]?.type === "year" ? "year" : "semester"}`);
       return;
@@ -1757,7 +1779,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       return;
     }
 
-    // Unit — SIRF Notes ke liye zaroori
     if (isNotes && !uploadForm.unit) {
       alert("Please select a unit");
       return;
@@ -1791,7 +1812,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       const formData = new FormData();
 
-      // Common fields
       formData.append("course", branchName);
       formData.append("branch", branchName);
       formData.append("category", uploadForm.category);
@@ -1811,16 +1831,13 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         formData.append("year", uploadForm.semester);
       }
 
-      // Manual title and description are required for every upload category.
       formData.append("title", uploadForm.title.trim());
       formData.append("description", uploadForm.description.trim());
 
       if (isNotes) {
-        // Notes require unit metadata.
         formData.append("unit", uploadForm.unit);
         formData.append("units", JSON.stringify(uploadForm.units));
       } else {
-        // Crash Course / PYQs use disk-backed direct file storage.
         formData.append("isDirectFile", "true");
       }
 
@@ -1922,53 +1939,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     </div>
   );
 
-  // const CoursePriceCard = () => (
-  //   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-  //     <div className="flex items-center justify-between mb-6">
-  //       <div className="flex items-center gap-3">
-  //         <div className="p-3 bg-amber-100 rounded-xl">
-  //           <DollarSign size={24} className="text-amber-600" />
-  //         </div>
-  //         <div>
-  //           <h3 className="text-xl font-bold text-gray-800">Premium Course Prices</h3>
-  //           <p className="text-gray-500 text-sm">Set prices & discounts for each course</p>
-  //         </div>
-  //       </div>
-  //       <button
-  //         onClick={() => setShowPriceModal(true)}
-  //         className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all duration-300 flex items-center gap-2 text-sm"
-  //       >
-  //         <Edit size={16} /> Manage Prices
-  //       </button>
-  //     </div>
-
-  //     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-  //       {Object.entries(coursePrices).map(([course, data]) => {
-  //         const discountInfo = getDiscountDisplay(data.price, data.discount);
-  //         return (
-  //           <div key={course} className="bg-gray-50 rounded-xl p-4 text-center border border-gray-200">
-  //             <p className="font-semibold text-gray-700 text-sm">{course}</p>
-  //             <p className="text-2xl font-bold text-gray-900">{discountInfo.display}</p>
-  //             {discountInfo.badge && (
-  //               <span className="inline-block mt-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-  //                 {discountInfo.badge}
-  //               </span>
-  //             )}
-  //             {!discountInfo.badge && (
-  //               <span className="inline-block mt-1 text-xs text-gray-400">No Discount</span>
-  //             )}
-  //           </div>
-  //         );
-  //       })}
-  //     </div>
-  //   </div>
-  // );
-
-  // ============================================================
-  // ✅ FINAL renderUploadTab
-  // Notes: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → Unit → File
-  // Crash/PYQs: Category → [Lang] → [M.Pharm Branch] → Sem/Year → Subject → File
-  // ============================================================
   const renderUploadTab = () => {
     const branchName = getBranchName();
     const subjects = getSubjectsForBranch();
@@ -1996,16 +1966,14 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       return false;
     });
 
-    // ✅ Dynamic step numbers
     let stepCounter = 1;
     const categoryStep = stepCounter++;
     const languageStep = showLanguage ? stepCounter++ : null;
     const mpharmBranchStep = showMPharmBranch ? stepCounter++ : null;
     const semesterStep = stepCounter++;
     const subjectStep = stepCounter++;
-    const contentStep = stepCounter++;   // Unit (Notes) OR nothing (Crash/PYQs)
+    const contentStep = stepCounter++;
     const fileStep = isNotes ? stepCounter++ : contentStep;
-    // For Crash/PYQs, file takes the content slot
 
     return (
       <div className="animate-fadeIn">
@@ -2073,7 +2041,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             )}
 
             <form onSubmit={handleUploadSubmit} className="space-y-5">
-              {/* Course indicator */}
               <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-sky-50 to-blue-50 border border-sky-100">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="p-2 rounded-xl bg-white shadow-sm text-sky-600">
@@ -2089,7 +2056,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </span>
               </div>
 
-              {/* STEP — Category */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-bold">{categoryStep}</span>
@@ -2125,7 +2091,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Language — D.Pharm (sab categories) */}
               {showLanguage && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -2161,7 +2126,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* M.Pharm Branch (sab categories) */}
               {showMPharmBranch && (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -2200,7 +2164,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* STEP — Semester/Year (sab categories) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">{semesterStep}</span>
@@ -2225,7 +2188,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </select>
               </div>
 
-              {/* STEP — Subject (sab categories) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-500 text-white text-xs font-bold">{subjectStep}</span>
@@ -2244,7 +2206,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </select>
               </div>
 
-              {/* STEP — Unit (SIRF Notes ke liye) */}
               {isNotes && (
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-2">
@@ -2276,7 +2237,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* STEP — Choose file (sab ke liye) */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-500 text-white text-xs font-bold">{fileStep}</span>
@@ -2310,7 +2270,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Required manual title and description for every category */}
               <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4 space-y-4">
                 <div>
                   <label htmlFor="upload-title" className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">
@@ -2347,7 +2306,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               </div>
 
-              {/* Premium toggle — SIRF NOTES ke liye */}
               {isNotes && (
                 <label className="flex items-center gap-3 cursor-pointer p-3 rounded-2xl border-2 border-gray-200 bg-gray-50/70 hover:bg-amber-50/50 hover:border-amber-200 transition-all">
                   <input
@@ -2364,7 +2322,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </label>
               )}
 
-              {/* Content type — SIRF NOTES ke liye */}
               {isNotes && (
                 <div>
                   <label className="block text-sm font-['Inter'] font-bold text-gray-800 mb-2">Content type</label>
@@ -2387,7 +2344,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 type="submit"
                 disabled={uploading}
@@ -2540,402 +2496,687 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
 
       <div className="lg:ml-[250px] p-4 sm:p-6 md:p-8 mt-16 min-h-[calc(100vh-64px)]">
 
-        {activeTab === "dashboard" && (
-          <div className="animate-fadeIn">
-            <div className="mb-8">
-              <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Dashboard Overview</h2>
-              <p className="text-gray-500 mt-2">Welcome, {adminName}! Here's your real-time platform analytics</p>
-            </div>
+        {/* ============================================================ */}
+        {/* ✅ FIXED RENDER LOGIC — Fallback to Dashboard                 */}
+        {/* ============================================================ */}
+        {(() => {
+          const isManagePriceTab =
+            activeTab === "manage-price" ||
+            activeTab === "managePrice" ||
+            activeTab === "manage-prices";
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
-              <StatCard title="Free Materials" value={stats.totalNotes} icon={FileText} color="from-blue-500 to-blue-700" />
-              <StatCard title="Paid PDFs" value={stats.totalPaidPDFs} icon={CreditCard} color="from-purple-500 to-purple-700" />
-              <StatCard title="Video Lectures" value={stats.totalVideos} icon={Video} color="from-red-500 to-red-700" />
-              <StatCard title="Predictive Papers" value={stats.totalPapers} icon={BookOpen} color="from-green-500 to-green-700" />
-              <StatCard title="Active Users" value={stats.totalUsers} icon={Users} color="from-orange-500 to-orange-700" />
-            </div>
-{/* 
-            <div className="mb-8">
-              <CoursePriceCard />
-            </div> */}
+          if (isBranchTab()) return renderUploadTab();
+          if (activeTab === "interview-material") return <InterviewMaterial />;
+          if (activeTab === "doubts") return <AdminDoubts />;
+          if (activeTab === "users") return <UsersComponent />;
+          if (activeTab === "profile") return <AdminProfile />;
+          if (activeTab === "notice") return <AdminNotice />;
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-green-100 rounded-xl"><Wallet size={24} className="text-green-600" /></div>
-                    <div>
-                      <p className="text-gray-500 text-sm font-medium">Monthly Revenue</p>
-                      <p className="text-3xl font-bold text-gray-800">{formatCurrency(revenueStats.monthlyRevenue)}</p>
-                    </div>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.revenueGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {revenueStats.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(revenueStats.revenueGrowth)}%
-                  </div>
-                </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.min((revenueStats.monthlyRevenue / 100000) * 100, 100)}%` }}></div>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">vs last month • Real-time analytics</p>
+          // Manage Price tab ya default/unknown tab — Dashboard render karo
+          return (
+            <div className="animate-fadeIn">
+              <div className="mb-8">
+                <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">Dashboard Overview</h2>
+                <p className="text-gray-500 mt-2">Welcome, {adminName}! Here's your real-time platform analytics</p>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-100 rounded-xl"><Download size={24} className="text-blue-600" /></div>
-                    <div>
-                      <p className="text-gray-500 text-sm font-medium">Total Downloads</p>
-                      <p className="text-3xl font-bold text-gray-800">{Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0).toLocaleString()}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+                <StatCard title="Free Materials" value={stats.totalNotes} icon={FileText} color="from-blue-500 to-blue-700" />
+                <StatCard title="Paid PDFs" value={stats.totalPaidPDFs} icon={CreditCard} color="from-purple-500 to-purple-700" />
+                <StatCard title="Video Lectures" value={stats.totalVideos} icon={Video} color="from-red-500 to-red-700" />
+                <StatCard title="Predictive Papers" value={stats.totalPapers} icon={BookOpen} color="from-green-500 to-green-700" />
+                <StatCard title="Active Users" value={stats.totalUsers} icon={Users} color="from-orange-500 to-orange-700" />
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-green-100 rounded-xl"><Wallet size={24} className="text-green-600" /></div>
+                      <div>
+                        <p className="text-gray-500 text-sm font-medium">Monthly Revenue</p>
+                        <p className="text-3xl font-bold text-gray-800">{formatCurrency(revenueStats.monthlyRevenue)}</p>
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.revenueGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {revenueStats.revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(revenueStats.revenueGrowth)}%
                     </div>
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.downloadGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {revenueStats.downloadGrowth >= 0 ? '↑' : '↓'} {Math.abs(revenueStats.downloadGrowth)}%
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500" style={{ width: `${Math.min((revenueStats.monthlyRevenue / 100000) * 100, 100)}%` }}></div>
                   </div>
+                  <p className="text-gray-400 text-sm mt-2">vs last month • Real-time analytics</p>
                 </div>
-                <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style={{ width: `${Math.min((Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0) / 5000) * 100, 100)}%` }}></div>
-                </div>
-                <p className="text-gray-400 text-sm mt-2">All content types combined</p>
-              </div>
-            </div>
 
-            <div className="grid lg:grid-cols-2 gap-6 mb-8">
-              <EnhancedCard title="Weekly Performance" icon={BarChart3} color="from-blue-500 to-cyan-700">
-                <div className="mt-2">
-                  <div className="flex items-end justify-between h-48 gap-2">
-                    {weeklyData.length > 0 ? (
-                      weeklyData.map((day, index) => {
-                        const maxViews = Math.max(...weeklyData.map(d => d.views || d.totalViews || 0), 1);
-                        const height = Math.min(((day.views || day.totalViews || 0) / maxViews) * 100, 100);
-                        return (
-                          <div key={index} className="flex-1 flex flex-col items-center gap-1 group">
-                            <div className="relative w-full">
-                              <div className="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 group-hover:from-blue-600 group-hover:to-blue-500" style={{ height: `${height}px`, minHeight: '4px' }}>
-                                <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                  {day.views || 0} views
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-blue-100 rounded-xl"><Download size={24} className="text-blue-600" /></div>
+                      <div>
+                        <p className="text-gray-500 text-sm font-medium">Total Downloads</p>
+                        <p className="text-3xl font-bold text-gray-800">{Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1 rounded-full text-sm font-semibold ${revenueStats.downloadGrowth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {revenueStats.downloadGrowth >= 0 ? '↑' : '↓'} {Math.abs(revenueStats.downloadGrowth)}%
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500" style={{ width: `${Math.min((Number(revenueStats.totalDownloads || getTotalDownloadsFromData() || 0) / 5000) * 100, 100)}%` }}></div>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-2">All content types combined</p>
+                </div>
+              </div>
+
+              <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                <EnhancedCard title="Weekly Performance" icon={BarChart3} color="from-blue-500 to-cyan-700">
+                  <div className="mt-2">
+                    <div className="flex items-end justify-between h-48 gap-2">
+                      {weeklyData.length > 0 ? (
+                        weeklyData.map((day, index) => {
+                          const maxViews = Math.max(...weeklyData.map(d => d.views || d.totalViews || 0), 1);
+                          const height = Math.min(((day.views || day.totalViews || 0) / maxViews) * 100, 100);
+                          return (
+                            <div key={index} className="flex-1 flex flex-col items-center gap-1 group">
+                              <div className="relative w-full">
+                                <div className="bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all duration-500 group-hover:from-blue-600 group-hover:to-blue-500" style={{ height: `${height}px`, minHeight: '4px' }}>
+                                  <div className="absolute -top-7 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                    {day.views || 0} views
+                                  </div>
                                 </div>
                               </div>
+                              <span className="text-[10px] text-gray-500 font-medium">{day.day}</span>
                             </div>
-                            <span className="text-[10px] text-gray-500 font-medium">{day.day}</span>
+                          );
+                        })
+                      ) : (
+                        <div className="w-full text-center text-gray-500 py-8">No data available</div>
+                      )}
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-4 pt-3 border-t">
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-gray-800">{weeklyData.reduce((sum, d) => sum + (d.views || 0), 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-gray-400">Total Views</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-gray-800">{weeklyData.reduce((sum, d) => sum + (d.downloads || 0), 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-gray-400">Downloads</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-bold text-gray-800">₹{weeklyData.reduce((sum, d) => sum + (d.revenue || 0), 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-gray-400">Revenue</p>
+                      </div>
+                    </div>
+                  </div>
+                </EnhancedCard>
+
+                <EnhancedCard title="Recent Activity" icon={Activity} color="from-green-500 to-teal-700">
+                  <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+                    {recentActivities.length > 0 ? (
+                      recentActivities.slice(0, 10).map((activity, idx) => (
+                        <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300">
+                          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                            <FileText size={14} className="text-green-600" />
                           </div>
-                        );
-                      })
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-800 text-sm truncate">{activity.message}</p>
+                            <p className="text-xs text-gray-400 flex items-center gap-1">
+                              <Clock size={10} /> {formatDate(activity.time)}
+                            </p>
+                          </div>
+                        </div>
+                      ))
                     ) : (
-                      <div className="w-full text-center text-gray-500 py-8">No data available</div>
+                      <div className="text-center text-gray-500 py-8">
+                        <Activity size={40} className="mx-auto mb-2 text-gray-300" />
+                        <p className="text-sm">No recent activities</p>
+                      </div>
                     )}
                   </div>
-                  <div className="mt-4 grid grid-cols-3 gap-4 pt-3 border-t">
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-gray-800">{weeklyData.reduce((sum, d) => sum + (d.views || 0), 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-400">Total Views</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-gray-800">{weeklyData.reduce((sum, d) => sum + (d.downloads || 0), 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-400">Downloads</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-gray-800">₹{weeklyData.reduce((sum, d) => sum + (d.revenue || 0), 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-400">Revenue</p>
-                    </div>
-                  </div>
-                </div>
-              </EnhancedCard>
+                </EnhancedCard>
+              </div>
 
-              <EnhancedCard title="Recent Activity" icon={Activity} color="from-green-500 to-teal-700">
-                <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-                  {recentActivities.length > 0 ? (
-                    recentActivities.slice(0, 10).map((activity, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all duration-300">
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                          <FileText size={14} className="text-green-600" />
+              <EnhancedCard title="Popular Content" icon={Star} color="from-yellow-500 to-amber-700">
+                <div className="mt-2 space-y-2">
+                  {popularContent.length > 0 ? (
+                    popularContent.slice(0, 5).map((item, index) => (
+                      <div key={item._id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-yellow-50 transition-all duration-300">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-amber-500'}`}>
+                          {index + 1}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-800 text-sm truncate">{activity.message}</p>
-                          <p className="text-xs text-gray-400 flex items-center gap-1">
-                            <Clock size={10} /> {formatDate(activity.time)}
-                          </p>
+                          <p className="font-semibold text-gray-800 text-sm truncate">{item.title}</p>
+                          <p className="text-xs text-gray-500">{item.course} • {item.views || 0} views</p>
                         </div>
+                        <Eye size={14} className="text-gray-400 flex-shrink-0" />
                       </div>
                     ))
                   ) : (
                     <div className="text-center text-gray-500 py-8">
-                      <Activity size={40} className="mx-auto mb-2 text-gray-300" />
-                      <p className="text-sm">No recent activities</p>
+                      <Star size={40} className="mx-auto mb-2 text-gray-300" />
+                      <p className="text-sm">No popular content yet</p>
                     </div>
                   )}
                 </div>
               </EnhancedCard>
             </div>
-
-            <EnhancedCard title="Popular Content" icon={Star} color="from-yellow-500 to-amber-700">
-              <div className="mt-2 space-y-2">
-                {popularContent.length > 0 ? (
-                  popularContent.slice(0, 5).map((item, index) => (
-                    <div key={item._id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-yellow-50 transition-all duration-300">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${index === 0 ? 'bg-yellow-500' : index === 1 ? 'bg-gray-400' : 'bg-amber-500'}`}>
-                        {index + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-800 text-sm truncate">{item.title}</p>
-                        <p className="text-xs text-gray-500">{item.course} • {item.views || 0} views</p>
-                      </div>
-                      <Eye size={14} className="text-gray-400 flex-shrink-0" />
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <Star size={40} className="mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">No popular content yet</p>
-                  </div>
-                )}
-              </div>
-            </EnhancedCard>
-          </div>
-        )}
-
-        {isBranchTab() && renderUploadTab()}
-
-        {activeTab === "interview-material" && <InterviewMaterial />}
-
-        {activeTab === "doubts" && <AdminDoubts />}
-
-        {activeTab === "users" && <UsersComponent />}
-
-        {activeTab === "profile" && <AdminProfile />}
-
-        {activeTab === "notice" && <AdminNotice />}
+          );
+        })()}
       </div>
 
+      {/* ============================================================ */}
+      {/* ✅ PREMIUM LIGHT THEME — MANAGE PRICE MODAL                  */}
+      {/* ============================================================ */}
       {showPriceModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-2xl font-bold flex items-center gap-2">
-                <DollarSign size={24} className="text-amber-500" />
-                Manage Course Prices
-              </h3>
-              <button
-                onClick={() => setShowPriceModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/30 backdrop-blur-md"
+            onClick={closePriceModal}
+          />
 
-            <div className="space-y-6">
-              {Object.entries(coursePrices).map(([course, data]) => (
-                <div key={course} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-lg font-bold text-gray-800">{course}</h4>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">
-                        {data.discount > 0 ? `${data.discount}% OFF` : 'No Discount'}
-                      </span>
-                    </div>
+          {/* Modal */}
+          <div className="relative w-full max-w-3xl max-h-[92vh] flex flex-col bg-[#FCFCFD] rounded-3xl shadow-[0_20px_60px_-15px_rgba(15,23,42,0.25)] border border-slate-200/70 overflow-hidden animate-fadeIn">
+
+            {/* ── Header ── */}
+            <div className="relative px-6 sm:px-8 py-6 border-b border-slate-100 bg-gradient-to-br from-white via-amber-50/40 to-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-200/60">
+                    <Tag size={22} className="text-white" />
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-600 font-medium block mb-1">Price (₹)</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        value={data.price}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            const newPrice = value === '' ? 0 : parseFloat(value);
-                            setCoursePrices({
-                              ...coursePrices,
-                              [course]: { ...data, price: isNaN(newPrice) ? 0 : newPrice }
-                            });
-                          }
-                        }}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-600 font-medium block mb-1">Discount %</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        value={data.discount}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            const newDiscount = value === '' ? 0 : parseFloat(value);
-                            const validDiscount = Math.min(Math.max(isNaN(newDiscount) ? 0 : newDiscount, 0), 100);
-                            setCoursePrices({
-                              ...coursePrices,
-                              [course]: { ...data, discount: validDiscount }
-                            });
-                          }
-                        }}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <p className="text-sm text-gray-500 mb-1">Preview:</p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                      {data.discount > 0 ? (
-                        <>
-                          <span className="text-gray-400 line-through">{formatPrice(data?.price)}</span>
-                          <span className="text-2xl font-bold text-green-600">
-                            {formatPrice(getDiscountedPrice(data?.price, data?.discount))}
-                          </span>
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
-                            {data.discount}% OFF
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-2xl font-bold text-gray-800">{formatPrice(data?.price)}</span>
-                      )}
-                    </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-['Space_Grotesk'] font-extrabold text-slate-900 tracking-tight">
+                      Manage Pricing
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 font-['Inter'] mt-0.5">
+                      Configure course &amp; content-level access rules
+                    </p>
                   </div>
                 </div>
-              ))}
+                <button
+                  onClick={closePriceModal}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
 
-              <div className="border-t pt-6">
+            {/* ── Scrollable Body ── */}
+            <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-8">
+
+              {/* ───── COURSE PRICES SECTION ───── */}
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600">
+                    <GraduationCap size={16} />
+                  </div>
+                  <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-slate-700">
+                    Course Prices
+                  </h4>
+                  <span className="ml-auto text-[11px] font-['Inter'] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
+                    {Object.keys(coursePrices).length} courses
+                  </span>
+                </div>
+
+                <div className="grid gap-3">
+                  {Object.entries(coursePrices).map(([course, data]) => {
+                    const safePrice = toSafeNumber(data?.price);
+                    const safeDiscount = Math.min(100, Math.max(0, toSafeNumber(data?.discount)));
+                    const discounted = getDiscountedPrice(safePrice, safeDiscount);
+                    const hasDiscount = safeDiscount > 0;
+
+                    return (
+                      <div
+                        key={course}
+                        className="group relative bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 hover:border-amber-300/80 hover:shadow-[0_8px_30px_-12px_rgba(245,158,11,0.25)] transition-all duration-300"
+                      >
+                        <div className="absolute left-0 top-4 bottom-4 w-1 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h5 className="font-['Space_Grotesk'] font-bold text-slate-900 text-base">
+                                {course}
+                              </h5>
+                              {hasDiscount && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                  <BadgePercent size={10} />
+                                  {safeDiscount}% OFF
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-baseline gap-2 mt-1">
+                              {hasDiscount ? (
+                                <>
+                                  <span className="text-lg font-bold text-slate-900 font-['Space_Grotesk']">
+                                    {formatPrice(discounted)}
+                                  </span>
+                                  <span className="text-xs text-slate-400 line-through font-['Inter']">
+                                    {formatPrice(safePrice)}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-lg font-bold text-slate-900 font-['Space_Grotesk']">
+                                  {formatPrice(safePrice)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2.5 sm:w-[280px] shrink-0">
+                            <div>
+                              <label className="flex items-center gap-1 text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                <IndianRupee size={10} /> Price
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={data.price}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                    const newPrice = value === '' ? 0 : parseFloat(value);
+                                    setCoursePrices({
+                                      ...coursePrices,
+                                      [course]: { ...data, price: isNaN(newPrice) ? 0 : newPrice }
+                                    });
+                                  }
+                                }}
+                                placeholder="0.00"
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100 transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="flex items-center gap-1 text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                <Percent size={10} /> Discount
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={data.discount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                    // store as STRING so "5." aur "5.5" dono type ho sakein
+                                    setCoursePrices({
+                                      ...coursePrices,
+                                      [course]: { ...data, discount: value === '' ? '' : value }
+                                    });
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  // on blur, clamp between 0-100 aur valid number banao
+                                  const raw = e.target.value;
+                                  const num = parseFloat(raw);
+                                  const clamped = isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
+                                  setCoursePrices({
+                                    ...coursePrices,
+                                    [course]: { ...data, discount: clamped }
+                                  });
+                                }}
+                                placeholder="0"
+                                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100 transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* ───── CONTENT-WISE PRICING SECTION ───── */}
+              <section>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                  <div>
-                    <h4 className="text-lg font-bold text-gray-900">Content-wise Pricing</h4>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Har category/semester/year/language ke liye alag Free ya Paid rule set karein.
-                    </p>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-violet-50 text-violet-600">
+                      <Boxes size={16} />
+                    </div>
+                    <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-slate-700">
+                      Content-wise Pricing
+                    </h4>
+                    <span className="text-[11px] font-['Inter'] font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
+                      {contentPrices.length} rules
+                    </span>
                   </div>
                   <button
                     type="button"
                     onClick={addContentPrice}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-xs font-['Inter'] font-bold shadow-md shadow-violet-200/50 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
                   >
-                    <Plus size={16} /> Add Content Price
+                    <Plus size={14} /> Add Rule
                   </button>
                 </div>
 
+                <div className="flex items-start gap-2.5 p-3 mb-4 rounded-xl bg-sky-50/70 border border-sky-100">
+                  <Info size={14} className="text-sky-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] sm:text-xs text-sky-800 font-['Inter'] leading-relaxed">
+                    Har category, semester, year, ya language ke liye alag <b>Free</b> ya <b>Paid</b> rule set karein. Student page aur payment API ko yahi <b>contentKey</b> bhejna hoga.
+                  </p>
+                </div>
+
                 {contentPrices.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-                    Abhi content-wise pricing entry nahi hai. Add Content Price dabakar shuru karein.
+                  <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400">
+                      <Package size={22} />
+                    </div>
+                    <p className="text-sm font-['Inter'] font-semibold text-slate-600">
+                      Koi content-wise pricing rule nahi hai
+                    </p>
+                    <p className="text-xs text-slate-400 font-['Inter'] mt-1">
+                      "Add Rule" dabakar apna pehla rule banaayein
+                    </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {contentPrices.map((item, index) => (
-                      <div key={`${item.contentKey || "content"}-${index}`} className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
-                        <div className="flex items-center justify-between gap-3 mb-3">
-                          <h5 className="font-bold text-gray-800">Content rule #{index + 1}</h5>
-                          <button
-                            type="button"
-                            onClick={() => removeContentPrice(index)}
-                            className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-100"
-                          >
-                            <Trash2 size={14} /> Remove
-                          </button>
+                  <div className="space-y-3">
+                    {contentPrices.map((item, index) => {
+                      const isFree = item.accessType === "free";
+                      return (
+                        <div
+                          key={`${item.contentKey || "content"}-${index}`}
+                          className="relative bg-white rounded-2xl border border-slate-200/80 overflow-hidden hover:border-violet-300/70 hover:shadow-[0_8px_30px_-12px_rgba(139,92,246,0.25)] transition-all duration-300"
+                        >
+                          <div className={`h-1 w-full ${isFree ? "bg-gradient-to-r from-emerald-400 to-teal-500" : "bg-gradient-to-r from-violet-400 to-indigo-500"}`} />
+
+                          <div className="p-4 sm:p-5">
+                            <div className="flex items-center justify-between gap-3 mb-4">
+                              <div className="flex items-center gap-2.5">
+                                <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-bold font-['Inter'] ${isFree ? "bg-emerald-50 text-emerald-700" : "bg-violet-50 text-violet-700"}`}>
+                                  {index + 1}
+                                </span>
+                                <div>
+                                  <h5 className="font-['Inter'] font-bold text-slate-800 text-sm">
+                                    {item.course} · {item.category}
+                                  </h5>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    {isFree ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700">
+                                        <Gift size={9} /> FREE
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700">
+                                        <Coins size={9} /> PAID · {formatPrice(item.price)}
+                                        {Number(item.discount) > 0 && ` · ${item.discount}% off`}
+                                      </span>
+                                    )}
+                                    {item.isActive === false && (
+                                      <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                                        INACTIVE
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeContentPrice(index)}
+                                className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Remove rule"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Course
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={item.course}
+                                    onChange={(e) => updateContentPrice(index, "course", e.target.value)}
+                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
+                                  >
+                                    {Object.keys(COURSE_CONFIG).map((course) => (
+                                      <option key={course} value={course}>{course}</option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Category
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={item.category}
+                                    onChange={(e) => updateContentPrice(index, "category", e.target.value)}
+                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
+                                  >
+                                    <option value="Notes">Notes</option>
+                                    <option value="Exam Crash Course">Exam Crash Course</option>
+                                    <option value="PYQs">PYQs</option>
+                                    <option value="Practical">Practical</option>
+                                    <option value="Other">Other</option>
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Semester
+                                </label>
+                                <input
+                                  value={item.semester}
+                                  onChange={(e) => updateContentPrice(index, "semester", e.target.value)}
+                                  placeholder="e.g. 1"
+                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Year
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={item.year}
+                                    onChange={(e) => updateContentPrice(index, "year", e.target.value)}
+                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
+                                  >
+                                    <option value="">Not applicable</option>
+                                    <option value="1st Year">1st Year</option>
+                                    <option value="2nd Year">2nd Year</option>
+                                    <option value="3rd Year">3rd Year</option>
+                                    <option value="4th Year">4th Year</option>
+                                    <option value="5th Year">5th Year</option>
+                                    <option value="6th Year">6th Year</option>
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Language
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={item.language}
+                                    onChange={(e) => updateContentPrice(index, "language", e.target.value)}
+                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
+                                  >
+                                    <option value="">Not applicable</option>
+                                    <option value="Hindi">Hindi</option>
+                                    <option value="English">English</option>
+                                    <option value="Both">Both</option>
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  M.Pharm Specialization
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={item.specialization}
+                                    onChange={(e) => updateContentPrice(index, "specialization", e.target.value)}
+                                    className="w-full appearance-none px-3 py-2.5 pr-8 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-medium focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all cursor-pointer"
+                                  >
+                                    <option value="">Not applicable</option>
+                                    {MPHARM_BRANCHES.map((branch) => (
+                                      <option key={branch.value} value={branch.value}>{branch.label}</option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                </div>
+                              </div>
+
+                              <div className="sm:col-span-2">
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Access Type
+                                </label>
+                                <div className="inline-flex p-1 rounded-xl bg-slate-100/80 border border-slate-200/60 w-full sm:w-auto">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateContentPrice(index, "accessType", "paid")}
+                                    className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-['Inter'] font-bold transition-all ${
+                                      !isFree
+                                        ? "bg-white text-violet-700 shadow-sm"
+                                        : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                                  >
+                                    <Coins size={12} /> Paid
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateContentPrice(index, "accessType", "free")}
+                                    className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-['Inter'] font-bold transition-all ${
+                                      isFree
+                                        ? "bg-white text-emerald-700 shadow-sm"
+                                        : "text-slate-500 hover:text-slate-700"
+                                    }`}
+                                  >
+                                    <Gift size={12} /> Free
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Price (₹)
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  disabled={isFree}
+                                  value={isFree ? 0 : item.price}
+                                  onChange={(e) =>
+                                    updateContentPrice(index, "price", e.target.value === "" ? 0 : Number(e.target.value))
+                                  }
+                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Discount (%)
+                                </label>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  disabled={isFree}
+                                  value={isFree ? "" : (item.discount ?? "")}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                      // string hi rakho taaki "5." type kar sakein
+                                      updateContentPrice(index, "discount", value === '' ? '' : value);
+                                    }
+                                  }}
+                                  onBlur={(e) => {
+                                    const raw = e.target.value;
+                                    const num = parseFloat(raw);
+                                    const clamped = isNaN(num) ? 0 : Math.min(100, Math.max(0, num));
+                                    updateContentPrice(index, "discount", clamped);
+                                  }}
+                                  placeholder="0"
+                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-semibold focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                                />
+                              </div>
+
+                              <div className="sm:col-span-2">
+                                <label className="block text-[10px] font-['Inter'] font-bold uppercase tracking-wider text-slate-500 mb-1.5">
+                                  Content Key
+                                </label>
+                                <input
+                                  value={item.contentKey}
+                                  onChange={(e) => updateContentPrice(index, "contentKey", e.target.value)}
+                                  placeholder="e.g. bpharm-notes-sem1"
+                                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 text-sm font-['Inter'] font-mono focus:outline-none focus:border-violet-400 focus:bg-white focus:ring-4 focus:ring-violet-100 transition-all"
+                                />
+                                <p className="text-[10px] text-slate-400 font-['Inter'] mt-1">
+                                  Frontend + payment API ko yahi exact value bhejni hogi.
+                                </p>
+                              </div>
+
+                              <label className="sm:col-span-2 flex items-center gap-2.5 cursor-pointer group p-2.5 rounded-xl hover:bg-slate-50 transition-colors">
+                                <div className="relative">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.isActive !== false}
+                                    onChange={(e) => updateContentPrice(index, "isActive", e.target.checked)}
+                                    className="peer sr-only"
+                                  />
+                                  <div className="w-9 h-5 rounded-full bg-slate-200 peer-checked:bg-emerald-500 transition-colors" />
+                                  <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm peer-checked:translate-x-4 transition-transform" />
+                                </div>
+                                <span className="text-xs font-['Inter'] font-semibold text-slate-700">
+                                  Pricing rule active
+                                </span>
+                                {item.isActive !== false && (
+                                  <Check size={13} className="text-emerald-500" />
+                                )}
+                              </label>
+                            </div>
+                          </div>
                         </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Course</label>
-                            <select value={item.course} onChange={(e) => updateContentPrice(index, "course", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              {Object.keys(COURSE_CONFIG).map((course) => <option key={course} value={course}>{course}</option>)}
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Category</label>
-                            <select value={item.category} onChange={(e) => updateContentPrice(index, "category", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              <option value="Notes">Notes</option>
-                              <option value="Exam Crash Course">Exam Crash Course</option>
-                              <option value="PYQs">PYQs</option>
-                              <option value="Practical">Practical</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Semester (B.Pharm/M.Pharm/PhD)</label>
-                            <input value={item.semester} onChange={(e) => updateContentPrice(index, "semester", e.target.value)} placeholder="e.g. 1 (leave blank if not applicable)" className="w-full rounded-xl border bg-white px-3 py-2.5" />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Year (D.Pharm/Pharm.D)</label>
-                            <select value={item.year} onChange={(e) => updateContentPrice(index, "year", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              <option value="">Not applicable</option>
-                              <option value="1st Year">1st Year</option>
-                              <option value="2nd Year">2nd Year</option>
-                              <option value="3rd Year">3rd Year</option>
-                              <option value="4th Year">4th Year</option>
-                              <option value="5th Year">5th Year</option>
-                              <option value="6th Year">6th Year</option>
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Language (D.Pharm)</label>
-                            <select value={item.language} onChange={(e) => updateContentPrice(index, "language", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              <option value="">Not applicable</option>
-                              <option value="Hindi">Hindi</option>
-                              <option value="English">English</option>
-                              <option value="Both">Both</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">M.Pharm Specialization</label>
-                            <select value={item.specialization} onChange={(e) => updateContentPrice(index, "specialization", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              <option value="">Not applicable</option>
-                              {MPHARM_BRANCHES.map((branch) => <option key={branch.value} value={branch.value}>{branch.label}</option>)}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Access Type</label>
-                            <select value={item.accessType} onChange={(e) => updateContentPrice(index, "accessType", e.target.value)} className="w-full rounded-xl border bg-white px-3 py-2.5">
-                              <option value="paid">Paid</option>
-                              <option value="free">Free</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Price (₹)</label>
-                            <input type="number" min="0" step="0.01" disabled={item.accessType === "free"} value={item.accessType === "free" ? 0 : item.price} onChange={(e) => updateContentPrice(index, "price", e.target.value === "" ? 0 : Number(e.target.value))} className="w-full rounded-xl border bg-white px-3 py-2.5 disabled:bg-gray-100" />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Discount (%)</label>
-                            <input type="number" min="0" max="100" step="0.1" disabled={item.accessType === "free"} value={item.accessType === "free" ? 0 : item.discount} onChange={(e) => updateContentPrice(index, "discount", e.target.value === "" ? 0 : Math.min(100, Math.max(0, Number(e.target.value))))} className="w-full rounded-xl border bg-white px-3 py-2.5 disabled:bg-gray-100" />
-                          </div>
-                          <div className="sm:col-span-2">
-                            <label className="block text-xs font-semibold text-gray-600 mb-1">Content Key (frontend must send this exact value)</label>
-                            <input value={item.contentKey} onChange={(e) => updateContentPrice(index, "contentKey", e.target.value)} placeholder="Unique key, e.g. bpharm-notes-sem1" className="w-full rounded-xl border bg-white px-3 py-2.5" />
-                            <p className="text-xs text-gray-500 mt-1">Same key must be sent by the student page and payment API. Keep each pricing rule unique.</p>
-                          </div>
-                          <label className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-700">
-                            <input type="checkbox" checked={item.isActive !== false} onChange={(e) => updateContentPrice(index, "isActive", e.target.checked)} />
-                            Pricing rule active
-                          </label>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
-              </div>
+              </section>
+            </div>
 
-              <div className="flex flex-wrap gap-3 pt-4 border-t">
+            {/* ── Footer Actions ── */}
+            <div className="px-4 sm:px-8 py-4 border-t border-slate-100 bg-white/80 backdrop-blur-sm">
+              <div className="flex flex-wrap items-center gap-2.5">
                 <button
                   onClick={handleSaveCoursePrices}
                   disabled={savingPrices}
-                  className="flex-1 min-w-[120px] bg-amber-500 text-white py-3 rounded-xl font-semibold hover:bg-amber-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 min-w-[140px] inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-['Inter'] font-bold shadow-lg shadow-amber-200/60 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Save size={18} className="inline mr-2" />
-                  {savingPrices ? 'Saving...' : 'Save All Prices'}
+                  {savingPrices ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save size={16} />
+                      Save All Prices
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={resetToDefault}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                  className="px-4 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-['Inter'] font-bold hover:bg-slate-200 transition-colors"
                 >
                   Reset Default
                 </button>
                 <button
-                  onClick={() => setShowPriceModal(false)}
-                  className="px-6 py-3 bg-red-100 text-red-700 rounded-xl font-semibold hover:bg-red-200 transition"
+                  onClick={closePriceModal}
+                  className="px-4 py-3 rounded-xl text-slate-500 text-sm font-['Inter'] font-bold hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
