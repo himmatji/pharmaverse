@@ -1,49 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { useState, useEffect } from "react";
 import axios from "axios";
 import AdminSidebar from "./AdminSidebar";
@@ -2840,12 +2794,16 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                                     const ruleIndex = findPricingRule(identity);
                                     const rule = ruleIndex >= 0 ? contentPrices[ruleIndex] : null;
                                     const isFree = rule?.accessType === "free";
+                                    const originalPrice = Math.max(0, Number(rule?.price ?? 99) || 0);
+                                    const discountPercent = Math.min(100, Math.max(0, Number(rule?.discount ?? 0) || 0));
+                                    const finalPrice = isFree ? 0 : Math.round((originalPrice * (1 - discountPercent / 100) + Number.EPSILON) * 100) / 100;
                                     const itemLabel = option.label + (lang.label ? ` · ${lang.label}` : "");
                                     return <div key={`${option.value}-${lang.value || "all"}`} className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4">
                                       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                                         <div className="sm:w-40 shrink-0">
                                           <div className="font-bold text-sm text-slate-800">{itemLabel}</div>
-                                          <div className={`text-[11px] mt-1 font-semibold ${!rule ? "text-slate-400" : isFree ? "text-emerald-600" : "text-violet-600"}`}>{!rule ? "Not configured" : isFree ? "FREE" : `PAID · ₹${Number(rule.price || 0).toFixed(2)}`}</div>
+                                          <div className={`text-[11px] mt-1 font-semibold ${!rule ? "text-slate-400" : isFree ? "text-emerald-600" : "text-violet-600"}`}>{!rule ? "Not configured" : isFree ? "FREE · ₹0.00" : `PRICE · ₹${originalPrice.toFixed(2)}`}</div>
+                                          {rule && <div className="text-[11px] mt-1 font-bold text-emerald-700">FINAL PRICE · ₹{finalPrice.toFixed(2)}</div>}
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 flex-1">
                                           <div className="col-span-2 sm:col-span-1">
