@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -666,8 +667,144 @@ const BPharm = () => {
     toast.success("Download started!");
   };
 
+  // Purchase exactly the selected B.Pharm category + semester.
+  // Admin pricing must use the same stable contentKey format below.
   const handlePremiumPurchase = async () => {
-    toast.info("💎 Premium purchase flow - Coming soon!");
+    if (!selectedCategory || !selectedSemester) {
+      toast.error("Pehle category aur semester select karo.");
+      return;
+    }
+
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("userToken") ||
+      localStorage.getItem("authToken");
+
+    if (!token) {
+      toast.error("Payment se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+
+    const categorySlug = String(selectedCategory)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const semesterNumber = Number.parseInt(String(selectedSemester).replace(/\D/g, ""), 10);
+
+    if (!Number.isInteger(semesterNumber) || semesterNumber < 1 || semesterNumber > 8) {
+      toast.error("Valid B.Pharm semester select karo.");
+      return;
+    }
+
+    const contentKey = `bpharm:${categorySlug}:semester:${semesterNumber}`;
+    const productTitle = `B.Pharm ${selectedCategory} - Semester ${semesterNumber}`;
+    let checkoutWindow = null;
+
+    try {
+      setLoading(true);
+      // Open a blank window synchronously to avoid popup blockers after API calls.
+      checkoutWindow = window.open("about:blank", "_blank");
+
+      const scriptLoaded = await new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+        if (existing) {
+          existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true });
+          existing.addEventListener("error", () => resolve(false), { once: true });
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.dataset.razorpayCheckout = "true";
+        script.onload = () => resolve(Boolean(window.Razorpay));
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+
+      if (!scriptLoaded) throw new Error("Razorpay checkout load nahi hua. Dobara try karo.");
+
+      const orderResponse = await axios.post(
+        `${API_BASE}/api/payment/create-order`,
+        {
+          productType: "course-content",
+          productId: contentKey,
+          productTitle,
+          course: "B.Pharm",
+          category: selectedCategory,
+          semester: String(semesterNumber),
+          year: "",
+          language: "",
+          specialization: "",
+          contentKey,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const order = orderResponse.data;
+      if (!order?.success || !order?.orderId || !order?.key) {
+        throw new Error(order?.message || "Payment order create nahi hua.");
+      }
+
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+
+      const options = {
+        key: order.key,
+        amount: Math.round(Number(order.amount) * 100),
+        currency: order.currency || "INR",
+        name: "PharmaVerse",
+        description: productTitle,
+        order_id: order.orderId,
+        handler: async (response) => {
+          try {
+            const verifyResponse = await axios.post(
+              `${API_BASE}/api/payment/verify-payment`,
+              {
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                productType: "course-content",
+                productId: contentKey,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyResponse.data?.success && verifyResponse.data?.hasAccess) {
+              toast.success(`${productTitle} unlock ho gaya!`);
+              // The backend purchase record is authoritative; do not mark the whole
+              // account premium because this purchase unlocks only this scope.
+              window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", {
+                detail: { course: "B.Pharm", category: selectedCategory, semester: semesterNumber, contentKey }
+              }));
+            } else {
+              toast.error(verifyResponse.data?.message || "Payment verify nahi hua. Support se contact karo.");
+            }
+          } catch (verifyError) {
+            console.error("B.Pharm payment verification error:", verifyError);
+            toast.error(verifyError.response?.data?.message || "Payment ho gaya, lekin verification pending hai. Dobara login karke status check karo.");
+          }
+        },
+        modal: {
+          ondismiss: () => toast("Payment cancel/close kar diya gaya.", { icon: "ℹ️" }),
+        },
+        prefill: {},
+        theme: { color: "#6d28d9" },
+      };
+
+      const checkout = new window.Razorpay(options);
+      checkout.on("payment.failed", (event) => {
+        toast.error(event?.error?.description || "Payment fail ho gaya. Dobara try karo.");
+      });
+      checkout.open();
+    } catch (error) {
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+      console.error("B.Pharm purchase error:", error);
+      toast.error(error.response?.data?.message || error.message || "Payment start nahi ho paya.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ========== RENDER CATEGORY ==========
@@ -1473,5 +1610,3 @@ const BPharm = () => {
 };
 
 export default BPharm;
-
-
