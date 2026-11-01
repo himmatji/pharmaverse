@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -4823,91 +4835,57 @@ router.get(
 
 /* =========================================================
    PUBLIC PRICE
+   Returns legacy course prices and admin-managed content prices
 ========================================================= */
 
-router.get(
-  "/public-price",
-  async (req, res) => {
-    try {
-      const coursePrices =
-        await CoursePrice.findOne();
+router.get("/public-price", async (req, res) => {
+  try {
+    const coursePrices = await CoursePrice.findOne().lean();
 
-      if (!coursePrices) {
-        return res.json({
-          "B.Pharm": {
-            price: 99,
-            discount: 0
-          },
+    const storedPrices = coursePrices?.prices;
+    const pricesObject =
+      storedPrices instanceof Map
+        ? Object.fromEntries(storedPrices)
+        : (storedPrices || {});
 
-          "D.Pharm": {
-            price: 79,
-            discount: 0
-          },
+    // Keep existing course-wide prices and their defaults.
+    const normalizedPrices = normalizeCoursePrices(pricesObject);
 
-          "M.Pharm": {
-            price: 149,
-            discount: 0
-          },
+    // Include semester/year/language/specialization-specific prices.
+    const contentPrices = Array.isArray(coursePrices?.contentPrices)
+      ? coursePrices.contentPrices.map((item) => ({
+          course: String(item.course || "").trim(),
+          category: String(item.category || "").trim(),
+          semester: item.semester ?? "",
+          year: item.year ?? "",
+          language: String(item.language || "").trim(),
+          specialization: String(item.specialization || "").trim(),
+          contentKey: String(item.contentKey || "").trim(),
+          accessType: String(item.accessType || "paid").trim(),
+          price: Number(item.price ?? 0),
+          discount: Number(item.discount ?? 0),
+          isActive: item.isActive !== false,
+        }))
+      : [];
 
-          "Pharm.D": {
-            price: 129,
-            discount: 0
-          },
+    return res.status(200).json({
+      success: true,
+      "B.Pharm": normalizedPrices.BPharm,
+      "D.Pharm": normalizedPrices.DPharm,
+      "M.Pharm": normalizedPrices.MPharm,
+      "Pharm.D": normalizedPrices.PharmD,
+      PhD: normalizedPrices.PhD,
+      contentPrices,
+    });
+  } catch (error) {
+    console.error("Public course prices error:", error);
 
-          "PhD": {
-            price: 199,
-            discount: 0
-          }
-        });
-      }
-
-      const p =
-        coursePrices.prices;
-
-      const getPrice = (
-        key
-      ) => {
-        if (!p) {
-          return null;
-        }
-
-        if (
-          typeof p.get ===
-          "function"
-        ) {
-          return p.get(key);
-        }
-
-        return p[key];
-      };
-
-      return res.json({
-        "B.Pharm":
-          getPrice("BPharm"),
-
-        "D.Pharm":
-          getPrice("DPharm"),
-
-        "M.Pharm":
-          getPrice("MPharm"),
-
-        "Pharm.D":
-          getPrice("PharmD"),
-
-        "PhD":
-          getPrice("PhD")
-      });
-
-    } catch (error) {
-      console.error(error);
-
-      return res.status(500).json({
-        message:
-          error.message
-      });
-    }
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch course prices",
+    });
   }
-);
+});
 
 /* =========================================================
    ADMIN PROFILE
@@ -5434,3 +5412,5 @@ router.get(
 ========================================================= */
 
 module.exports = router;
+
+
