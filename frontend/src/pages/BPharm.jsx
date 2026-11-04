@@ -4,7 +4,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
-import LockedContent from "../components/LockedContent"; // ✅ ADDED
+import LockedContent from "../components/LockedContent"; 
 
 import {
   BookOpen, FileText, Video, Brain, Download, GraduationCap, PlayCircle,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
+
+const getToken = () => localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
 
 // ========== CATEGORIES ==========
 const categories = [
@@ -104,13 +106,9 @@ const BPHARM_SUBJECTS = {
   8: ["Ethical Considerations and Translational Applications of AI in Pharmacy", "Clinical Pharmacotherapeutics", "Industrial Pharmacy and Facility Design", "Pharmaceutical Management", "Sterile Dosage Forms and Novel Drug Delivery System", "Pharmaceutical Packaging", "Supply Chain Management", "Industrial Safety and Waste Management", "Traditional Healing Practices of India", "Futuristic Pharma through AR/VR: Pharma 4.0", "Herbal Cosmetics for Industry Perspective"],
 };
 
-// ✅ Build exact contentKey format (Admin panel se match hona chahiye)
+// ✅ Build exact contentKey format
 const buildContentKey = (category, semester) => {
-  const categorySlug = String(category || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const categorySlug = String(category || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const semNum = Number.parseInt(String(semester).replace(/\D/g, ""), 10);
   if (!categorySlug || !Number.isInteger(semNum)) return "";
   return `bpharm:${categorySlug}:semester:${semNum}`;
@@ -138,6 +136,10 @@ const BPharm = () => {
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [directError, setDirectError] = useState("");
 
+  // ✅ Track which semesters are unlocked
+  const [unlockedSems, setUnlockedSems] = useState({});
+  const [checkingAccess, setCheckingAccess] = useState(false);
+
   const contentRequestIdRef = useRef(0);
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
@@ -149,13 +151,59 @@ const BPharm = () => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
-  const isDirectFilesCategory = () =>
-    selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
+  const isDirectFilesCategory = () => selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
 
   const getAvailableSubjects = () => {
     const semester = Number(selectedSemester);
     return Array.isArray(BPHARM_SUBJECTS[semester]) ? BPHARM_SUBJECTS[semester] : [];
   };
+
+  // ========== ✅ CHECK ACCESS FOR ALL SEMESTERS ON CATEGORY SELECT ==========
+  useEffect(() => {
+    if (currentStep === 2 && selectedCategory) {
+      const checkAllSemesters = async () => {
+        setCheckingAccess(true);
+        const token = getToken();
+        if (!token) {
+          setCheckingAccess(false);
+          return; // ProtectedRoute should handle redirect, but just in case
+        }
+
+        const sems = [1, 2, 3, 4, 5, 6, 7, 8];
+        const newUnlocked = {};
+
+        await Promise.all(sems.map(async (sem) => {
+          const contentKey = buildContentKey(selectedCategory, sem);
+          try {
+            const response = await axios.get(
+              `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(contentKey)}`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+                params: {
+                  course: "B.Pharm",
+                  category: selectedCategory,
+                  semester: String(sem),
+                  year: "",
+                  language: "",
+                  specialization: "",
+                  contentKey,
+                }
+              }
+            );
+            newUnlocked[sem] = response.data?.hasAccess === true;
+          } catch (err) {
+            console.error(`Access check failed for Sem ${sem}:`, err);
+            newUnlocked[sem] = false;
+          }
+        }));
+
+        setUnlockedSems(newUnlocked);
+        setCheckingAccess(false);
+      };
+
+      checkAllSemesters();
+    }
+  }, [currentStep, selectedCategory]);
 
   // ========== FETCH NOTES ==========
   const fetchUnitContent = async () => {
@@ -184,13 +232,9 @@ const BPharm = () => {
       rawContent.forEach((item) => {
         const unitValue = Number(item?.unit);
         if (!Number.isInteger(unitValue) || unitValue <= 0) return;
-        if (!unitMap.has(unitValue)) {
-          unitMap.set(unitValue, { id: unitValue, name: `Unit ${unitValue}`, topics: [] });
-        }
+        if (!unitMap.has(unitValue)) unitMap.set(unitValue, { id: unitValue, name: `Unit ${unitValue}`, topics: [] });
         const topic = item?.topic ?? item?.topicName ?? item?.chapter ?? item?.chapterName;
-        if (topic && !unitMap.get(unitValue).topics.includes(String(topic))) {
-          unitMap.get(unitValue).topics.push(String(topic));
-        }
+        if (topic && !unitMap.get(unitValue).topics.includes(String(topic))) unitMap.get(unitValue).topics.push(String(topic));
       });
       return Array.from(unitMap.values()).sort((a, b) => a.id - b.id);
     };
@@ -208,9 +252,7 @@ const BPharm = () => {
         try {
           res = await axios.get(`${API_BASE}/api/admin/public/notes`, {
             params: { course: "B.Pharm", category: selectedCategory, semester: selectedSemester, subject: selectedSubject },
-            signal: controller.signal,
-            timeout: 12000,
-            headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+            signal: controller.signal, timeout: 12000, headers: { Accept: "application/json", "Cache-Control": "no-cache" },
           });
           break;
         } catch (error) {
@@ -221,15 +263,12 @@ const BPharm = () => {
       }
 
       if (requestId !== contentRequestIdRef.current) return;
-
-      const rawContent = getRawContent(res?.data)
-        .filter(Boolean)
-        .filter((item) => {
-          const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
-          const subMatch = item?.subject == null || String(item.subject).trim() === String(selectedSubject).trim();
-          const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
-          return semMatch && subMatch && catMatch;
-        });
+      const rawContent = getRawContent(res?.data).filter(Boolean).filter((item) => {
+        const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
+        const subMatch = item?.subject == null || String(item.subject).trim() === String(selectedSubject).trim();
+        const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
+        return semMatch && subMatch && catMatch;
+      });
 
       const derivedUnits = buildUnits(rawContent);
       contentCacheRef.current.set(cacheKey, { content: rawContent, units: derivedUnits, timestamp: Date.now() });
@@ -275,13 +314,10 @@ const BPharm = () => {
     try {
       const res = await axios.get(`${API_BASE}/api/admin/public/direct-files`, {
         params: { course: "B.Pharm", category: selectedCategory, semester: selectedSemester, subject: selectedSubject },
-        signal: controller.signal,
-        timeout: 15000,
-        headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        signal: controller.signal, timeout: 15000, headers: { Accept: "application/json", "Cache-Control": "no-cache" },
       });
 
       if (requestId !== contentRequestIdRef.current) return;
-
       const files = getRawFiles(res?.data).filter(Boolean).filter((item) => {
         const catMatch = item?.category == null || String(item.category).trim() === String(selectedCategory).trim();
         const semMatch = item?.semester == null || String(item.semester).trim() === String(selectedSemester).trim();
@@ -305,20 +341,14 @@ const BPharm = () => {
   };
 
   useEffect(() => {
-    if (isDirectFilesCategory() && selectedSemester && selectedSubject) {
-      fetchDirectFiles();
-    } else if (selectedCategory === "Notes" && selectedSemester && selectedSubject) {
-      fetchUnitContent();
-    }
+    if (isDirectFilesCategory() && selectedSemester && selectedSubject) fetchDirectFiles();
+    else if (selectedCategory === "Notes" && selectedSemester && selectedSubject) fetchUnitContent();
     return () => { if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort(); };
   }, [selectedCategory, selectedSemester, selectedSubject]);
 
   // ========== HISTORY SYNC ==========
   useEffect(() => {
-    if (isPopStateRef.current) {
-      isPopStateRef.current = false;
-      return;
-    }
+    if (isPopStateRef.current) { isPopStateRef.current = false; return; }
     if (currentStep > 1) window.history.pushState({ bpharmStep: currentStep }, "", window.location.href);
   }, [currentStep]);
 
@@ -339,23 +369,23 @@ const BPharm = () => {
 
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
-    setSelectedCategory(categoryId);
-    setSelectedSemester(null);
-    setSelectedSubject(null);
-    setUnits([]); setUnitContent([]); setDirectFiles([]);
+    setSelectedCategory(categoryId); setSelectedSemester(null); setSelectedSubject(null);
+    setUnits([]); setUnitContent([]); setDirectFiles([]); setUnlockedSems({});
     setCurrentStep(2);
   };
 
   const handleSemesterClick = (semester) => {
-    setSelectedSemester(semester);
-    setCurrentStep(3);
-    setSelectedSubject(null);
-    setUnits([]); setUnitContent([]);
+    if (checkingAccess) return toast.error("Please wait, checking access...");
+    if (!unlockedSems[semester]) {
+      toast.error("Yeh semester locked hai. Pehle payment karein!");
+      return;
+    }
+    setSelectedSemester(semester); setCurrentStep(3);
+    setSelectedSubject(null); setUnits([]); setUnitContent([]);
   };
 
   const handleSubjectClick = (subject) => {
-    setSelectedSubject(subject);
-    setCurrentStep(4);
+    setSelectedSubject(subject); setCurrentStep(4);
     setUnits([]); setUnitContent([]);
   };
 
@@ -367,17 +397,14 @@ const BPharm = () => {
 
   const resetNavigation = () => {
     setCurrentStep(1); setSelectedCategory(null); setSelectedSemester(null); setSelectedSubject(null);
-    setUnits([]); setUnitContent([]); setDirectFiles([]);
+    setUnits([]); setUnitContent([]); setDirectFiles([]); setUnlockedSems({});
   };
 
   // ========== MOUSE EFFECTS ==========
   const handleCardMouseMove = (cardId, e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePositions((prev) => ({ ...prev, [cardId]: { x, y } }));
+    setMousePositions((prev) => ({ ...prev, [cardId]: { x: ((e.clientX - rect.left) / rect.width) * 100, y: ((e.clientY - rect.top) / rect.height) * 100 } }));
   };
-
   const handleCardMouseLeave = (cardId) => {
     setHoveredCard(null);
     setMousePositions((prev) => { const n = { ...prev }; delete n[cardId]; return n; });
@@ -388,7 +415,6 @@ const BPharm = () => {
     if (!item?._id) return toast.error("Invalid document ID");
     window.open(`${API_BASE}/api/admin/public/preview/note/${item._id}`, "_blank", "noopener,noreferrer");
   };
-
   const handleDownload = (item) => {
     if (!item?._id) return toast.error("Invalid document ID");
     const link = document.createElement("a");
@@ -477,7 +503,6 @@ const BPharm = () => {
         <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
         <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium">Choose what you want to study</p>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 max-w-5xl mx-auto">
         {categories.map((category, index) => {
           const Icon = category.icon;
@@ -485,8 +510,6 @@ const BPharm = () => {
             <div key={category.id} onClick={() => handleCategoryClick(category.id)} className={`group relative cursor-pointer animate-slide-up`} onMouseEnter={() => setHoveredCard(category.id)} onMouseLeave={() => setHoveredCard(null)} onMouseMove={(e) => handleCardMouseMove(category.id, e)}>
               <div className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl" style={{ background: `radial-gradient(circle at ${mousePositions[category.id]?.x || 50}% ${mousePositions[category.id]?.y || 50}%, ${category.glowColor}, transparent 70%)` }}></div>
               <div className={`relative bg-gradient-to-br ${category.bgGradient} rounded-3xl p-7 sm:p-9 transition-all duration-500 group-hover:-translate-y-4 group-hover:shadow-2xl border-2 border-white/50 backdrop-blur-sm overflow-hidden`}>
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                <div className="absolute -inset-0.5 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"><div className="absolute inset-0 rounded-3xl" style={{ background: `conic-gradient(from 0deg, ${category.glowColor}, transparent, ${category.glowColor}, transparent)`, animation: "rotateGlow 4s linear infinite" }}></div></div>
                 <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-r ${category.gradient} flex items-center justify-center mb-5 shadow-2xl group-hover:scale-110 transition-all duration-500 animate-float-medium relative z-10`}><Icon className="text-white" size={34} /></div>
                 <div className="absolute top-4 right-4 z-10"><span className={`text-[10px] font-['Inter'] font-bold px-3 py-1 rounded-full bg-gradient-to-r ${category.gradient} text-white shadow-lg animate-pulse`}>{category.badge}</span></div>
                 <div className="relative z-10">
@@ -498,7 +521,6 @@ const BPharm = () => {
                     <span className="flex items-center gap-1 text-emerald-600 font-medium group-hover:gap-2 transition-all duration-300"><Zap size={14} />Click to Explore</span>
                   </div>
                 </div>
-                <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${category.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left rounded-b-3xl`}></div>
               </div>
             </div>
           );
@@ -507,28 +529,13 @@ const BPharm = () => {
     </div>
   );
 
-  // 🚨 YAHAN LOCK LAGA HAI: Pura semester select krne ka UI LockedContent ke andr wrap kiya hai
+  // 🚨 FIXED: Semester UI now fully dynamic. It checks `unlockedSems[sem]` and shows Locked 🔒 or Unlocked ✅
   const renderSemesterStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryIcon = categories.find((c) => c.id === selectedCategory)?.icon || BookOpen;
     const Icon = categoryIcon;
     const allSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
 
-    // ✅ Semester lock product object
-    // Note: ID & contentKey dynamically semester pe depend karta hai, par LockedContent bina payment ke price fetch nahi karega.
-    // Toh hum ek Dummy Product pass kar rahe hain jisme contentKey current selected semester ka hai. 
-    // Actually LockedContent single lock show karta hai, toh hume exact sem ka lock chahiye. 
-    // Par hum pehle check karenge ki kya user purchased already h? Agar haan, toh direct grid dikhayenge.
-    
-    // Ek chota sa trick: hum direct grid lock nahi karenge, balki har semester card pe ek lock check lagayenge. 
-    // Par tune bola "yha se hi lock ho". Toh hum pura grid LockedContent me wrap kar dete hain jo selectedSemester pe based hoga.
-    // Jab user kisi sem pe click karega, tab lock check hoga. Ya phir hum grid dikha kar click pe lock trigger karenge.
-    
-    // Best UI Approach: Pura Grid dikhe, par jaise hi user kisi Sem pe click kare, LockedContent check kare. 
-    // Ya phir hum seedha renderSemesterStep ko LockedContent se wrap kar de? Nahi, kyunki har sem ka apna lock/price hai.
-    
-    // Toh best UX: User sem pe click kare -> agar locked hai -> pricing dikhe. Agar unlocked -> aage jaye.
-    
     return (
       <div className="animate-scale-in">
         <div className="flex items-center gap-4 mb-8 flex-wrap">
@@ -553,42 +560,65 @@ const BPharm = () => {
             Select Your <span className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-gradient">Semester</span>
           </h2>
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
-          <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
-            <Lock className="text-amber-500" size={16} />
-            Semester unlock karne ke liye click karein
-          </p>
+          
+          <div className="mt-4 flex flex-col items-center justify-center gap-2">
+            <p className="text-gray-500 text-base font-['Inter'] font-medium flex items-center justify-center gap-2">
+              {checkingAccess ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Checking access...</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={16} className="text-amber-500" />
+                  <span>Pay to unlock your semester</span>
+                </>
+              )}
+            </p>
+          </div>
         </div>
 
-        {/* ✅ Semester Cards Grid - User clicks, then we check access dynamically */}
         <div className="grid grid-cols-4 gap-5 sm:gap-6 max-w-4xl mx-auto">
           {allSemesters.map((sem, index) => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
+            
+            const isUnlocked = unlockedSems[sem];
+            const isChecking = checkingAccess;
+
             return (
               <div
                 key={sem}
                 onClick={() => handleSemesterClick(sem)}
-                className="group relative cursor-pointer"
+                className={`group relative cursor-pointer ${!isUnlocked && !isChecking ? "opacity-90" : ""}`}
                 onMouseEnter={() => setHoveredCard(cardId)}
                 onMouseLeave={() => setHoveredCard(null)}
                 onMouseMove={(e) => handleCardMouseMove(cardId, e)}
               >
                 <div className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl" style={{ background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 68%)` }}></div>
                 <div className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass} bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}`} style={{ boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)` }}>
-                  <div className="glow-ring" style={{ "--x": `${mousePositions[cardId]?.x || 50}%`, "--y": `${mousePositions[cardId]?.y || 50}%` }}></div>
-                  <div className="shine-overlay"></div>
-                  <div className="absolute -inset-0.5 rounded-2xl opacity-30 group-hover:opacity-80 transition-opacity duration-700"><div className="absolute inset-0 rounded-2xl" style={{ background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`, animation: "rotateGlow 4s linear infinite" }}></div></div>
-                  <div className="absolute top-2 right-2 sparkle-dot"><Sparkles size={12} className="text-white opacity-70" /></div>
-                  <div className="absolute bottom-2 left-2 sparkle-dot" style={{ animationDelay: "1.5s" }}><Sparkles size={8} className="text-white opacity-50" /></div>
-                  <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
-
-                  <div className="relative z-10">
+                  
+                  <div className="relative z-10 flex flex-col items-center">
                     <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>{sem}</div>
                     <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">Semester</div>
-                    <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-amber-200/50 status-pulse">
-                      <Lock size={11} className="sm:size-3" /> Unlock
-                    </div>
+                    
+                    {/* ✅ DYNAMIC BADGE */}
+                    {isChecking ? (
+                       <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
+                         <div className="w-2.5 h-2.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
+                         Checking
+                       </div>
+                    ) : isUnlocked ? (
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50">
+                        <Unlock size={11} className="sm:size-3" /> Unlocked
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-rose-500 to-red-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-rose-200/50 status-pulse">
+                        <Lock size={11} className="sm:size-3" /> Locked
+                      </div>
+                    )}
+
                     <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
                     <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
                   </div>
@@ -601,7 +631,7 @@ const BPharm = () => {
     );
   };
 
-  // 🚨 SUBJECT STEP: Har subject ke andar jaate hi LockedContent wrap karega
+  // 🚨 SUBJECT STEP: Lock lagaya gaya hai
   const renderSubjectStep = () => {
     const subjects = getAvailableSubjects();
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
@@ -623,7 +653,6 @@ const BPharm = () => {
 
     return (
       <div className="animate-slide-down">
-        {/* Progress & Header */}
         <div className="flex items-center gap-4 mb-8 flex-wrap">
           <button onClick={goBack} className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-gray-700 font-['Inter'] font-semibold text-sm group">
             <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />Back
@@ -644,7 +673,7 @@ const BPharm = () => {
           <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryGradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
         </div>
 
-        {/* ✅ LockedContent Wrap: Agar semester purchased nahi hai, toh subjects dikhenge hi nahi, pay button aayega */}
+        {/* ✅ LockedContent Wrap */}
         <LockedContent 
           product={lockProduct}
           previewContent={
@@ -683,10 +712,8 @@ const BPharm = () => {
     );
   };
 
-  // 🚨 UNIT STEP: Extra safety, but Subject step pe hi lock lag gaya toh yahan aayega hi nahi bina pay kiye
+  // 🚨 UNIT STEP
   const renderUnitStep = () => {
-    const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
-    
     return (
       <div className="animate-slide-up">
          <div className="flex items-center gap-4 mb-8 flex-wrap">
@@ -734,9 +761,6 @@ const BPharm = () => {
     );
   };
 
-  // ============================================================
-  // MAIN RENDER
-  // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-white pb-20">
       <Toaster position="top-right" toastOptions={{ style: { background: "#363636", color: "#fff" } }} />
