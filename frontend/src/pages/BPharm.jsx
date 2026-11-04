@@ -6,6 +6,7 @@ import toast, { Toaster } from "react-hot-toast";
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
 import LockedContent from "./LockedContent"; // ✅ LOCKED CONTENT ADDED
 
+
 import {
   BookOpen, FileText, Video, Brain, Download, GraduationCap, PlayCircle,
   Lock, Eye, Crown, Sparkles, Rocket, ArrowLeft, CheckCircle, Book, Layers,
