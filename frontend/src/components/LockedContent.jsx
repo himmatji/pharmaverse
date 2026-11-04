@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import PaymentModal from './PaymentModal';
@@ -9,11 +8,10 @@ const API_BASE = (import.meta.env.VITE_API_URL || 'https://api.pharmaverse.co.in
 const getToken = () =>
   localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
 
-const normalizeQueryValue = (value) =>
-  value === undefined || value === null ? '' : String(value).trim();
+const normalizeQueryValue = (v) =>
+  v === undefined || v === null ? '' : String(v).trim();
 
-const normalizeCompare = (value) =>
-  normalizeQueryValue(value).toLowerCase();
+const normalizeCompare = (v) => normalizeQueryValue(v).toLowerCase();
 
 const LockedContent = ({ product, children, previewContent }) => {
   const [showPayment, setShowPayment] = useState(false);
@@ -36,7 +34,7 @@ const LockedContent = ({ product, children, previewContent }) => {
 
   const isCourseContent = productType === 'course-content';
 
-  // Fetch the exact admin-configured price for this content.
+  // ---------- Fetch admin price ----------
   useEffect(() => {
     let cancelled = false;
 
@@ -49,7 +47,7 @@ const LockedContent = ({ product, children, previewContent }) => {
 
       if (!course || !category || !contentKey) {
         setMatchedPricing(null);
-        setPricingError('Course pricing details are incomplete. Please refresh the page.');
+        setPricingError('Pricing details missing. Refresh page.');
         return;
       }
 
@@ -77,20 +75,17 @@ const LockedContent = ({ product, children, previewContent }) => {
         );
 
         if (!matched) {
-          throw new Error('Price not configured for this exact content. Please contact admin.');
+          throw new Error('Price not configured for this content. Contact admin.');
         }
 
         const basePrice = Number(matched.price);
         const discount = Number(matched.discount || 0);
 
         if (
-          !Number.isFinite(basePrice) ||
-          basePrice < 0 ||
-          !Number.isFinite(discount) ||
-          discount < 0 ||
-          discount > 100
+          !Number.isFinite(basePrice) || basePrice < 0 ||
+          !Number.isFinite(discount) || discount < 0 || discount > 100
         ) {
-          throw new Error('Invalid price configuration. Please contact admin.');
+          throw new Error('Invalid price configuration. Contact admin.');
         }
 
         if (!cancelled) {
@@ -98,16 +93,14 @@ const LockedContent = ({ product, children, previewContent }) => {
             ...matched,
             price: basePrice,
             discount,
-            finalPrice: Math.round(basePrice * (1 - discount / 100) * 100) / 100
+            finalPrice: Math.round(basePrice * (1 - discount / 100) * 100) / 100,
           });
         }
       } catch (error) {
         console.error('Fetch content pricing error:', error);
         if (!cancelled) {
           setPricingError(
-            error.response?.data?.message ||
-            error.message ||
-            'Could not load content price.'
+            error.response?.data?.message || error.message || 'Could not load price.'
           );
         }
       } finally {
@@ -116,25 +109,14 @@ const LockedContent = ({ product, children, previewContent }) => {
     };
 
     fetchPricing();
+    return () => { cancelled = true; };
+  }, [isCourseContent, course, category, semester, year, language, specialization, contentKey]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    isCourseContent,
-    course,
-    category,
-    semester,
-    year,
-    language,
-    specialization,
-    contentKey
-  ]);
-
+  // ---------- Check access ----------
   const checkAccess = useCallback(async () => {
     if (!productType || !productId) {
       setHasAccess(false);
-      setAccessError('Content details are missing. Please refresh the page or contact support.');
+      setAccessError('Content details missing.');
       setLoading(false);
       return;
     }
@@ -144,7 +126,6 @@ const LockedContent = ({ product, children, previewContent }) => {
 
     try {
       const token = getToken();
-
       if (!token) {
         setHasAccess(false);
         setLoading(false);
@@ -152,7 +133,6 @@ const LockedContent = ({ product, children, previewContent }) => {
       }
 
       const params = {};
-
       if (isCourseContent || contentKey || (course && category)) {
         params.contentKey = contentKey;
         params.course = course;
@@ -165,10 +145,7 @@ const LockedContent = ({ product, children, previewContent }) => {
 
       const response = await axios.get(
         `${API_BASE}/api/payment/check-access/${encodeURIComponent(productType)}/${encodeURIComponent(productId)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          params
-        }
+        { headers: { Authorization: `Bearer ${token}` }, params }
       );
 
       setHasAccess(response.data?.hasAccess === true);
@@ -176,32 +153,16 @@ const LockedContent = ({ product, children, previewContent }) => {
       console.error('Check access error:', error);
       setHasAccess(false);
       setAccessError(
-        error.response?.data?.message ||
-        'Could not verify content access. Please try again.'
+        error.response?.data?.message || 'Could not verify access. Try again.'
       );
     } finally {
       setLoading(false);
     }
-  }, [
-    productType,
-    productId,
-    isCourseContent,
-    contentKey,
-    course,
-    category,
-    semester,
-    year,
-    language,
-    specialization
-  ]);
+  }, [productType, productId, isCourseContent, contentKey, course, category, semester, year, language, specialization]);
 
-  useEffect(() => {
-    checkAccess();
-  }, [checkAccess]);
+  useEffect(() => { checkAccess(); }, [checkAccess]);
 
-  const handlePaymentSuccess = async () => {
-    await checkAccess();
-  };
+  const handlePaymentSuccess = async () => { await checkAccess(); };
 
   if (loading) {
     return (
@@ -215,7 +176,7 @@ const LockedContent = ({ product, children, previewContent }) => {
     return (
       <div className="animate-fadeIn">
         <div className="bg-green-50 border border-green-200 rounded-xl p-2 sm:p-3 mb-3 sm:mb-4 flex items-center gap-2">
-          <Unlock size={16} className="sm:w-[18px] sm:h-[18px] text-green-600" />
+          <Unlock size={16} className="text-green-600" />
           <span className="text-xs sm:text-sm text-green-700">
             You have access to this content. Enjoy!
           </span>
@@ -225,21 +186,13 @@ const LockedContent = ({ product, children, previewContent }) => {
     );
   }
 
-  const finalPrice = isCourseContent
-    ? matchedPricing?.finalPrice
-    : Number(product?.price);
-
+  const finalPrice = isCourseContent ? matchedPricing?.finalPrice : Number(product?.price);
   const validPrice = Number.isFinite(finalPrice) && finalPrice > 0;
   const isFree = isCourseContent && matchedPricing &&
     (matchedPricing.accessType === 'free' || matchedPricing.price === 0);
 
-  const paymentProduct = {
-    ...product,
-    price: finalPrice
-  };
-
-  const formatPrice = (value) =>
-    Number(value).toFixed(2).replace(/\.?0+$/, '');
+  const paymentProduct = { ...product, price: finalPrice };
+  const formatPrice = (v) => Number(v).toFixed(2).replace(/\.?0+$/, '');
 
   return (
     <>
@@ -247,8 +200,7 @@ const LockedContent = ({ product, children, previewContent }) => {
         {previewContent && (
           <div className="p-4 sm:p-6 border-b border-gray-200">
             <h3 className="font-semibold text-gray-700 mb-1 sm:mb-2 flex items-center gap-1 sm:gap-2 text-sm sm:text-base">
-              <Eye size={14} className="sm:w-[16px] sm:h-[16px]" />
-              Preview
+              <Eye size={14} /> Preview
             </h3>
             {previewContent}
           </div>
@@ -256,43 +208,33 @@ const LockedContent = ({ product, children, previewContent }) => {
 
         <div className="relative p-8 sm:p-10 md:p-12 text-center">
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm" />
-
           <div className="relative z-10">
             <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 md:mb-5">
-              <Lock size={32} className="sm:w-[38px] sm:h-[38px] md:w-[48px] md:h-[48px] text-purple-500" />
+              <Lock size={32} className="text-purple-500" />
             </div>
 
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">
               Premium Content Locked
             </h3>
-
             <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-5 md:mb-6">
-              Purchase this content to unlock full access
+              Purchase this semester content to unlock full access
             </p>
 
             <div className="flex items-center justify-center gap-1 sm:gap-2 mb-4 sm:mb-5 md:mb-6">
-              <Crown size={14} className="sm:w-[16px] sm:h-[16px] md:w-[18px] md:h-[18px] text-yellow-500" />
+              <Crown size={14} className="text-yellow-500" />
               <span className="text-xs sm:text-sm text-gray-600">
                 One-time payment • Lifetime access
               </span>
             </div>
 
             {pricingLoading && isCourseContent && (
-              <p className="text-sm text-purple-600 mb-3">
-                Loading latest price...
-              </p>
+              <p className="text-sm text-purple-600 mb-3">Loading latest price...</p>
             )}
-
             {pricingError && (
-              <p className="text-xs sm:text-sm text-red-600 mb-3" role="alert">
-                {pricingError}
-              </p>
+              <p className="text-xs sm:text-sm text-red-600 mb-3" role="alert">{pricingError}</p>
             )}
-
             {accessError && (
-              <p className="text-xs sm:text-sm text-red-600 mb-3" role="alert">
-                {accessError}
-              </p>
+              <p className="text-xs sm:text-sm text-red-600 mb-3" role="alert">{accessError}</p>
             )}
 
             {matchedPricing && matchedPricing.discount > 0 && !isFree && (
@@ -314,15 +256,12 @@ const LockedContent = ({ product, children, previewContent }) => {
               <button
                 onClick={() => setShowPayment(true)}
                 disabled={
-                  !productType ||
-                  !productId ||
-                  pricingLoading ||
-                  !validPrice ||
+                  !productType || !productId || pricingLoading || !validPrice ||
                   (isCourseContent && (!contentKey || !matchedPricing))
                 }
                 className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base md:text-lg transition-all duration-300 flex items-center gap-2 sm:gap-3 mx-auto shadow-xl hover:scale-105"
               >
-                <Sparkles size={16} className="sm:w-[18px] sm:h-[18px] md:w-[20px] md:h-[20px]" />
+                <Sparkles size={16} />
                 Unlock for {validPrice ? `₹${formatPrice(finalPrice)}` : '—'}
               </button>
             )}

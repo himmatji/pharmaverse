@@ -7,14 +7,14 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isLoggedIn = !!localStorage.getItem("token");
+  // Consistent token key — LockedContent & PaymentModal use 'userToken'
+  const isLoggedIn = !!(
+    localStorage.getItem("userToken") || sessionStorage.getItem("userToken")
+  );
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      setShowAuthModal(true);
-    } else {
-      setShowAuthModal(false);
-    }
+    if (!isLoggedIn) setShowAuthModal(true);
+    else setShowAuthModal(false);
   }, [location.pathname, isLoggedIn]);
 
   const handleCloseModal = () => {
@@ -27,13 +27,11 @@ const ProtectedRoute = ({ children }) => {
     window.location.reload();
   };
 
-  if (isLoggedIn) {
-    return <>{children}</>;
-  }
+  if (isLoggedIn) return <>{children}</>;
 
   return (
-    <AuthModal 
-      isOpen={showAuthModal} 
+    <AuthModal
+      isOpen={showAuthModal}
       onClose={handleCloseModal}
       onLoginSuccess={handleLoginSuccess}
     />

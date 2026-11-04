@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
+import LockedContent from "../components/LockedContent"; // ✅ ADDED
 
 import {
   BookOpen,
@@ -138,6 +138,18 @@ const BPHARM_SUBJECTS = {
   8: ["Ethical Considerations and Translational Applications of AI in Pharmacy", "Clinical Pharmacotherapeutics", "Industrial Pharmacy and Facility Design", "Pharmaceutical Management", "Sterile Dosage Forms and Novel Drug Delivery System", "Pharmaceutical Packaging", "Supply Chain Management", "Industrial Safety and Waste Management", "Traditional Healing Practices of India", "Futuristic Pharma through AR/VR: Pharma 4.0", "Herbal Cosmetics for Industry Perspective"],
 };
 
+// ✅ Build stable contentKey — MUST match admin panel exactly
+const buildContentKey = (category, semester) => {
+  const categorySlug = String(category || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const semNum = Number.parseInt(String(semester).replace(/\D/g, ""), 10);
+  if (!categorySlug || !Number.isInteger(semNum)) return "";
+  return `bpharm:${categorySlug}:semester:${semNum}`;
+};
+
 const BPharm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -155,8 +167,16 @@ const BPharm = () => {
   const [unitContent, setUnitContent] = useState([]);
   const [isContentLoading, setIsContentLoading] = useState(false);
   const [contentError, setContentError] = useState("");
-  const [isPremium, setIsPremium] = useState(false);
-  const [premiumPrice, setPremiumPrice] = useState(999);
+
+  // ✅ Purchase verified state — per category+semester
+  const [purchasedKeys, setPurchasedKeys] = useState(() => {
+    try {
+      const stored = localStorage.getItem("pharmaverse_purchases");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -169,16 +189,10 @@ const BPharm = () => {
   // ✅ HISTORY SYNC REFS
   const isPopStateRef = useRef(false);
   const currentStepRef = useRef(1);
-  const isDirectFilesCategoryRef = useRef(false);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
-
-  useEffect(() => {
-    isDirectFilesCategoryRef.current =
-      selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
-  }, [selectedCategory]);
 
   const isDirectFilesCategory = () =>
     selectedCategory === "Exam Crash Course" || selectedCategory === "PYQs";
@@ -187,6 +201,33 @@ const BPharm = () => {
     const semester = Number(selectedSemester);
     return Array.isArray(BPHARM_SUBJECTS[semester]) ? BPHARM_SUBJECTS[semester] : [];
   };
+
+  // ✅ Current contentKey for selected category + semester
+  const currentContentKey = buildContentKey(selectedCategory, selectedSemester);
+  const hasPurchasedCurrent = currentContentKey && purchasedKeys.has(currentContentKey);
+
+  // ✅ Persist purchases to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("pharmaverse_purchases", JSON.stringify(Array.from(purchasedKeys)));
+    } catch {}
+  }, [purchasedKeys]);
+
+  // ✅ Listen for purchase-verified event from LockedContent/PaymentModal
+  useEffect(() => {
+    const handlePurchaseVerified = (e) => {
+      const { contentKey } = e.detail || {};
+      if (contentKey) {
+        setPurchasedKeys((prev) => {
+          const next = new Set(prev);
+          next.add(contentKey);
+          return next;
+        });
+      }
+    };
+    window.addEventListener("pharmaverse:purchase-verified", handlePurchaseVerified);
+    return () => window.removeEventListener("pharmaverse:purchase-verified", handlePurchaseVerified);
+  }, []);
 
   // ========== FETCH NOTES ==========
   const fetchUnitContent = async () => {
@@ -381,29 +422,22 @@ const BPharm = () => {
     };
   }, [selectedCategory, selectedSemester, selectedSubject]);
 
-  // ========== ✅ HISTORY SYNC: push state on step change ==========
+  // ========== ✅ HISTORY SYNC ==========
   useEffect(() => {
     if (isPopStateRef.current) {
       isPopStateRef.current = false;
       return;
     }
     if (currentStep > 1) {
-      window.history.pushState(
-        { bpharmStep: currentStep },
-        "",
-        window.location.href
-      );
+      window.history.pushState({ bpharmStep: currentStep }, "", window.location.href);
     }
   }, [currentStep]);
 
-  // ========== ✅ POPSTATE HANDLER: browser/hardware back ==========
   useEffect(() => {
     const handlePopState = () => {
       const step = currentStepRef.current;
       if (step > 1) {
         isPopStateRef.current = true;
-
-        // Step-by-step back
         if (step === 2) {
           setCurrentStep(1);
           setSelectedCategory(null);
@@ -418,17 +452,9 @@ const BPharm = () => {
           setUnitContent([]);
           setDirectFiles([]);
         }
-
-        // Push state back taaki page se bahar na jaaye
-        window.history.pushState(
-          { bpharmStep: step - 1 },
-          "",
-          window.location.href
-        );
+        window.history.pushState({ bpharmStep: step - 1 }, "", window.location.href);
       }
-      // step === 1 pe normal browser back
     };
-
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
@@ -441,7 +467,6 @@ const BPharm = () => {
     setUnits([]);
     setUnitContent([]);
     setDirectFiles([]);
-
     setCurrentStep(2);
   };
 
@@ -667,146 +692,6 @@ const BPharm = () => {
     toast.success("Download started!");
   };
 
-  // Purchase exactly the selected B.Pharm category + semester.
-  // Admin pricing must use the same stable contentKey format below.
-  const handlePremiumPurchase = async () => {
-    if (!selectedCategory || !selectedSemester) {
-      toast.error("Pehle category aur semester select karo.");
-      return;
-    }
-
-    const token =
-      localStorage.getItem("token") ||
-      localStorage.getItem("userToken") ||
-      localStorage.getItem("authToken");
-
-    if (!token) {
-      toast.error("Payment se pehle login karo.");
-      navigate("/login", { state: { from: location.pathname } });
-      return;
-    }
-
-    const categorySlug = String(selectedCategory)
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    const semesterNumber = Number.parseInt(String(selectedSemester).replace(/\D/g, ""), 10);
-
-    if (!Number.isInteger(semesterNumber) || semesterNumber < 1 || semesterNumber > 8) {
-      toast.error("Valid B.Pharm semester select karo.");
-      return;
-    }
-
-    const contentKey = `bpharm:${categorySlug}:semester:${semesterNumber}`;
-    const productTitle = `B.Pharm ${selectedCategory} - Semester ${semesterNumber}`;
-    let checkoutWindow = null;
-
-    try {
-      setLoading(true);
-      // Open a blank window synchronously to avoid popup blockers after API calls.
-      checkoutWindow = window.open("about:blank", "_blank");
-
-      const scriptLoaded = await new Promise((resolve) => {
-        if (window.Razorpay) return resolve(true);
-        const existing = document.querySelector('script[data-razorpay-checkout="true"]');
-        if (existing) {
-          existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true });
-          existing.addEventListener("error", () => resolve(false), { once: true });
-          return;
-        }
-        const script = document.createElement("script");
-        script.src = "https://checkout.razorpay.com/v1/checkout.js";
-        script.async = true;
-        script.dataset.razorpayCheckout = "true";
-        script.onload = () => resolve(Boolean(window.Razorpay));
-        script.onerror = () => resolve(false);
-        document.body.appendChild(script);
-      });
-
-      if (!scriptLoaded) throw new Error("Razorpay checkout load nahi hua. Dobara try karo.");
-
-      const orderResponse = await axios.post(
-        `${API_BASE}/api/payment/create-order`,
-        {
-          productType: "course-content",
-          productId: contentKey,
-          productTitle,
-          course: "B.Pharm",
-          category: selectedCategory,
-          semester: String(semesterNumber),
-          year: "",
-          language: "",
-          specialization: "",
-          contentKey,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const order = orderResponse.data;
-      if (!order?.success || !order?.orderId || !order?.key) {
-        throw new Error(order?.message || "Payment order create nahi hua.");
-      }
-
-      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
-
-      const options = {
-        key: order.key,
-        amount: Math.round(Number(order.amount) * 100),
-        currency: order.currency || "INR",
-        name: "PharmaVerse",
-        description: productTitle,
-        order_id: order.orderId,
-        handler: async (response) => {
-          try {
-            const verifyResponse = await axios.post(
-              `${API_BASE}/api/payment/verify-payment`,
-              {
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-                productType: "course-content",
-                productId: contentKey,
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-
-            if (verifyResponse.data?.success && verifyResponse.data?.hasAccess) {
-              toast.success(`${productTitle} unlock ho gaya!`);
-              // The backend purchase record is authoritative; do not mark the whole
-              // account premium because this purchase unlocks only this scope.
-              window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", {
-                detail: { course: "B.Pharm", category: selectedCategory, semester: semesterNumber, contentKey }
-              }));
-            } else {
-              toast.error(verifyResponse.data?.message || "Payment verify nahi hua. Support se contact karo.");
-            }
-          } catch (verifyError) {
-            console.error("B.Pharm payment verification error:", verifyError);
-            toast.error(verifyError.response?.data?.message || "Payment ho gaya, lekin verification pending hai. Dobara login karke status check karo.");
-          }
-        },
-        modal: {
-          ondismiss: () => toast("Payment cancel/close kar diya gaya.", { icon: "ℹ️" }),
-        },
-        prefill: {},
-        theme: { color: "#6d28d9" },
-      };
-
-      const checkout = new window.Razorpay(options);
-      checkout.on("payment.failed", (event) => {
-        toast.error(event?.error?.description || "Payment fail ho gaya. Dobara try karo.");
-      });
-      checkout.open();
-    } catch (error) {
-      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
-      console.error("B.Pharm purchase error:", error);
-      toast.error(error.response?.data?.message || error.message || "Payment start nahi ho paya.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // ========== RENDER CATEGORY ==========
   const renderCategoryStep = () => {
     return (
@@ -923,7 +808,7 @@ const BPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            All semesters are unlocked!
+            Pay once to unlock — lifetime access
           </p>
         </div>
 
@@ -932,6 +817,8 @@ const BPharm = () => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
+            const semKey = buildContentKey(selectedCategory, sem);
+            const isPurchased = purchasedKeys.has(semKey);
             return (
               <div
                 key={sem}
@@ -980,17 +867,18 @@ const BPharm = () => {
                     </div>
                     <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">Semester</div>
 
-                    <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                      <CheckCircle size={11} className="sm:size-3" />Open
-                    </div>
+                    {isPurchased ? (
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50">
+                        <UnlockIcon /> Unlocked
+                      </div>
+                    ) : (
+                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-amber-200/50 status-pulse">
+                        <Lock size={11} className="sm:size-3" /> Locked
+                      </div>
+                    )}
 
                     <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
                     <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
-                    <div className="mt-1 flex items-center justify-center gap-1">
-                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
-                      <span className="text-[8px] sm:text-[9px] font-['Inter'] font-medium text-emerald-500">Available</span>
-                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -1111,11 +999,25 @@ const BPharm = () => {
     );
   };
 
-  // ========== RENDER DIRECT FILES ==========
+  // ========== RENDER DIRECT FILES (WRAPPED WITH LockedContent) ==========
   const renderDirectFilesStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryData = categories.find((c) => c.id === selectedCategory);
     const Icon = categoryData?.icon || FileText;
+
+    // ✅ Product object for LockedContent — matches admin pricing
+    const product = {
+      type: "course-content",
+      id: currentContentKey,
+      title: `B.Pharm ${selectedCategory} - Semester ${selectedSemester}`,
+      course: "B.Pharm",
+      category: selectedCategory,
+      semester: String(Number(selectedSemester)),
+      year: "",
+      language: "",
+      specialization: "",
+      contentKey: currentContentKey,
+    };
 
     return (
       <div className="animate-slide-up">
@@ -1149,123 +1051,157 @@ const BPharm = () => {
           <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryData?.gradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            {directFiles.length > 0 ? `${directFiles.length} Files Available` : "No files available yet"}
+            {hasPurchasedCurrent ? `${directFiles.length} Files Available` : "Unlock to view all files"}
             <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse" style={{ animationDelay: "0.5s" }}></span>
           </p>
         </div>
 
-        {isDirectLoading && directFiles.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
-              <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
+        {/* ✅ LOCKED CONTENT WRAPPER */}
+        <LockedContent
+          product={product}
+          previewContent={
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <FileText className="text-amber-500" size={20} />
+                <span className="font-['Space_Grotesk'] font-bold text-gray-700">
+                  {categoryLabel} — Semester {selectedSemester}
+                </span>
+              </div>
+              <p className="text-sm font-['Inter'] text-gray-500">
+                {directFiles.length > 0
+                  ? `${directFiles.length} files ready to unlock`
+                  : "No files uploaded yet for this section"}
+              </p>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Files...</h3>
-          </div>
-        ) : directError ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <FolderOpen className="text-rose-400" size={48} />
+          }
+        >
+          {isDirectLoading && directFiles.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
+                <div className="w-10 h-10 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin"></div>
+              </div>
+              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Files...</h3>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Load Failed</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">{directError}</p>
-            <button onClick={fetchDirectFiles} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
-          </div>
-        ) : directFiles.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <FolderOpen className="text-gray-400" size={48} />
+          ) : directError ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <FolderOpen className="text-rose-400" size={48} />
+              </div>
+              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Load Failed</h3>
+              <p className="font-['Inter'] text-gray-400 mt-2">{directError}</p>
+              <button onClick={fetchDirectFiles} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Files Available</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any files for this section yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
-            {directFiles.map((item, index) => {
-              const colors = unitColors[index % unitColors.length];
-              const cardId = `direct-${item._id || index}`;
-              return (
-                <div
-                  key={item._id || index}
-                  className="group relative cursor-pointer animate-pop"
-                  style={{ animationDelay: `${index * 0.06}s` }}
-                  onMouseEnter={() => setHoveredCard(cardId)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-                >
+          ) : directFiles.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <FolderOpen className="text-gray-400" size={48} />
+              </div>
+              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">No Files Available</h3>
+              <p className="font-['Inter'] text-gray-400 mt-2">Admin hasn't uploaded any files for this section yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+              {directFiles.map((item, index) => {
+                const colors = unitColors[index % unitColors.length];
+                const cardId = `direct-${item._id || index}`;
+                return (
                   <div
-                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
-                    style={{
-                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
-                    }}
-                  ></div>
+                    key={item._id || index}
+                    className="group relative cursor-pointer animate-pop"
+                    style={{ animationDelay: `${index * 0.06}s` }}
+                    onMouseEnter={() => setHoveredCard(cardId)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                  >
+                    <div
+                      className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                      style={{
+                        background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
+                      }}
+                    ></div>
 
-                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
-                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                      <div className="absolute inset-0 rounded-2xl" style={{
-                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                        animation: "rotateGlow 4s linear infinite",
-                      }}></div>
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-                    <div className="relative z-10">
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${colors.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                        <FileText className="text-white" size={26} />
+                    <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
+                      <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        <div className="absolute inset-0 rounded-2xl" style={{
+                          background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                          animation: "rotateGlow 4s linear infinite",
+                        }}></div>
                       </div>
 
-                      <h3 className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2 line-clamp-2 leading-tight">
-                        {item.title || item.fileName || "Untitled File"}
-                      </h3>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-                      {item.description && (
-                        <p className="text-xs font-['Inter'] text-gray-500 leading-relaxed mb-4 line-clamp-3">
-                          {item.description}
-                        </p>
-                      )}
-
-                      {item.fileSize && (
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="text-xs font-['Inter'] font-medium text-gray-400 bg-white/70 px-2.5 py-1 rounded-full border border-white/60">
-                            📄 {item.fileSize}
-                          </span>
+                      <div className="relative z-10">
+                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${colors.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                          <FileText className="text-white" size={26} />
                         </div>
-                      )}
 
-                      <div className="flex gap-2 mt-4">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleView(item); }}
-                          className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
-                        >
-                          <Eye size={14} />Preview
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
-                          className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
-                        >
-                          <Download size={14} />Download
-                        </button>
+                        <h3 className="text-base sm:text-lg font-['Space_Grotesk'] font-extrabold text-gray-800 mb-2 line-clamp-2 leading-tight">
+                          {item.title || item.fileName || "Untitled File"}
+                        </h3>
+
+                        {item.description && (
+                          <p className="text-xs font-['Inter'] text-gray-500 leading-relaxed mb-4 line-clamp-3">
+                            {item.description}
+                          </p>
+                        )}
+
+                        {item.fileSize && (
+                          <div className="flex items-center gap-2 mb-4">
+                            <span className="text-xs font-['Inter'] font-medium text-gray-400 bg-white/70 px-2.5 py-1 rounded-full border border-white/60">
+                              📄 {item.fileSize}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleView(item); }}
+                            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                          >
+                            <Eye size={14} />Preview
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+                            className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all"
+                          >
+                            <Download size={14} />Download
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+                      <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
 
-                    <div className="absolute top-4 right-4">
-                      <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gradient-to-r ${colors.gradient} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                      <div className="absolute top-4 right-4">
+                        <div className={`w-2 h-2 rounded-full bg-gray-300 group-hover:bg-gradient-to-r ${colors.gradient} transition-all duration-300 group-hover:scale-150 animate-pulse`}></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </LockedContent>
       </div>
     );
   };
 
-  // ========== RENDER UNIT ==========
+  // ========== RENDER UNIT (WRAPPED WITH LockedContent) ==========
   const renderUnitStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
+
+    // ✅ Product object for LockedContent — matches admin pricing
+    const product = {
+      type: "course-content",
+      id: currentContentKey,
+      title: `B.Pharm ${selectedCategory} - Semester ${selectedSemester}`,
+      course: "B.Pharm",
+      category: selectedCategory,
+      semester: String(Number(selectedSemester)),
+      year: "",
+      language: "",
+      specialization: "",
+      contentKey: currentContentKey,
+    };
 
     return (
       <div className="animate-slide-up">
@@ -1297,153 +1233,173 @@ const BPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 mx-auto rounded-full mt-4 animate-gradient"></div>
         </div>
 
-        {isContentLoading && units.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
-              <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+        {/* ✅ LOCKED CONTENT WRAPPER */}
+        <LockedContent
+          product={product}
+          previewContent={
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Layers className="text-emerald-500" size={20} />
+                <span className="font-['Space_Grotesk'] font-bold text-gray-700">
+                  {selectedSubject} — Semester {selectedSemester}
+                </span>
+              </div>
+              <p className="text-sm font-['Inter'] text-gray-500">
+                {units.length > 0
+                  ? `${units.length} units ready to unlock`
+                  : "Content will be available soon"}
+              </p>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Units...</h3>
-          </div>
-        ) : units.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
-              <FolderOpen className="text-gray-400" size={48} />
+          }
+        >
+          {isContentLoading && units.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-50 to-cyan-50 flex items-center justify-center mx-auto mb-5 shadow-lg">
+                <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+              </div>
+              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">Loading Units...</h3>
             </div>
-            <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">{contentError ? "Content Load Failed" : "No Units Available"}</h3>
-            <p className="font-['Inter'] text-gray-400 mt-2">{contentError || "Admin hasn't uploaded any content for this subject yet."}</p>
-            {contentError && (
-              <button onClick={fetchUnitContent} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
-            {units.map((unit, index) => {
-              const colors = unitColors[index % unitColors.length];
-              const cardId = `unit-${unit.id}`;
-              const content = unitContent.filter((item) => {
-                const itemUnit = Number(item?.unit);
-                const unitId = Number(unit?.id);
-                return Number.isInteger(itemUnit) && itemUnit > 0 && Number.isInteger(unitId) && itemUnit === unitId;
-              });
-              return (
-                <div
-                  key={unit.id}
-                  className="group relative cursor-pointer animate-pop"
-                  style={{ animationDelay: `${index * 0.06}s` }}
-                  onMouseEnter={() => setHoveredCard(cardId)}
-                  onMouseLeave={() => setHoveredCard(null)}
-                  onMouseMove={(e) => handleCardMouseMove(cardId, e)}
-                >
+          ) : units.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <FolderOpen className="text-gray-400" size={48} />
+              </div>
+              <h3 className="text-xl font-['Space_Grotesk'] font-bold text-gray-700">{contentError ? "Content Load Failed" : "No Units Available"}</h3>
+              <p className="font-['Inter'] text-gray-400 mt-2">{contentError || "Admin hasn't uploaded any content for this subject yet."}</p>
+              {contentError && (
+                <button onClick={fetchUnitContent} className="mt-5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-['Inter'] font-semibold text-sm shadow-lg hover:scale-105 transition-all">Retry</button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto">
+              {units.map((unit, index) => {
+                const colors = unitColors[index % unitColors.length];
+                const cardId = `unit-${unit.id}`;
+                const content = unitContent.filter((item) => {
+                  const itemUnit = Number(item?.unit);
+                  const unitId = Number(unit?.id);
+                  return Number.isInteger(itemUnit) && itemUnit > 0 && Number.isInteger(unitId) && itemUnit === unitId;
+                });
+                return (
                   <div
-                    className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
-                    style={{
-                      background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
-                    }}
-                  ></div>
+                    key={unit.id}
+                    className="group relative cursor-pointer animate-pop"
+                    style={{ animationDelay: `${index * 0.06}s` }}
+                    onMouseEnter={() => setHoveredCard(cardId)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                    onMouseMove={(e) => handleCardMouseMove(cardId, e)}
+                  >
+                    <div
+                      className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
+                      style={{
+                        background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)`,
+                      }}
+                    ></div>
 
-                  <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
-                    <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                      <div className="absolute inset-0 rounded-2xl" style={{
-                        background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
-                        animation: "rotateGlow 4s linear infinite",
-                      }}></div>
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-
-                    <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
-                          {unit.name}
-                        </div>
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
-                          {unit.id || index + 1}
-                        </div>
+                    <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden`}>
+                      <div className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700">
+                        <div className="absolute inset-0 rounded-2xl" style={{
+                          background: `conic-gradient(from 0deg, ${colors.glow}, transparent, ${colors.glow}, transparent)`,
+                          animation: "rotateGlow 4s linear infinite",
+                        }}></div>
                       </div>
 
-                      <div className="flex items-center gap-2 mb-3">
-                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                        <span className="text-xs font-['Inter'] font-medium text-gray-500">
-                          {unit.topics?.length || 0} {unit.topics?.length === 1 ? "Topic" : "Topics"} • {content.length} {content.length === 1 ? "Document" : "Documents"}
-                        </span>
-                        <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
-                      </div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-                      {unit.topics && unit.topics.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {unit.topics.slice(0, 3).map((topic, i) => (
-                            <span
-                              key={i}
-                              className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50"
-                            >
-                              {topic}
-                            </span>
-                          ))}
-                          {unit.topics.length > 3 && (
-                            <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
-                              +{unit.topics.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {content.length > 0 && (
-                        <div className="mt-5 pt-4 border-t border-gray-200/50">
-                          <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3 animate-float-text">
-                            📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
-                          </p>
-
-                          <div className="space-y-3">
-                            {content.map((item) => (
-                              <div
-                                key={item._id}
-                                className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
-                              >
-                                <div className="flex items-center gap-2 mb-2">
-                                  <FileText size={16} className="text-blue-600 shrink-0 animate-pulse" />
-                                  <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
-                                    {item.title || item.fileName || "Document"}
-                                  </span>
-                                </div>
-
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleView(item); }}
-                                    className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                                  >
-                                    <Eye size={14} />Preview
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
-                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                                  >
-                                    <Download size={14} />Download
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
+                      <div className="relative z-10">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent`}>
+                            {unit.name}
+                          </div>
+                          <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} flex items-center justify-center text-white text-xs font-['Inter'] font-bold shadow-lg animate-pulse`}>
+                            {unit.id || index + 1}
                           </div>
                         </div>
-                      )}
 
-                      {content.length === 0 && (
-                        <div className="mt-5 pt-4 border-t border-gray-200/50">
-                          <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
+                          <span className="text-xs font-['Inter'] font-medium text-gray-500">
+                            {unit.topics?.length || 0} {unit.topics?.length === 1 ? "Topic" : "Topics"} • {content.length} {content.length === 1 ? "Document" : "Documents"}
+                          </span>
+                          <div className={`w-1 h-1 rounded-full bg-gradient-to-r ${colors.gradient}`}></div>
                         </div>
-                      )}
-                    </div>
 
-                    <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+                        {unit.topics && unit.topics.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {unit.topics.slice(0, 3).map((topic, i) => (
+                              <span
+                                key={i}
+                                className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-white/70 backdrop-blur-sm text-gray-700 shadow-sm border border-white/50"
+                              >
+                                {topic}
+                              </span>
+                            ))}
+                            {unit.topics.length > 3 && (
+                              <span className="text-xs font-['Inter'] font-medium px-3 py-1.5 rounded-full bg-gray-200/70 text-gray-500">
+                                +{unit.topics.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
 
-                    <div className="absolute top-4 right-4">
-                      <div className="w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse"></div>
+                        {content.length > 0 && (
+                          <div className="mt-5 pt-4 border-t border-gray-200/50">
+                            <p className="text-xs font-['Inter'] font-medium text-gray-500 mb-3 animate-float-text">
+                              📄 {content.length} {content.length === 1 ? "Document" : "Documents"} Available
+                            </p>
+
+                            <div className="space-y-3">
+                              {content.map((item) => (
+                                <div
+                                  key={item._id}
+                                  className="rounded-xl bg-white/80 border border-gray-200 p-3 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5"
+                                >
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <FileText size={16} className="text-blue-600 shrink-0 animate-pulse" />
+                                    <span className="text-sm font-['Inter'] font-semibold text-gray-800 truncate">
+                                      {item.title || item.fileName || "Document"}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleView(item); }}
+                                      className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                    >
+                                      <Eye size={14} />Preview
+                                    </button>
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); handleDownload(item); }}
+                                      className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-2 rounded-lg font-['Inter'] font-semibold text-xs flex items-center justify-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                                    >
+                                      <Download size={14} />Download
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {content.length === 0 && (
+                          <div className="mt-5 pt-4 border-t border-gray-200/50">
+                            <p className="text-xs font-['Inter'] text-gray-400">No documents uploaded yet for this unit</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={`absolute bottom-0 left-0 right-0 h-1.5 bg-gradient-to-r ${colors.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-2xl`}></div>
+
+                      <div className="absolute top-4 right-4">
+                        <div className="w-2 h-2 rounded-full bg-gray-300 group-hover:bg-emerald-500 transition-all duration-300 group-hover:scale-150 animate-pulse"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </LockedContent>
       </div>
     );
   };
@@ -1509,24 +1465,6 @@ const BPharm = () => {
           <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-2xl">
             <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="font-['Inter'] text-gray-700 font-medium">Loading...</span>
-          </div>
-        </div>
-      )}
-
-      {!isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center">
-            <Crown size={20} className="text-yellow-300" />
-            <span>Get Premium - ₹{premiumPrice}</span>
-            <Rocket size={20} className="text-yellow-300" />
-          </button>
-        </div>
-      )}
-
-      {isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />Premium Member<Shield size={18} className="text-yellow-300" />
           </div>
         </div>
       )}
@@ -1608,5 +1546,8 @@ const BPharm = () => {
     </div>
   );
 };
+
+// Small helper icon (since we removed direct Lock usage in semester badge)
+const UnlockIcon = () => <Shield size={11} />;
 
 export default BPharm;
