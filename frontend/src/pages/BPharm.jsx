@@ -16,43 +16,13 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in";
 
-const getToken = () => localStorage.getItem('userToken') || sessionStorage.getItem('userToken');
+const getToken = () => localStorage.getItem('userToken') || sessionStorage.getItem('userToken') || localStorage.getItem('token');
 
 // ========== CATEGORIES ==========
 const categories = [
-  {
-    id: "Notes",
-    label: "Notes",
-    icon: BookOpen,
-    gradient: "from-blue-600 via-indigo-600 to-purple-600",
-    bgGradient: "from-blue-50 via-indigo-50 to-purple-50",
-    glowColor: "rgba(99, 102, 241, 0.3)",
-    description: "Click below to view notes by Imperfect Pharmacy",
-    stats: "500+ PDFs",
-    badge: "Most Popular",
-  },
-  {
-    id: "Exam Crash Course",
-    label: "Exam Crash Course",
-    icon: Rocket,
-    gradient: "from-orange-500 via-amber-500 to-yellow-500",
-    bgGradient: "from-orange-50 via-amber-50 to-yellow-50",
-    glowColor: "rgba(251, 146, 60, 0.3)",
-    description: "Click below to view Exam Crash Course by Imperfect Pharmacy",
-    stats: "8 Semesters",
-    badge: "🔥 Crash",
-  },
-  {
-    id: "PYQs",
-    label: "PYQs",
-    icon: Brain,
-    gradient: "from-rose-500 via-pink-500 to-purple-500",
-    bgGradient: "from-rose-50 via-pink-50 to-purple-50",
-    glowColor: "rgba(244, 63, 94, 0.3)",
-    description: "Click below to view PYQs by Imperfect Pharmacy",
-    stats: "1000+ Questions",
-    badge: "📝 Exam",
-  },
+  { id: "Notes", label: "Notes", icon: BookOpen, gradient: "from-blue-600 via-indigo-600 to-purple-600", bgGradient: "from-blue-50 via-indigo-50 to-purple-50", glowColor: "rgba(99, 102, 241, 0.3)", description: "Click below to view notes by Imperfect Pharmacy", stats: "500+ PDFs", badge: "Most Popular" },
+  { id: "Exam Crash Course", label: "Exam Crash Course", icon: Rocket, gradient: "from-orange-500 via-amber-500 to-yellow-500", bgGradient: "from-orange-50 via-amber-50 to-yellow-50", glowColor: "rgba(251, 146, 60, 0.3)", description: "Click below to view Exam Crash Course by Imperfect Pharmacy", stats: "8 Semesters", badge: "🔥 Crash" },
+  { id: "PYQs", label: "PYQs", icon: Brain, gradient: "from-rose-500 via-pink-500 to-purple-500", bgGradient: "from-rose-50 via-pink-50 to-purple-50", glowColor: "rgba(244, 63, 94, 0.3)", description: "Click below to view PYQs by Imperfect Pharmacy", stats: "1000+ Questions", badge: "📝 Exam" },
 ];
 
 // ========== COLORS ==========
@@ -136,8 +106,11 @@ const BPharm = () => {
   const [isDirectLoading, setIsDirectLoading] = useState(false);
   const [directError, setDirectError] = useState("");
 
-  // ✅ Track which semesters are unlocked
-  const [unlockedSems, setUnlockedSems] = useState({});
+  // ✅ Track which semesters are unlocked. Default to FALSE (locked) for all.
+  const [unlockedSems, setUnlockedSems] = useState(() => {
+    // Initialize with 1-8 as false
+    return { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false };
+  });
   const [checkingAccess, setCheckingAccess] = useState(false);
 
   const contentRequestIdRef = useRef(0);
@@ -166,11 +139,11 @@ const BPharm = () => {
         const token = getToken();
         if (!token) {
           setCheckingAccess(false);
-          return; // ProtectedRoute should handle redirect, but just in case
+          return; // Not logged in, all stay locked.
         }
 
         const sems = [1, 2, 3, 4, 5, 6, 7, 8];
-        const newUnlocked = {};
+        const newUnlocked = { ...unlockedSems }; // preserve existing state
 
         await Promise.all(sems.map(async (sem) => {
           const contentKey = buildContentKey(selectedCategory, sem);
@@ -193,6 +166,7 @@ const BPharm = () => {
             newUnlocked[sem] = response.data?.hasAccess === true;
           } catch (err) {
             console.error(`Access check failed for Sem ${sem}:`, err);
+            // If API fails, default to LOCKED for safety
             newUnlocked[sem] = false;
           }
         }));
@@ -203,7 +177,7 @@ const BPharm = () => {
 
       checkAllSemesters();
     }
-  }, [currentStep, selectedCategory]);
+  }, [currentStep, selectedCategory]); // Removed unlockedSems to avoid infinite loop
 
   // ========== FETCH NOTES ==========
   const fetchUnitContent = async () => {
@@ -370,7 +344,9 @@ const BPharm = () => {
   // ========== HANDLERS ==========
   const handleCategoryClick = (categoryId) => {
     setSelectedCategory(categoryId); setSelectedSemester(null); setSelectedSubject(null);
-    setUnits([]); setUnitContent([]); setDirectFiles([]); setUnlockedSems({});
+    setUnits([]); setUnitContent([]); setDirectFiles([]); 
+    // Reset locks to false before fetching
+    setUnlockedSems({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false });
     setCurrentStep(2);
   };
 
@@ -397,7 +373,8 @@ const BPharm = () => {
 
   const resetNavigation = () => {
     setCurrentStep(1); setSelectedCategory(null); setSelectedSemester(null); setSelectedSubject(null);
-    setUnits([]); setUnitContent([]); setDirectFiles([]); setUnlockedSems({});
+    setUnits([]); setUnitContent([]); setDirectFiles([]); 
+    setUnlockedSems({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false });
   };
 
   // ========== MOUSE EFFECTS ==========
@@ -529,7 +506,7 @@ const BPharm = () => {
     </div>
   );
 
-  // 🚨 FIXED: Semester UI now fully dynamic. It checks `unlockedSems[sem]` and shows Locked 🔒 or Unlocked ✅
+  // 🚨 FULLY DYNAMIC SEMESTER UI (No hardcoded "Open")
   const renderSemesterStep = () => {
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
     const categoryIcon = categories.find((c) => c.id === selectedCategory)?.icon || BookOpen;
@@ -584,7 +561,8 @@ const BPharm = () => {
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
             
-            const isUnlocked = unlockedSems[sem];
+            // Default is false (locked), API check will change it to true if purchased
+            const isUnlocked = unlockedSems[sem] === true; 
             const isChecking = checkingAccess;
 
             return (
@@ -603,7 +581,7 @@ const BPharm = () => {
                     <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>{sem}</div>
                     <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">Semester</div>
                     
-                    {/* ✅ DYNAMIC BADGE */}
+                    {/* ✅ DYNAMIC BADGE (Red Lock vs Green Unlock) */}
                     {isChecking ? (
                        <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
                          <div className="w-2.5 h-2.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div>
@@ -631,7 +609,7 @@ const BPharm = () => {
     );
   };
 
-  // 🚨 SUBJECT STEP: Lock lagaya gaya hai
+  // 🚨 SUBJECT STEP: LockedContent Wrap
   const renderSubjectStep = () => {
     const subjects = getAvailableSubjects();
     const categoryLabel = categories.find((c) => c.id === selectedCategory)?.label || "";
@@ -673,7 +651,6 @@ const BPharm = () => {
           <div className={`w-24 h-1.5 bg-gradient-to-r ${categoryGradient} mx-auto rounded-full mt-4 animate-gradient`}></div>
         </div>
 
-        {/* ✅ LockedContent Wrap */}
         <LockedContent 
           product={lockProduct}
           previewContent={
