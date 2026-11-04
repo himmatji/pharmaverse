@@ -80,14 +80,24 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 
     try {
       if (mode === "login") {
-        if (!identifier.trim() || !password) {
+        // Read the actual input values from the form as well as React state.
+        // This also handles browser password-manager/autofill values reliably.
+        const formData = new FormData(event.currentTarget);
+        const loginIdentifier = String(
+          formData.get("identifier") || identifier || ""
+        ).trim();
+        const loginPassword = String(
+          formData.get("password") || password || ""
+        );
+
+        if (!loginIdentifier || !loginPassword) {
           setError("Please enter your email/mobile number and password.");
           return;
         }
 
         const response = await axios.post(`${API_URL}/signin`, {
-          identifier: identifier.trim(),
-          password,
+          identifier: loginIdentifier,
+          password: loginPassword,
         });
 
         if (response.data?.success) {
@@ -381,6 +391,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                 <Mail size={20} className="shrink-0 text-gray-400" />
                 <input
                   type="text"
+                  name="identifier"
                   autoComplete="username"
                   placeholder="Email or Mobile Number"
                   value={identifier}
@@ -431,6 +442,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                   <Lock size={20} className="shrink-0 text-gray-400" />
                   <input
                     type={showPassword ? "text" : "password"}
+                    name={mode === "login" ? "password" : undefined}
                     autoComplete={
                       mode === "login"
                         ? "current-password"
