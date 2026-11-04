@@ -4,8 +4,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
-import LockedContent from "../components/LockedContent"; // ✅ LOCKED CONTENT ADDED
-
+import LockedContent from "../components/LockedContent";
 
 import {
   BookOpen, FileText, Video, Brain, Download, GraduationCap, PlayCircle,
@@ -75,7 +74,7 @@ const BPHARM_SUBJECTS = {
   8: ["Ethical Considerations and Translational Applications of AI in Pharmacy", "Clinical Pharmacotherapeutics", "Industrial Pharmacy and Facility Design", "Pharmaceutical Management", "Sterile Dosage Forms and Novel Drug Delivery System", "Pharmaceutical Packaging", "Supply Chain Management", "Industrial Safety and Waste Management", "Traditional Healing Practices of India", "Futuristic Pharma through AR/VR: Pharma 4.0", "Herbal Cosmetics for Industry Perspective"]
 };
 
-// ✅ Content key builder (Admin panel se match hona chahiye)
+// ✅ Content key builder
 const buildContentKey = (category, semester) => {
   const categorySlug = String(category || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const semNum = Number.parseInt(String(semester).replace(/\D/g, ""), 10);
@@ -98,8 +97,6 @@ const BPharm = () => {
   
   const [units, setUnits] = useState([]);
   const [unitContent, setUnitContent] = useState([]);
-
-  // ✅ Store access status per semester (e.g. { 1: true, 2: false })
   const [unlockedSems, setUnlockedSems] = useState({});
 
   const contentRequestIdRef = useRef(0);
@@ -110,15 +107,15 @@ const BPharm = () => {
     return Array.isArray(BPHARM_SUBJECTS[semester]) ? BPHARM_SUBJECTS[semester] : [];
   };
 
-  // ✅ Check Access for all semesters dynamically
+  // ✅ Check Access (Strict)
   useEffect(() => {
     if (currentStep === 2 && selectedCategory) {
       const checkAccess = async () => {
-        const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+        const token = localStorage.getItem("userToken") || localStorage.getItem("token") || sessionStorage.getItem("userToken");
         if (!token) return;
 
         const sems = [1, 2, 3, 4, 5, 6, 7, 8];
-        const newUnlocked = {};
+        const newUnlocked = { 1: false, 2: false, 3: false, 4: false, 5: false, 6: false, 7: false, 8: false };
 
         await Promise.all(sems.map(async (sem) => {
           const contentKey = buildContentKey(selectedCategory, sem);
@@ -130,9 +127,11 @@ const BPharm = () => {
                 params: { course: "B.Pharm", category: selectedCategory, semester: String(sem), year: "", language: "", specialization: "", contentKey }
               }
             );
-            newUnlocked[sem] = response.data?.hasAccess === true;
+            if (response.data && response.data.hasAccess === true) {
+              newUnlocked[sem] = true;
+            }
           } catch (err) {
-            newUnlocked[sem] = false;
+            // Default is locked
           }
         }));
 
@@ -196,17 +195,11 @@ const BPharm = () => {
     setCurrentStep(2);
     setSelectedSemester(null); setSelectedSubject(null);
     setUnits([]); setUnitContent([]);
-    setUnlockedSems({}); // reset locks
+    setUnlockedSems({}); 
   };
 
   const handleSemesterClick = (semester) => {
-    if (!unlockedSems[semester]) {
-      toast.error("🔒 Semester Locked! Please complete payment to unlock.");
-      return;
-    }
-    setSelectedSemester(semester);
-    setCurrentStep(3);
-    setSelectedSubject(null); setUnits([]); setUnitContent([]);
+    // Isko humne LockedContent handle karne diya hai, isliye direct click pe kuch nahi karenge
   };
 
   const handleSubjectClick = (subject) => {
@@ -346,7 +339,7 @@ const BPharm = () => {
     </div>
   );
 
-  // ========== RENDER SEMESTER STEP (WITH LOCKED CONTENT LOGIC) ==========
+  // ========== RENDER SEMESTER STEP (WITH LOCK) ==========
   const renderSemesterStep = () => {
     const categoryLabel = categories.find(c => c.id === selectedCategory)?.label || '';
     const categoryIcon = categories.find(c => c.id === selectedCategory)?.icon || BookOpen;
@@ -390,9 +383,8 @@ const BPharm = () => {
             const delayClass = `semester-card-${index + 1}`;
             
             const isUnlocked = unlockedSems[sem] === true;
-
-            // ✅ Product object for locked payment
             const contentKey = buildContentKey(selectedCategory, sem);
+            
             const lockProduct = {
               type: "course-content",
               id: contentKey,
@@ -409,7 +401,7 @@ const BPharm = () => {
             return (
               <div key={sem} className={`group relative ${!isUnlocked ? 'cursor-pointer' : 'cursor-default'}`}>
                 
-                {/* 🚨 IF LOCKED -> Show LockedContent Wrapper */}
+                {/* 🚨 IF LOCKED -> LockedContent Wrapper */}
                 {!isUnlocked ? (
                   <LockedContent 
                     product={lockProduct}
@@ -428,17 +420,15 @@ const BPharm = () => {
                       </div>
                     }
                   >
-                    {/* Ye content sirf pay karne ke baad dikhega */}
+                    {/* Full content after payment - Click to go inside */}
                     <div 
-                      onClick={() => handleSemesterClick(sem)}
+                      onClick={() => { setSelectedSemester(sem); setCurrentStep(3); }}
                       className={`relative rounded-2xl p-4 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}`}
                     >
-                      <div className="glow-ring" style={{ '--x': `50%`, '--y': `50%` }}></div>
-                      <div className="shine-overlay"></div>
                       <div className="relative z-10 flex flex-col items-center justify-center h-full pt-2">
-                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>{sem}</div>
-                        <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-2 text-gray-600`}>Semester</div>
-                        <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                        <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none`}>{sem}</div>
+                        <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-2 text-gray-600">Semester</div>
+                        <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50">
                           <CheckCircle size={12} />Open
                         </div>
                         <div className="mt-3 text-xs font-['Inter'] font-medium text-gray-500">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
@@ -446,28 +436,23 @@ const BPharm = () => {
                     </div>
                   </LockedContent>
                 ) : (
-                  // ✅ IF ALREADY UNLOCKED -> Show normal card
+                  // ✅ IF ALREADY UNLOCKED
                   <div
-                    onClick={() => handleSemesterClick(sem)}
+                    onClick={() => { setSelectedSemester(sem); setCurrentStep(3); }}
                     className={`relative rounded-2xl p-4 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass} bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow}`}
-                    style={{ boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)` }}
                   >
                     <div className="glow-ring" style={{ '--x': `50%`, '--y': `50%` }}></div>
                     <div className="shine-overlay"></div>
-                    <div className="absolute top-2 right-2 sparkle-dot"><Sparkles size={12} className="text-white opacity-70" /></div>
-                    <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
-                    
                     <div className="relative z-10 flex flex-col items-center justify-center h-full pt-2">
-                      <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>{sem}</div>
-                      <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-2 text-gray-600`}>Semester</div>
-                      <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                      <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none`}>{sem}</div>
+                      <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-2 text-gray-600">Semester</div>
+                      <div className="mt-3 inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50">
                         <CheckCircle size={12} />Open
                       </div>
                       <div className="mt-3 text-xs font-['Inter'] font-medium text-gray-500">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
                     </div>
                   </div>
                 )}
-
               </div>
             );
           })}
@@ -520,7 +505,6 @@ const BPharm = () => {
               <div key={subject} onClick={() => handleSubjectClick(subject)} className={`group relative cursor-pointer animate-pop`} style={{ animationDelay: `${index * 0.06}s` }} onMouseEnter={() => setHoveredCard(cardId)} onMouseLeave={() => setHoveredCard(null)} onMouseMove={(e) => handleCardMouseMove(cardId, e)}>
                 <div className="absolute -inset-1 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl" style={{ background: `radial-gradient(circle at ${mousePositions[cardId]?.x || 50}% ${mousePositions[cardId]?.y || 50}%, ${colors.glow}, transparent 70%)` }}></div>
                 <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
@@ -535,9 +519,6 @@ const BPharm = () => {
                       <span className="text-xs font-['Inter'] font-medium text-gray-400 group-hover:text-purple-600 transition-colors duration-300 flex items-center gap-1">
                         Explore Subject<ChevronRight className="group-hover:translate-x-1 transition-transform duration-300" size={14} />
                       </span>
-                      <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${colors.gradient} opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center shadow-lg transform group-hover:scale-110`}>
-                        <ArrowRight className="text-white" size={16} />
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -595,16 +576,9 @@ const BPharm = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-5xl mx-auto pb-24">
             {units.map((unit, index) => {
               const colors = unitColors[index % unitColors.length];
-              const cardId = `unit-${unit.id}`;
-              
-              const content = unitContent.filter((item) => {
-                const itemUnit = Number(item?.unit);
-                const unitId = Number(unit?.id);
-                return Number.isInteger(itemUnit) && itemUnit > 0 && Number.isInteger(unitId) && itemUnit === unitId;
-              });
-              
+              const content = unitContent.filter((item) => Number(item?.unit) === Number(unit?.id));
               return (
-                <div key={unit.id} className={`group relative cursor-pointer animate-pop`} style={{ animationDelay: `${index * 0.06}s` }} onMouseEnter={() => setHoveredCard(cardId)} onMouseLeave={() => setHoveredCard(null)} onMouseMove={(e) => handleCardMouseMove(cardId, e)}>
+                <div key={unit.id} className={`group relative cursor-pointer animate-pop`} style={{ animationDelay: `${index * 0.06}s` }}>
                   <div className={`relative bg-gradient-to-br ${colors.bg} rounded-2xl p-6 transition-all duration-500 border-2 border-white/80 hover:border-transparent hover:shadow-2xl hover:-translate-y-3 overflow-hidden group`}>
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-3">
