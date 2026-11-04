@@ -1,3 +1,15 @@
+
+
+
+
+
+
+
+
+
+
+
+
 import { useEffect, useState } from "react";
 import {
   X,
@@ -442,7 +454,7 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
                   <Lock size={20} className="shrink-0 text-gray-400" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    name={mode === "login" ? "password" : undefined}
+                    name="password"
                     autoComplete={
                       mode === "login"
                         ? "current-password"
@@ -613,3 +625,5 @@ const AuthModal = ({ isOpen, onClose, onLoginSuccess }) => {
 };
 
 export default AuthModal;
+
+
