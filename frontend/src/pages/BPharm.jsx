@@ -4,7 +4,7 @@ import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 
 import bannerImg from "../assets/pharmacy-lab student.jpeg";
-import LockedContent from "./LockedContent"; // ✅ LOCKED CONTENT ADDED
+import LockedContent from "../components/LockedContent"; // ✅ LOCKED CONTENT ADDED
 
 
 import {
