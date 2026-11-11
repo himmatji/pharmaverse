@@ -1072,16 +1072,33 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
   };
 
   const makeContentKey = (item) => {
-    const parts = [
-      item.course,
-      item.category,
-      item.semester,
-      item.year,
-      item.language,
-      item.specialization
-    ].filter(Boolean);
-    return parts.join("|").toLowerCase().replace(/\s+/g, "-");
-  };
+  const course = String(item.course || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+
+  const category = String(item.category || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  const semester = Number(item.semester);
+
+  if (course === "bpharm" && category && semester) {
+    return `bpharm:${category}:semester:${semester}`;
+  }
+
+  const parts = [
+    item.course,
+    item.category,
+    item.semester,
+    item.year,
+    item.language,
+    item.specialization
+  ].filter(Boolean);
+
+  return parts.join("|").toLowerCase().replace(/\s+/g, "-");
+};
 
   const addContentPrice = () => {
     const item = {
@@ -1513,6 +1530,9 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         ),
         contentPrices: contentPrices.map((item) => ({
           ...item,
+          contentKey: item.course === "B.Pharm"
+  ? makeContentKey(item)
+  : item.contentKey,
           semester: String(item.semester || ""),
           year: String(item.year || ""),
           language: String(item.language || ""),
