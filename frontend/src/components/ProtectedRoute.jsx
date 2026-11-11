@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import AuthModal from "./AuthModal";
@@ -7,22 +8,30 @@ const ProtectedRoute = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ✅ Consistent token key
+  // Use the same token key as AuthModal and Navbar
   const isLoggedIn = !!(
-    localStorage.getItem("userToken") || 
+    localStorage.getItem("token") ||
+    localStorage.getItem("userToken") ||
+    sessionStorage.getItem("token") ||
     sessionStorage.getItem("userToken")
   );
 
   useEffect(() => {
-    if (!isLoggedIn) setShowAuthModal(true);
-    else setShowAuthModal(false);
+    if (!isLoggedIn) {
+      setShowAuthModal(true);
+    } else {
+      setShowAuthModal(false);
+    }
   }, [location.pathname, isLoggedIn]);
 
-  if (isLoggedIn) return <>{children}</>;
+  // Show protected content only after login
+  if (isLoggedIn) {
+    return <>{children}</>;
+  }
 
   return (
-    <AuthModal 
-      isOpen={showAuthModal} 
+    <AuthModal
+      isOpen={showAuthModal}
       onClose={() => {
         setShowAuthModal(false);
         navigate("/");
