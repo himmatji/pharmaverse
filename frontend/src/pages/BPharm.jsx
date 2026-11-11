@@ -157,6 +157,8 @@ const BPharm = () => {
   const [contentError, setContentError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPrice, setPremiumPrice] = useState(999);
+  const [unlockedSemesters, setUnlockedSemesters] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -380,6 +382,88 @@ const BPharm = () => {
       }
     };
   }, [selectedCategory, selectedSemester, selectedSubject]);
+
+  // Load exact Notes semester access from the backend for the logged-in user.
+  // The backend is authoritative; this state is only used to render the cards.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSemesterAccess = async () => {
+      if (selectedCategory !== "Notes") {
+        setUnlockedSemesters([]);
+        setAccessLoading(false);
+        return;
+      }
+
+      const token =
+        localStorage.getItem("token") ||
+        localStorage.getItem("userToken") ||
+        localStorage.getItem("authToken");
+
+      setUnlockedSemesters([]);
+      if (!token) {
+        setAccessLoading(false);
+        return;
+      }
+
+      setAccessLoading(true);
+      try {
+        const results = await Promise.all(
+          [1, 2, 3, 4, 5, 6, 7, 8].map(async (semester) => {
+            const contentKey = `bpharm:notes:semester:${semester}`;
+            const response = await axios.get(
+              `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(contentKey)}`,
+              {
+                params: {
+                  contentKey,
+                  course: "B.Pharm",
+                  category: "Notes",
+                  semester: String(semester),
+                  year: "",
+                  language: "",
+                  specialization: "",
+                },
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            return response.data?.hasAccess ? semester : null;
+          })
+        );
+
+        if (!cancelled) {
+          setUnlockedSemesters(results.filter((semester) => semester !== null));
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("B.Pharm semester access check failed:", error);
+          setUnlockedSemesters([]);
+        }
+      } finally {
+        if (!cancelled) setAccessLoading(false);
+      }
+    };
+
+    loadSemesterAccess();
+    return () => { cancelled = true; };
+  }, [selectedCategory]);
+
+  // Keep the visible semester state in sync after a verified purchase.
+  useEffect(() => {
+    const handlePurchaseVerified = (event) => {
+      const detail = event.detail || {};
+      if (detail.course === "B.Pharm" && detail.category === "Notes") {
+        const semester = Number(detail.semester);
+        if (Number.isInteger(semester) && semester >= 1 && semester <= 8) {
+          setUnlockedSemesters((current) =>
+            current.includes(semester) ? current : [...current, semester]
+          );
+        }
+      }
+    };
+
+    window.addEventListener("pharmaverse:purchase-verified", handlePurchaseVerified);
+    return () => window.removeEventListener("pharmaverse:purchase-verified", handlePurchaseVerified);
+  }, []);
 
   // ========== ✅ HISTORY SYNC: push state on step change ==========
   useEffect(() => {
@@ -669,8 +753,9 @@ const BPharm = () => {
 
   // Purchase exactly the selected B.Pharm category + semester.
   // Admin pricing must use the same stable contentKey format below.
-  const handlePremiumPurchase = async () => {
-    if (!selectedCategory || !selectedSemester) {
+  const handlePremiumPurchase = async (semesterOverride = null) => {
+    const purchaseSemester = semesterOverride ?? selectedSemester;
+    if (!selectedCategory || !purchaseSemester) {
       toast.error("Pehle category aur semester select karo.");
       return;
     }
@@ -691,7 +776,7 @@ const BPharm = () => {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    const semesterNumber = Number.parseInt(String(selectedSemester).replace(/\D/g, ""), 10);
+    const semesterNumber = Number.parseInt(String(purchaseSemester).replace(/\D/g, ""), 10);
 
     if (!Number.isInteger(semesterNumber) || semesterNumber < 1 || semesterNumber > 8) {
       toast.error("Valid B.Pharm semester select karo.");
@@ -778,6 +863,8 @@ const BPharm = () => {
               window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", {
                 detail: { course: "B.Pharm", category: selectedCategory, semester: semesterNumber, contentKey }
               }));
+              // Continue directly into the semester after the backend confirms access.
+              handleSemesterClick(semesterNumber);
             } else {
               toast.error(verifyResponse.data?.message || "Payment verify nahi hua. Support se contact karo.");
             }
@@ -923,7 +1010,7 @@ const BPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className={`inline-block w-2 h-2 rounded-full ${selectedCategory === "Notes" ? "bg-gray-500" : "bg-emerald-500 animate-pulse"}`}></span>
-            {selectedCategory === "Notes" ? "All semesters are locked. Unlock to access notes." : "Select a semester to continue."}
+            {selectedCategory === "Notes" ? (accessLoading ? "Checking your semester access..." : "Unlock each semester to access notes.") : "Select a semester to continue."}
           </p>
         </div>
 
@@ -932,13 +1019,18 @@ const BPharm = () => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
-            const isLocked = selectedCategory === "Notes";
+            const isLocked = selectedCategory === "Notes" && !unlockedSemesters.includes(Number(sem));
             return (
               <div
                 key={sem}
                 onClick={() => {
+                  if (accessLoading) {
+                    toast("Semester access check ho raha hai. Thoda wait karo.", { icon: "ℹ️" });
+                    return;
+                  }
                   if (isLocked) {
-                    toast("This semester is locked. Unlock it to view notes.", { icon: "🔒" });
+                    setSelectedSemester(sem);
+                    handlePremiumPurchase(sem);
                     return;
                   }
                   handleSemesterClick(sem);
@@ -1528,7 +1620,7 @@ const BPharm = () => {
         </div>
       )}
 
-      {!isPremium && (
+      {!isPremium && selectedCategory && selectedCategory !== "Notes" && selectedSemester && (
         <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
           <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center">
             <Crown size={20} className="text-yellow-300" />
