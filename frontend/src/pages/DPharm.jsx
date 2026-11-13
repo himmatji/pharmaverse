@@ -732,37 +732,225 @@ const DPharm = () => {
     });
   };
 
-  // ========== VIEW & DOWNLOAD ==========
-  const getToken = () => localStorage.getItem("userToken") || localStorage.getItem("token");
+  // ========== D.PHARM SCOPED PAYMENT + VIEW/DOWNLOAD ==========
+  const getToken = () =>
+    localStorage.getItem("token") ||
+    localStorage.getItem("userToken") ||
+    localStorage.getItem("authToken");
 
-  const handleView = (item) => {
+  // Keep this key format in sync with Admin > Manage Prices > makeContentKey.
+  // Example: d.pharm|notes|1|hindi
+  const getDPharmContentKey = () => {
+    const parts = [
+      "D.Pharm",
+      selectedCategory,
+      String(selectedYear || ""),
+      String(selectedLanguage || ""),
+    ].filter(Boolean);
+    return parts.join("|").toLowerCase().replace(/\s+/g, "-");
+  };
+
+  const getScopeDetails = () => ({
+    course: "D.Pharm",
+    category: String(selectedCategory || ""),
+    semester: "",
+    year: String(selectedYear || ""),
+    language: String(selectedLanguage || ""),
+    specialization: "",
+    contentKey: getDPharmContentKey(),
+  });
+
+  const checkDPharmAccess = async () => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Payment/content access se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return false;
+    }
+    if (!selectedCategory || !selectedYear || !selectedLanguage) {
+      toast.error("Pehle category, language aur year select karo.");
+      return false;
+    }
+
+    const scope = getScopeDetails();
+    const params = new URLSearchParams({
+      contentKey: scope.contentKey,
+      course: scope.course,
+      category: scope.category,
+      semester: scope.semester,
+      year: scope.year,
+      language: scope.language,
+      specialization: scope.specialization,
+    });
+
+    const response = await axios.get(
+      `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(scope.contentKey)}?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return Boolean(response.data?.success && response.data?.hasAccess);
+  };
+
+  const handlePremiumPurchase = async (afterSuccess = null) => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Payment se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+    if (!selectedCategory || !selectedYear || !selectedLanguage) {
+      toast.error("Pehle category, language aur year select karo.");
+      return;
+    }
+
+    const scope = getScopeDetails();
+    const productTitle = `D.Pharm ${selectedCategory} - ${selectedLanguage} - Year ${selectedYear}`;
+    let checkoutWindow = null;
+
+    try {
+      setLoading(true);
+      const scriptLoaded = await new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+        if (existing) {
+          existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true });
+          existing.addEventListener("error", () => resolve(false), { once: true });
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.dataset.razorpayCheckout = "true";
+        script.onload = () => resolve(Boolean(window.Razorpay));
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+      if (!scriptLoaded) throw new Error("Razorpay checkout load nahi hua. Dobara try karo.");
+
+      const orderResponse = await axios.post(
+        `${API_BASE}/api/payment/create-order`,
+        {
+          productType: "course-content",
+          productId: scope.contentKey,
+          productTitle,
+          ...scope,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const order = orderResponse.data;
+      if (!order?.success || !order?.orderId || !order?.key) {
+        throw new Error(order?.message || "Payment order create nahi hua.");
+      }
+
+      const options = {
+        key: order.key,
+        amount: Math.round(Number(order.amount) * 100),
+        currency: order.currency || "INR",
+        name: "PharmaVerse",
+        description: productTitle,
+        order_id: order.orderId,
+        handler: async (paymentResponse) => {
+          try {
+            const verifyResponse = await axios.post(
+              `${API_BASE}/api/payment/verify-payment`,
+              {
+                orderId: paymentResponse.razorpay_order_id,
+                paymentId: paymentResponse.razorpay_payment_id,
+                signature: paymentResponse.razorpay_signature,
+                productType: "course-content",
+                productId: scope.contentKey,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (verifyResponse.data?.success && verifyResponse.data?.hasAccess) {
+              toast.success(`${productTitle} unlock ho gaya!`);
+              window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", { detail: scope }));
+              if (typeof afterSuccess === "function") await afterSuccess();
+            } else {
+              toast.error(verifyResponse.data?.message || "Payment verify nahi hua. Support se contact karo.");
+            }
+          } catch (verifyError) {
+            console.error("D.Pharm payment verification error:", verifyError);
+            toast.error(verifyError.response?.data?.message || "Payment ho gaya, lekin verification pending hai. Dobara login karke status check karo.");
+          }
+        },
+        modal: {
+          ondismiss: () => toast("Payment cancel/close kar diya gaya.", { icon: "ℹ️" }),
+        },
+        prefill: {},
+        theme: { color: "#6d28d9" },
+      };
+
+      const checkout = new window.Razorpay(options);
+      checkout.on("payment.failed", (event) => {
+        toast.error(event?.error?.description || "Payment fail ho gaya. Dobara try karo.");
+      });
+      checkout.open();
+    } catch (error) {
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+      console.error("D.Pharm purchase error:", error);
+      toast.error(error.response?.data?.message || error.message || "Payment start nahi ho paya.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleView = async (item, accessAlreadyChecked = false) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
     const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
-    if (!win) toast.error("Please allow popups to preview the PDF");
+    const pendingWindow = window.open("about:blank", "_blank");
+    if (!pendingWindow) {
+      toast.error("Please allow popups to preview the PDF");
+      return;
+    }
+    try {
+      if (!accessAlreadyChecked) {
+        const hasAccess = await checkDPharmAccess();
+        if (!hasAccess) {
+          pendingWindow.close();
+          await handlePremiumPurchase(() => handleView(item, true));
+          return;
+        }
+      }
+      pendingWindow.location.href = previewUrl;
+    } catch (error) {
+      pendingWindow.close();
+      console.error("D.Pharm access check error:", error);
+      toast.error(error.response?.data?.message || "Access check nahi ho paaya. Dobara login karke try karo.");
+    }
   };
 
-  const handleDownload = (item) => {
+  const handleDownload = async (item, accessAlreadyChecked = false) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
     const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download started!");
-  };
-
-  const handlePremiumPurchase = async () => {
-    toast.info("💎 Premium purchase flow - Coming soon!");
+    const pendingWindow = window.open("about:blank", "_blank");
+    if (!pendingWindow) {
+      toast.error("Please allow popups to download the PDF");
+      return;
+    }
+    try {
+      if (!accessAlreadyChecked) {
+        const hasAccess = await checkDPharmAccess();
+        if (!hasAccess) {
+          pendingWindow.close();
+          await handlePremiumPurchase(() => handleDownload(item, true));
+          return;
+        }
+      }
+      pendingWindow.location.href = downloadUrl;
+      toast.success("Download started!");
+    } catch (error) {
+      pendingWindow.close();
+      console.error("D.Pharm access check error:", error);
+      toast.error(error.response?.data?.message || "Access check nahi ho paaya. Dobara login karke try karo.");
+    }
   };
 
   // ========== RENDER CATEGORY STEP ==========
@@ -1676,19 +1864,9 @@ const DPharm = () => {
             className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
           >
             <Crown size={20} className="text-yellow-300" />
-            <span>Get Premium - ₹{premiumPrice}</span>
+            <span>Unlock Selected Content</span>
             <Rocket size={20} className="text-yellow-300" />
           </button>
-        </div>
-      )}
-
-      {isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />
-            Premium Member
-            <Shield size={18} className="text-yellow-300" />
-          </div>
         </div>
       )}
 
