@@ -1,15 +1,4 @@
 
-
-
-
-
-
-
-
-
-
-
-
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -163,6 +152,129 @@ const normalizeDPharmYear = (value) => {
   }
 
   return raw;
+};
+
+/* =========================================================
+   D.PHARM NOTES PAYMENT PROTECTION
+   Protects only D.Pharm > Notes PDFs. Other courses/content
+   continue using their existing public access behavior.
+========================================================= */
+const protectDPharmNotes = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const requestedType = String(req.params.type || "note").toLowerCase();
+
+    // This middleware only handles Note documents.
+    if (!["note", "notes"].includes(requestedType)) return next();
+    if (!mongoose.Types.ObjectId.isValid(id)) return next();
+
+    const note = await Note.findById(id).select(
+      "course category year language"
+    );
+
+    // Let the original file route return its normal 404 response.
+    if (!note) return next();
+
+    const normalize = (value) => String(value ?? "").trim().toLowerCase();
+    if (normalize(note.course) !== "d.pharm" || normalize(note.category) !== "notes") {
+      return next();
+    }
+
+    // Only a logged-in student may access paid D.Pharm Notes.
+    return authMiddleware(req, res, () => {
+      (async () => {
+        if (!req.user || req.user.type !== "user") {
+          return res.status(403).json({
+            success: false,
+            message: "Please login with your student account to access D.Pharm Notes"
+          });
+        }
+
+        const normalizedYear = normalizeDPharmYear(note.year);
+        const yearNumber = normalizedYear === "1st Year" ? "1" :
+          normalizedYear === "2nd Year" ? "2" : "";
+        const language = normalize(note.language);
+
+        if (!yearNumber || !["hindi", "english"].includes(language)) {
+          return res.status(403).json({
+            success: false,
+            message: "This D.Pharm Notes file has an invalid year or language setup"
+          });
+        }
+
+        // Must match DPharm.jsx getDPharmContentKey() exactly.
+        const contentKey = `d.pharm|notes|${yearNumber}|${language}`;
+        const scope = {
+          course: "d.pharm",
+          category: "notes",
+          semester: "",
+          year: yearNumber,
+          language,
+          specialization: "",
+          contentKey
+        };
+        const same = (a, b) => normalize(a) === normalize(b);
+
+        const priceDoc = await CoursePrice.findOne({}).lean();
+        const contentPrices = Array.isArray(priceDoc?.contentPrices)
+          ? priceDoc.contentPrices
+          : [];
+
+        const matchingPrice = contentPrices.find((entry) =>
+          entry &&
+          entry.isActive !== false &&
+          same(entry.course, scope.course) &&
+          same(entry.category, scope.category) &&
+          same(entry.semester, scope.semester) &&
+          same(entry.year, scope.year) &&
+          same(entry.language, scope.language) &&
+          same(entry.specialization, scope.specialization) &&
+          same(entry.contentKey, scope.contentKey)
+        );
+
+        const isFree = matchingPrice && normalize(matchingPrice.accessType) === "free";
+        const hasPurchased = Array.isArray(req.user.purchasedItems) &&
+          req.user.purchasedItems.some((purchase) =>
+            purchase &&
+            same(purchase.productType, "course-content") &&
+            same(purchase.productId, scope.contentKey) &&
+            same(purchase.contentKey, scope.contentKey) &&
+            same(purchase.course, scope.course) &&
+            same(purchase.category, scope.category) &&
+            same(purchase.semester, scope.semester) &&
+            same(purchase.year, scope.year) &&
+            same(purchase.language, scope.language) &&
+            same(purchase.specialization, scope.specialization)
+          );
+
+        if (!isFree && !hasPurchased) {
+          return res.status(403).json({
+            success: false,
+            paymentRequired: true,
+            message: `Payment required for D.Pharm Notes - ${language} Year ${yearNumber}`,
+            contentKey,
+            scope
+          });
+        }
+
+        return next();
+      })().catch((error) => {
+        console.error("D.Pharm Notes access check error:", error);
+        if (!res.headersSent) {
+          return res.status(500).json({
+            success: false,
+            message: "Unable to verify D.Pharm Notes access"
+          });
+        }
+      });
+    });
+  } catch (error) {
+    console.error("D.Pharm Notes protection error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify D.Pharm Notes access"
+    });
+  }
 };
 
 const normalizePharmDYear = (value) => {
@@ -2228,6 +2340,7 @@ router.get("/public/notes", async (req, res) => {
 
 router.get(
   "/public/notes/:id/download",
+  protectDPharmNotes,
   async (req, res) => {
     try {
       const {
@@ -4793,6 +4906,7 @@ const sendStoredFile = async (
 
 router.get(
   "/public/preview/:type/:id",
+  protectDPharmNotes,
   async (req, res, next) => {
     // IMPORTANT:
     // interview-pdf has its own dedicated route below.
@@ -4816,6 +4930,7 @@ router.get(
 
 router.get(
   "/public/download/:type/:id",
+  protectDPharmNotes,
   async (req, res, next) => {
     // IMPORTANT:
     // interview-pdf has its own dedicated route below.
