@@ -1,4 +1,3 @@
-
 const express = require("express");
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
@@ -155,9 +154,9 @@ const normalizeDPharmYear = (value) => {
 };
 
 /* =========================================================
-   D.PHARM NOTES PAYMENT PROTECTION
-   Protects only D.Pharm > Notes PDFs. Other courses/content
-   continue using their existing public access behavior.
+   D.PHARM CONTENT PAYMENT PROTECTION
+   Protects D.Pharm Notes, Exam Crash Course and PYQs files
+   served through the generic preview/download routes.
 ========================================================= */
 const protectDPharmNotes = async (req, res, next) => {
   try {
@@ -176,17 +175,17 @@ const protectDPharmNotes = async (req, res, next) => {
     if (!note) return next();
 
     const normalize = (value) => String(value ?? "").trim().toLowerCase();
-    if (normalize(note.course) !== "d.pharm" || normalize(note.category) !== "notes") {
+    if (normalize(note.course) !== "d.pharm") {
       return next();
     }
 
-    // Only a logged-in student may access paid D.Pharm Notes.
+    // Only a logged-in student may access paid D.Pharm content.
     return authMiddleware(req, res, () => {
       (async () => {
         if (!req.user || req.user.type !== "user") {
           return res.status(403).json({
             success: false,
-            message: "Please login with your student account to access D.Pharm Notes"
+            message: "Please login with your student account to access D.Pharm content"
           });
         }
 
@@ -198,7 +197,7 @@ const protectDPharmNotes = async (req, res, next) => {
         if (!yearNumber || !["hindi", "english"].includes(language)) {
           return res.status(403).json({
             success: false,
-            message: "This D.Pharm Notes file has an invalid year or language setup"
+            message: "This D.Pharm file has an invalid year or language setup"
           });
         }
 
@@ -251,7 +250,7 @@ const protectDPharmNotes = async (req, res, next) => {
           return res.status(403).json({
             success: false,
             paymentRequired: true,
-            message: `Payment required for D.Pharm Notes - ${language} Year ${yearNumber}`,
+            message: `Payment required for D.Pharm ${normalize(note.category)} - ${language} Year ${yearNumber}`,
             contentKey,
             scope
           });
@@ -259,11 +258,11 @@ const protectDPharmNotes = async (req, res, next) => {
 
         return next();
       })().catch((error) => {
-        console.error("D.Pharm Notes access check error:", error);
+        console.error("D.Pharm content access check error:", error);
         if (!res.headersSent) {
           return res.status(500).json({
             success: false,
-            message: "Unable to verify D.Pharm Notes access"
+            message: "Unable to verify D.Pharm content access"
           });
         }
       });
@@ -272,7 +271,7 @@ const protectDPharmNotes = async (req, res, next) => {
     console.error("D.Pharm Notes protection error:", error);
     return res.status(500).json({
       success: false,
-      message: "Unable to verify D.Pharm Notes access"
+      message: "Unable to verify D.Pharm content access"
     });
   }
 };

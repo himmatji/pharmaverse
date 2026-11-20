@@ -567,6 +567,15 @@ const DPharm = () => {
         return;
       }
 
+      // First recover an earlier captured payment for this exact year/category/language.
+      // Only open a new Razorpay checkout when no captured payment exists.
+      const recovered = await tryRecoverDPharmPayment(scope);
+      if (recovered) {
+        toast.success("Previous successful payment recovered. Year unlocked!");
+        setCurrentStep(4);
+        return;
+      }
+
       // Razorpay opens ONLY from the Select Year card.
       await handlePremiumPurchase(() => setCurrentStep(4), scope);
     } catch (error) {
@@ -814,6 +823,22 @@ const DPharm = () => {
     return Boolean(response.data?.success && response.data?.hasAccess);
   };
 
+  const tryRecoverDPharmPayment = async (scope) => {
+    const token = getToken();
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/payment/recover-course-content`,
+        { contentKey: scope.contentKey },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return Boolean(response.data?.success && response.data?.hasAccess);
+    } catch (error) {
+      // No pending/captured order is normal for a first-time purchase.
+      if ([404, 409].includes(error.response?.status)) return false;
+      throw error;
+    }
+  };
+
   const handlePremiumPurchase = async (afterSuccess = null, scopeOverride = null) => {
     const token = getToken();
     if (!token) {
@@ -934,10 +959,19 @@ const handleView = async (item) => {
     return;
   }
 
+  // Open synchronously in the click event; browsers may block window.open
+  // if it is called only after asynchronous access checks/network requests.
+  const previewWindow = window.open("about:blank", "_blank");
+  if (!previewWindow) {
+    toast.error("Please allow popups to preview the PDF");
+    return;
+  }
+
   try {
     // Preview never starts a payment. Payment is initiated only by Select Year.
     const hasAccess = await checkDPharmAccess();
     if (!hasAccess) {
+      previewWindow.close();
       toast.error("Pehle Select Year par payment complete karo.");
       return;
     }
@@ -950,20 +984,18 @@ const handleView = async (item) => {
       }
     );
 
-    if (!response.headers["content-type"]?.toLowerCase().includes("pdf")) {
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
+    if (!contentType.includes("pdf")) {
+      previewWindow.close();
       throw new Error("Valid PDF response nahi mila.");
     }
 
     const pdfBlob = new Blob([response.data], { type: "application/pdf" });
     const pdfUrl = URL.createObjectURL(pdfBlob);
-    const previewWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
-    if (!previewWindow) {
-      URL.revokeObjectURL(pdfUrl);
-      toast.error("Please allow popups to preview the PDF");
-      return;
-    }
-    setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
+    previewWindow.location.href = pdfUrl;
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 5 * 60 * 1000);
   } catch (error) {
+    if (previewWindow && !previewWindow.closed) previewWindow.close();
     console.error("D.Pharm preview error:", error);
     toast.error(
       error.response?.status === 401
