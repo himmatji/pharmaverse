@@ -896,33 +896,78 @@ const DPharm = () => {
     }
   };
 
-  const handleView = async (item, accessAlreadyChecked = false) => {
-    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
-      toast.error("Invalid document ID");
-      return;
-    }
-    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-    const pendingWindow = window.open("about:blank", "_blank");
-    if (!pendingWindow) {
-      toast.error("Please allow popups to preview the PDF");
-      return;
-    }
-    try {
-      if (!accessAlreadyChecked) {
-        const hasAccess = await checkDPharmAccess();
-        if (!hasAccess) {
-          pendingWindow.close();
-          await handlePremiumPurchase(() => handleView(item, true));
-          return;
-        }
+  
+const handleView = async (item, accessAlreadyChecked = false) => {
+  if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
+    toast.error("Invalid document ID");
+    return;
+  }
+
+  const token = getToken();
+
+  if (!token) {
+    toast.error("Please login first.");
+    navigate("/login", { state: { from: location.pathname } });
+    return;
+  }
+
+  const pendingWindow = window.open("about:blank", "_blank");
+
+  if (!pendingWindow) {
+    toast.error("Please allow popups to preview the PDF");
+    return;
+  }
+
+  try {
+    if (!accessAlreadyChecked) {
+      const hasAccess = await checkDPharmAccess();
+
+      if (!hasAccess) {
+        pendingWindow.close();
+        await handlePremiumPurchase(() => handleView(item, true));
+        return;
       }
-      pendingWindow.location.href = previewUrl;
-    } catch (error) {
-      pendingWindow.close();
-      console.error("D.Pharm access check error:", error);
-      toast.error(error.response?.data?.message || "Access check nahi ho paaya. Dobara login karke try karo.");
     }
-  };
+
+    const response = await axios.get(
+      `${API_BASE}/api/admin/public/preview/note/${item._id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/pdf",
+        },
+        responseType: "blob",
+      }
+    );
+
+    if (!response.headers["content-type"]?.includes("pdf")) {
+      throw new Error("Valid PDF response nahi mila.");
+    }
+
+    const pdfBlob = new Blob([response.data], {
+      type: "application/pdf",
+    });
+
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+
+    pendingWindow.location.replace(pdfUrl);
+
+    setTimeout(() => URL.revokeObjectURL(pdfUrl), 120000);
+
+  } catch (error) {
+    if (!pendingWindow.closed) pendingWindow.close();
+
+    console.error("D.Pharm preview error:", error);
+
+    toast.error(
+      error.response?.status === 401
+        ? "Session expired. Please login again."
+        : error.response?.status === 403
+        ? "Permission denied."
+        : error.message || "PDF preview failed."
+    );
+  }
+};
 
   const handleDownload = async (item, accessAlreadyChecked = false) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
