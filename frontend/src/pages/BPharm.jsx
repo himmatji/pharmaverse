@@ -155,8 +155,6 @@ const BPharm = () => {
   const [unitContent, setUnitContent] = useState([]);
   const [isContentLoading, setIsContentLoading] = useState(false);
   const [contentError, setContentError] = useState("");
-  const [isPremium, setIsPremium] = useState(false);
-  const [premiumPrice, setPremiumPrice] = useState(999);
   const [unlockedSemesters, setUnlockedSemesters] = useState([]);
   const [accessLoading, setAccessLoading] = useState(false);
 
@@ -383,13 +381,13 @@ const BPharm = () => {
     };
   }, [selectedCategory, selectedSemester, selectedSubject]);
 
-  // Load exact Notes semester access from the backend for the logged-in user.
-  // The backend is authoritative; this state is only used to render the cards.
+  // Load exact semester access independently for Notes, Exam Crash Course and PYQs.
+  // Backend access is scoped by course + category + semester contentKey.
   useEffect(() => {
     let cancelled = false;
 
     const loadSemesterAccess = async () => {
-      if (selectedCategory !== "Notes") {
+      if (!["Notes", "Exam Crash Course", "PYQs"].includes(selectedCategory)) {
         setUnlockedSemesters([]);
         setAccessLoading(false);
         return;
@@ -408,16 +406,22 @@ const BPharm = () => {
 
       setAccessLoading(true);
       try {
+        const categorySlug = String(selectedCategory)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+
         const results = await Promise.all(
           [1, 2, 3, 4, 5, 6, 7, 8].map(async (semester) => {
-            const contentKey = `bpharm:notes:semester:${semester}`;
+            const contentKey = `bpharm:${categorySlug}:semester:${semester}`;
             const response = await axios.get(
               `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(contentKey)}`,
               {
                 params: {
                   contentKey,
                   course: "B.Pharm",
-                  category: "Notes",
+                  category: selectedCategory,
                   semester: String(semester),
                   year: "",
                   language: "",
@@ -435,7 +439,7 @@ const BPharm = () => {
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("B.Pharm semester access check failed:", error);
+          console.error(`B.Pharm ${selectedCategory} semester access check failed:`, error);
           setUnlockedSemesters([]);
         }
       } finally {
@@ -447,11 +451,14 @@ const BPharm = () => {
     return () => { cancelled = true; };
   }, [selectedCategory]);
 
-  // Keep the visible semester state in sync after a verified purchase.
+  // Update only the exact category + semester after backend payment verification.
   useEffect(() => {
     const handlePurchaseVerified = (event) => {
       const detail = event.detail || {};
-      if (detail.course === "B.Pharm" && detail.category === "Notes") {
+      if (
+        detail.course === "B.Pharm" &&
+        ["Notes", "Exam Crash Course", "PYQs"].includes(detail.category)
+      ) {
         const semester = Number(detail.semester);
         if (Number.isInteger(semester) && semester >= 1 && semester <= 8) {
           setUnlockedSemesters((current) =>
@@ -1010,7 +1017,7 @@ const BPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className={`inline-block w-2 h-2 rounded-full ${selectedCategory === "Notes" ? "bg-gray-500" : "bg-emerald-500 animate-pulse"}`}></span>
-            {selectedCategory === "Notes" ? (accessLoading ? "Checking your semester access..." : "Unlock each semester to access notes.") : "Select a semester to continue."}
+            {accessLoading ? "Checking your semester access..." : "Unlock each semester separately to access content."}
           </p>
         </div>
 
@@ -1019,7 +1026,7 @@ const BPharm = () => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
-            const isLocked = selectedCategory === "Notes" && !unlockedSemesters.includes(Number(sem));
+            const isLocked = !unlockedSemesters.includes(Number(sem));
             return (
               <div
                 key={sem}
@@ -1616,24 +1623,6 @@ const BPharm = () => {
           <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-2xl">
             <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="font-['Inter'] text-gray-700 font-medium">Loading...</span>
-          </div>
-        </div>
-      )}
-
-      {!isPremium && selectedCategory && selectedCategory !== "Notes" && selectedSemester && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button onClick={handlePremiumPurchase} className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center">
-            <Crown size={20} className="text-yellow-300" />
-            <span>Get Premium - ₹{premiumPrice}</span>
-            <Rocket size={20} className="text-yellow-300" />
-          </button>
-        </div>
-      )}
-
-      {isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />Premium Member<Shield size={18} className="text-yellow-300" />
           </div>
         </div>
       )}
