@@ -731,32 +731,96 @@ const BPharm = () => {
     });
   };
 
-  // ========== VIEW/DOWNLOAD ==========
-  const handleView = (item) => {
+  // ========== AUTHENTICATED VIEW / DOWNLOAD ==========
+  const getStudentAuthToken = () =>
+    localStorage.getItem("token") ||
+    localStorage.getItem("userToken") ||
+    localStorage.getItem("authToken");
+
+  const fetchProtectedPdf = async (item, action) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
-    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
-    if (!win) toast.error("Please allow popups to preview the PDF");
+
+    const token = getStudentAuthToken();
+    if (!token) {
+      toast.error("PDF access ke liye pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+
+    // Open synchronously so the browser does not block the preview after API response.
+    const previewWindow = action === "preview"
+      ? window.open("about:blank", "_blank")
+      : null;
+
+    if (action === "preview" && !previewWindow) {
+      toast.error("Please allow popups to preview the PDF");
+      return;
+    }
+
+    try {
+      const endpoint = action === "preview" ? "preview" : "download";
+      const response = await axios.get(
+        `${API_BASE}/api/admin/public/${endpoint}/note/${item._id}`,
+        {
+          responseType: "blob",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/pdf, application/octet-stream, */*",
+          },
+          timeout: 60000,
+        }
+      );
+
+      const contentType = response.headers?.["content-type"] || "application/pdf";
+      const pdfBlob = response.data instanceof Blob
+        ? new Blob([response.data], { type: contentType })
+        : new Blob([response.data], { type: "application/pdf" });
+
+      // A JSON error can also arrive as a Blob when responseType is "blob".
+      if (contentType.includes("application/json")) {
+        const errorText = await pdfBlob.text();
+        let message = "PDF access denied.";
+        try {
+          message = JSON.parse(errorText)?.message || message;
+        } catch {
+          // Keep the fallback message.
+        }
+        throw new Error(message);
+      }
+
+      const objectUrl = URL.createObjectURL(pdfBlob);
+
+      if (action === "preview") {
+        previewWindow.location.href = objectUrl;
+        // Keep the object URL alive while the browser PDF viewer loads it.
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120000);
+      } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = item.fileName || item.title || `PharmaVerse-${item._id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+        toast.success("Download started!");
+      }
+    } catch (error) {
+      if (previewWindow && !previewWindow.closed) previewWindow.close();
+      console.error(`Protected PDF ${action} failed:`, error);
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        toast.error(error?.response?.data?.message || "Is PDF ke liye payment/access required hai.");
+      } else {
+        toast.error(error?.message || error?.response?.data?.message || "PDF open nahi ho paayi.");
+      }
+    }
   };
 
-  const handleDownload = (item) => {
-    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
-      toast.error("Invalid document ID");
-      return;
-    }
-    const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download started!");
-  };
+  const handleView = (item) => fetchProtectedPdf(item, "preview");
+  const handleDownload = (item) => fetchProtectedPdf(item, "download");
 
   // Purchase exactly the selected B.Pharm category + semester.
   // Admin pricing must use the same stable contentKey format below.

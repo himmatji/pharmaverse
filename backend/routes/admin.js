@@ -158,6 +158,12 @@ const normalizeDPharmYear = (value) => {
    Protects D.Pharm Notes, Exam Crash Course and PYQs files
    served through the generic preview/download routes.
 ========================================================= */
+/* =========================================================
+   COURSE CONTENT PAYMENT PROTECTION
+   - Keeps the existing D.Pharm Notes protection.
+   - Protects B.Pharm Exam Crash Course and PYQs by semester.
+   - B.Pharm Notes and all unrelated content keep their current behavior.
+========================================================= */
 const protectDPharmNotes = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -168,16 +174,125 @@ const protectDPharmNotes = async (req, res, next) => {
     if (!mongoose.Types.ObjectId.isValid(id)) return next();
 
     const note = await Note.findById(id).select(
-      "course category year language"
+      "course category year language semester mpharmBranch branch"
     );
 
     // Let the original file route return its normal 404 response.
     if (!note) return next();
 
     const normalize = (value) => String(value ?? "").trim().toLowerCase();
-    if (normalize(note.course) !== "d.pharm") {
-      return next();
+    const course = normalize(note.course);
+    const category = normalize(note.category);
+
+    // -------------------------------------------------------
+    // B.PHARM: Exam Crash Course / PYQs semester-wise access
+    // contentKey must match BPharm.jsx and payment.js:
+    // bpharm:exam-crash-course:semester:1
+    // bpharm:pyqs:semester:1
+    // -------------------------------------------------------
+    const isBPharm = course === "b.pharm" || course === "bpharm";
+    const isBPharmPaidCategory =
+      category === "exam crash course" ||
+      category === "exam-crash-course" ||
+      category === "pyqs";
+
+    if (isBPharm && isBPharmPaidCategory) {
+      const semesterNumber = Number.parseInt(note.semester, 10);
+
+      if (!Number.isInteger(semesterNumber) || semesterNumber < 1 || semesterNumber > 8) {
+        return res.status(403).json({
+          success: false,
+          paymentRequired: true,
+          message: "This B.Pharm file has an invalid semester setup"
+        });
+      }
+
+      const categorySlug = category === "exam crash course" || category === "exam-crash-course"
+        ? "exam-crash-course"
+        : "pyqs";
+      const contentKey = `bpharm:${categorySlug}:semester:${semesterNumber}`;
+      const scope = {
+        course: "B.Pharm",
+        category: categorySlug === "exam-crash-course" ? "Exam Crash Course" : "PYQs",
+        semester: String(semesterNumber),
+        year: "",
+        language: "",
+        specialization: "",
+        contentKey
+      };
+
+      return authMiddleware(req, res, () => {
+        (async () => {
+          if (!req.user || req.user.type !== "user") {
+            return res.status(401).json({
+              success: false,
+              paymentRequired: true,
+              message: "Please login with your student account to access this B.Pharm content",
+              contentKey,
+              scope
+            });
+          }
+
+          const same = (a, b) => normalize(a) === normalize(b);
+          const priceDoc = await CoursePrice.findOne({}).lean();
+          const contentPrices = Array.isArray(priceDoc?.contentPrices)
+            ? priceDoc.contentPrices
+            : [];
+
+          const matchingPrice = contentPrices.find((entry) =>
+            entry &&
+            entry.isActive !== false &&
+            same(entry.course, scope.course) &&
+            same(entry.category, scope.category) &&
+            same(entry.semester, scope.semester) &&
+            same(entry.year, scope.year) &&
+            same(entry.language, scope.language) &&
+            same(entry.specialization, scope.specialization) &&
+            same(entry.contentKey, scope.contentKey)
+          );
+
+          const isFree = matchingPrice && same(matchingPrice.accessType, "free");
+          const hasPurchased = Array.isArray(req.user.purchasedItems) &&
+            req.user.purchasedItems.some((purchase) =>
+              purchase &&
+              same(purchase.productType, "course-content") &&
+              same(purchase.productId, scope.contentKey) &&
+              same(purchase.contentKey, scope.contentKey) &&
+              same(purchase.course, scope.course) &&
+              same(purchase.category, scope.category) &&
+              same(purchase.semester, scope.semester) &&
+              same(purchase.year, scope.year) &&
+              same(purchase.language, scope.language) &&
+              same(purchase.specialization, scope.specialization)
+            );
+
+          if (!isFree && !hasPurchased) {
+            return res.status(403).json({
+              success: false,
+              paymentRequired: true,
+              message: `Payment required for B.Pharm ${scope.category} Semester ${semesterNumber}`,
+              contentKey,
+              scope
+            });
+          }
+
+          return next();
+        })().catch((error) => {
+          console.error("B.Pharm content access check error:", error);
+          if (!res.headersSent) {
+            return res.status(500).json({
+              success: false,
+              message: "Unable to verify B.Pharm content access"
+            });
+          }
+        });
+      });
     }
+
+    // -------------------------------------------------------
+    // Existing D.PHARM protection: preserve existing behavior.
+    // -------------------------------------------------------
+    if (course !== "d.pharm") return next();
 
     // Only a logged-in student may access paid D.Pharm content.
     return authMiddleware(req, res, () => {
@@ -268,10 +383,10 @@ const protectDPharmNotes = async (req, res, next) => {
       });
     });
   } catch (error) {
-    console.error("D.Pharm Notes protection error:", error);
+    console.error("Course content payment protection error:", error);
     return res.status(500).json({
       success: false,
-      message: "Unable to verify D.Pharm content access"
+      message: "Unable to verify course content access"
     });
   }
 };

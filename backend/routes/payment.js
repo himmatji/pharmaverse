@@ -642,8 +642,18 @@ router.post('/recover-payment/:orderId', authenticateToken, async (req, res) => 
       contentKey: paymentRecord.get('contentKey') || ''
     };
 
-    if (!purchase.contentKey || !purchase.course || !purchase.category || !purchase.year || !purchase.language) {
-      return res.status(500).json({ success: false, message: 'Saved order is missing course access details. Contact support with this order ID.' });
+    const isBPharm = normalizeComparable(purchase.course) === 'b.pharm';
+    const missingRequiredDetails =
+      !purchase.contentKey ||
+      !purchase.course ||
+      !purchase.category ||
+      (!isBPharm && (!purchase.year || !purchase.language));
+
+    if (missingRequiredDetails) {
+      return res.status(500).json({
+        success: false,
+        message: 'Saved order is missing course access details. Contact support with this order ID.'
+      });
     }
 
     if (!Array.isArray(req.user.purchasedItems)) req.user.purchasedItems = [];
@@ -726,8 +736,18 @@ router.post('/recover-course-content', authenticateToken, async (req, res) => {
       contentKey: paymentRecord.get('contentKey') || contentKey
     };
 
-    if (!purchase.course || !purchase.category || !purchase.year || !purchase.language || !purchase.contentKey) {
-      return res.status(500).json({ success: false, message: 'Saved payment is missing access details. Contact support; do not pay again.' });
+    const isBPharm = normalizeComparable(purchase.course) === 'b.pharm';
+    const missingRequiredDetails =
+      !purchase.course ||
+      !purchase.category ||
+      !purchase.contentKey ||
+      (!isBPharm && (!purchase.year || !purchase.language));
+
+    if (missingRequiredDetails) {
+      return res.status(500).json({
+        success: false,
+        message: 'Saved payment is missing access details. Contact support; do not pay again.'
+      });
     }
 
     if (!Array.isArray(req.user.purchasedItems)) req.user.purchasedItems = [];
