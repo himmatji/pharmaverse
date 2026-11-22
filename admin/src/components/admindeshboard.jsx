@@ -2888,48 +2888,116 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                   );
                 })}
 
-                {/* One-time global Interview Material pricing */}
-                <div className="rounded-2xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-4 sm:p-5 space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="font-bold text-slate-900">Interview Material</h4>
-                      <p className="text-xs text-slate-500 mt-1">One-time payment · Unlock all Interview Material PDFs</p>
+                {/* Interview Material — sixth option, directly below PhD */}
+                <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isOpen = expandedPriceCourse === "Interview Material";
+                      setExpandedPriceCourse(isOpen ? "" : "Interview Material");
+                      setExpandedPriceCategory("");
+                    }}
+                    className={`w-full flex items-center justify-between p-4 text-left font-bold ${
+                      expandedPriceCourse === "Interview Material"
+                        ? "bg-orange-50 text-orange-900"
+                        : "text-slate-800 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <BookOpen size={19} />
+                      <span>
+                        <span className="block">Interview Material</span>
+                        <span className="block text-xs font-normal text-slate-500 mt-1">
+                          One-time payment · Unlock all PDFs
+                        </span>
+                      </span>
+                    </span>
+                    {expandedPriceCourse === "Interview Material"
+                      ? <ChevronDown size={18} />
+                      : <ArrowRight size={18} />}
+                  </button>
+
+                  {expandedPriceCourse === "Interview Material" && (
+                    <div className="p-4 sm:p-5 border-t border-slate-100 bg-orange-50/40 space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h4 className="font-bold text-slate-900">Interview Material Pricing</h4>
+                        <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-orange-100 text-orange-700">
+                          Global Access
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Access</label>
+                          <select
+                            value={interviewMaterialPrice.accessType}
+                            onChange={(e) => setInterviewMaterialPrice((current) => ({
+                              ...current,
+                              accessType: e.target.value,
+                              ...(e.target.value === "free" ? { price: 0, discount: 0 } : {})
+                            }))}
+                            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm"
+                          >
+                            <option value="paid">Paid</option>
+                            <option value="free">Free</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Price ₹</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.price}
+                            disabled={interviewMaterialPrice.accessType === "free"}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                setInterviewMaterialPrice((current) => ({ ...current, price: value }));
+                              }
+                            }}
+                            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Discount %</label>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.discount}
+                            disabled={interviewMaterialPrice.accessType === "free"}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                setInterviewMaterialPrice((current) => ({ ...current, discount: value }));
+                              }
+                            }}
+                            className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100"
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-3">
+                            <input
+                              type="checkbox"
+                              checked={interviewMaterialPrice.isActive !== false}
+                              onChange={(e) => setInterviewMaterialPrice((current) => ({
+                                ...current,
+                                isActive: e.target.checked
+                              }))}
+                            />
+                            Active
+                          </label>
+                        </div>
+                      </div>
+                      <div className="text-xs font-semibold text-emerald-700">
+                        Final Price: ₹{interviewMaterialPrice.accessType === "free"
+                          ? "0.00"
+                          : (Math.max(0, Number(interviewMaterialPrice.price) || 0) *
+                            (1 - Math.min(100, Math.max(0, Number(interviewMaterialPrice.discount) || 0)) / 100)).toFixed(2)}
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        Is price se ek successful payment par student ke liye saare Interview Material PDFs unlock honge.
+                      </p>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-orange-100 text-orange-700">Global Access</span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="col-span-2 sm:col-span-1">
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Access</label>
-                      <select
-                        value={interviewMaterialPrice.accessType}
-                        onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, accessType: e.target.value, ...(e.target.value === "free" ? { price: 0, discount: 0 } : {}) }))}
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm"
-                      >
-                        <option value="paid">Paid</option>
-                        <option value="free">Free</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Price ₹</label>
-                      <input type="text" inputMode="decimal" value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.price} disabled={interviewMaterialPrice.accessType === "free"}
-                        onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, price: value })); }}
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Discount %</label>
-                      <input type="text" inputMode="decimal" value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.discount} disabled={interviewMaterialPrice.accessType === "free"}
-                        onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, discount: value })); }}
-                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
-                    </div>
-                    <div className="flex items-end">
-                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-3">
-                        <input type="checkbox" checked={interviewMaterialPrice.isActive !== false} onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, isActive: e.target.checked }))} /> Active
-                      </label>
-                    </div>
-                  </div>
-                  <div className="text-xs font-semibold text-emerald-700">
-                    Final Price: ₹{interviewMaterialPrice.accessType === "free" ? "0.00" : (Math.max(0, Number(interviewMaterialPrice.price) || 0) * (1 - Math.min(100, Math.max(0, Number(interviewMaterialPrice.discount) || 0)) / 100)).toFixed(2)}
-                  </div>
+                  )}
                 </div>
 
                 <div className="flex items-start gap-2 p-3 rounded-xl bg-sky-50 border border-sky-100 text-xs text-sky-800"><Info size={15} className="shrink-0 mt-0.5"/><p>Har category aur semester/year ka rule alag save hota hai. D.Pharm mein Hindi aur English ki pricing bhi alag hai. Interview Material ke liye ek hi payment se saare PDFs unlock honge.</p></div>
