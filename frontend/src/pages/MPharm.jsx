@@ -1,7 +1,3 @@
-// M.PHARM NOTES FIX — VERSION 2
-// IMPORTANT: Copy this entire file into the actual M.Pharm component (.jsx) in frontend/src.
-// Downloading this TXT alone does not modify the project or change git status.
-
 import { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -161,6 +157,8 @@ const MPharm = () => {
   const [contentError, setContentError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPrice, setPremiumPrice] = useState(999);
+  const [unlockedSemesters, setUnlockedSemesters] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
 
   // ✅ Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
@@ -423,6 +421,195 @@ const MPharm = () => {
     };
   }, [selectedBranch, selectedCategory, selectedSemester, selectedSubject]);
 
+
+  // ========== M.PHARM CATEGORY + BRANCH + SEMESTER PAYMENT ==========
+  const getToken = () =>
+    localStorage.getItem("token") ||
+    localStorage.getItem("userToken") ||
+    localStorage.getItem("authToken");
+
+  // Keep this key exactly aligned with Admin > Manage Prices.
+  // Example: m.pharm|notes|1|pharmaceutics
+  const getMPharmContentKey = (category = selectedCategory, semester = selectedSemester, branch = selectedBranch) => {
+    const slug = (value) => String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    return ["m.pharm", slug(category), String(semester || ""), slug(branch)].join("|");
+  };
+
+  const getMPharmScope = (category = selectedCategory, semester = selectedSemester, branch = selectedBranch) => ({
+    course: "M.Pharm",
+    category: String(category || ""),
+    semester: String(semester || ""),
+    year: "",
+    language: "",
+    specialization: String(branch || ""),
+    contentKey: getMPharmContentKey(category, semester, branch),
+  });
+
+  const checkMPharmAccess = async (category, semester, branch) => {
+    const token = getToken();
+    if (!token) return false;
+    const scope = getMPharmScope(category, semester, branch);
+    const params = new URLSearchParams(scope);
+    const response = await axios.get(
+      `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(scope.contentKey)}?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return Boolean(response.data?.success && response.data?.hasAccess);
+  };
+
+  // Backend access check is authoritative; this list only controls the card UI.
+  useEffect(() => {
+    let cancelled = false;
+    const loadAccess = async () => {
+      if (!selectedBranch || !selectedCategory) {
+        setUnlockedSemesters([]);
+        setAccessLoading(false);
+        return;
+      }
+      const token = getToken();
+      setUnlockedSemesters([]);
+      if (!token) {
+        setAccessLoading(false);
+        return;
+      }
+      setAccessLoading(true);
+      try {
+        const results = await Promise.all([1, 2, 3, 4].map(async (semester) => {
+          const hasAccess = await checkMPharmAccess(selectedCategory, semester, selectedBranch);
+          return hasAccess ? semester : null;
+        }));
+        if (!cancelled) setUnlockedSemesters(results.filter((item) => item !== null));
+      } catch (error) {
+        console.error("M.Pharm access check failed:", error);
+        if (!cancelled) setUnlockedSemesters([]);
+      } finally {
+        if (!cancelled) setAccessLoading(false);
+      }
+    };
+    loadAccess();
+    return () => { cancelled = true; };
+  }, [selectedBranch, selectedCategory]);
+
+  useEffect(() => {
+    const onPurchaseVerified = (event) => {
+      const detail = event.detail || {};
+      if (detail.course !== "M.Pharm") return;
+      if (String(detail.category).toLowerCase() !== String(selectedCategory).toLowerCase()) return;
+      if (String(detail.specialization).toLowerCase() !== String(selectedBranch).toLowerCase()) return;
+      const semester = Number(detail.semester);
+      if (Number.isInteger(semester) && semester >= 1 && semester <= 4) {
+        setUnlockedSemesters((current) => current.includes(semester) ? current : [...current, semester]);
+      }
+    };
+    window.addEventListener("pharmaverse:purchase-verified", onPurchaseVerified);
+    return () => window.removeEventListener("pharmaverse:purchase-verified", onPurchaseVerified);
+  }, [selectedCategory, selectedBranch]);
+
+  const handlePremiumPurchase = async (semesterOverride = null) => {
+    const purchaseSemester = Number(semesterOverride ?? selectedSemester);
+    if (!selectedBranch || !selectedCategory || !Number.isInteger(purchaseSemester) || purchaseSemester < 1 || purchaseSemester > 4) {
+      toast.error("Pehle branch, category aur valid semester select karo.");
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      toast.error("Payment se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+
+    const scope = getMPharmScope(selectedCategory, purchaseSemester, selectedBranch);
+    const productTitle = `M.Pharm ${selectedBranch} - ${selectedCategory} - Semester ${purchaseSemester}`;
+    let checkoutWindow = null;
+
+    try {
+      setLoading(true);
+      checkoutWindow = window.open("about:blank", "_blank");
+      const scriptLoaded = await new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+        if (existing) {
+          existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true });
+          existing.addEventListener("error", () => resolve(false), { once: true });
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.dataset.razorpayCheckout = "true";
+        script.onload = () => resolve(Boolean(window.Razorpay));
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+      if (!scriptLoaded) throw new Error("Razorpay checkout load nahi hua. Dobara try karo.");
+
+      const orderResponse = await axios.post(`${API_BASE}/api/payment/create-order`, {
+        productType: "course-content",
+        productId: scope.contentKey,
+        productTitle,
+        ...scope,
+      }, { headers: { Authorization: `Bearer ${token}` } });
+
+      const order = orderResponse.data;
+      if (!order?.success || !order?.orderId || !order?.key) {
+        throw new Error(order?.message || "Payment order create nahi hua.");
+      }
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+
+      const checkout = new window.Razorpay({
+        key: order.key,
+        amount: Math.round(Number(order.amount) * 100),
+        currency: order.currency || "INR",
+        name: "PharmaVerse",
+        description: productTitle,
+        order_id: order.orderId,
+        handler: async (response) => {
+          try {
+            const verifyResponse = await axios.post(`${API_BASE}/api/payment/verify-payment`, {
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              productType: "course-content",
+              productId: scope.contentKey,
+            }, { headers: { Authorization: `Bearer ${token}` } });
+
+            if (verifyResponse.data?.success && verifyResponse.data?.hasAccess) {
+              toast.success("Payment verified! Selected M.Pharm content unlock ho gaya.");
+              window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", {
+                detail: { ...scope },
+              }));
+              setUnlockedSemesters((current) => current.includes(purchaseSemester) ? current : [...current, purchaseSemester]);
+              handleSemesterClick(purchaseSemester);
+            } else {
+              toast.error(verifyResponse.data?.message || "Payment verification complete nahi hua.");
+            }
+          } catch (verifyError) {
+            console.error("M.Pharm payment verification error:", verifyError);
+            toast.error(verifyError.response?.data?.message || "Payment ho gaya, verification pending hai. Support se contact karo.");
+          }
+        },
+        modal: { ondismiss: () => toast("Payment cancel/close kar diya gaya.", { icon: "ℹ️" }) },
+        prefill: {},
+        theme: { color: "#6d28d9" },
+      });
+      checkout.on("payment.failed", (event) => {
+        toast.error(event?.error?.description || "Payment fail ho gaya. Dobara try karo.");
+      });
+      checkout.open();
+    } catch (error) {
+      if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
+      console.error("M.Pharm purchase error:", error);
+      toast.error(error.response?.data?.message || error.message || "Payment start nahi ho paya.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // ========== HANDLERS ==========
   const handleBranchClick = (branchId) => {
     contentRequestIdRef.current += 1;
@@ -645,36 +832,51 @@ const MPharm = () => {
     });
   };
 
-  // ========== VIEW & DOWNLOAD ==========
-  const handleView = (item) => {
+  // ========== AUTHENTICATED VIEW & DOWNLOAD ==========
+  const fetchProtectedFile = async (item, mode) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
-    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
-    if (!win) toast.error("Please allow popups to preview the PDF");
-  };
-
-  const handleDownload = (item) => {
-    if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
-      toast.error("Invalid document ID");
+    const token = getToken();
+    if (!token) {
+      toast.error("Content dekhne ke liye pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
       return;
     }
-    const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download started!");
+
+    let popup = null;
+    if (mode === "view") popup = window.open("about:blank", "_blank");
+    try {
+      const url = `${API_BASE}/api/admin/public/${mode === "view" ? "preview" : "download"}/note/${item._id}`;
+      const response = await axios.get(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const blobUrl = URL.createObjectURL(response.data);
+      if (mode === "view") {
+        if (popup && !popup.closed) popup.location.href = blobUrl;
+        else window.open(blobUrl, "_blank", "noopener,noreferrer");
+      } else {
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = item.fileName || item.title || "MPharm-document.pdf";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      if (popup && !popup.closed) popup.close();
+      console.error("M.Pharm protected file request failed:", error);
+      toast.error(error.response?.status === 403
+        ? "Is semester ke content ke liye pehle payment karo."
+        : error.response?.data?.message || "File open/download nahi ho paayi.");
+    }
   };
 
-  const handlePremiumPurchase = async () => {
-    toast.info("💎 Premium purchase flow - Coming soon!");
-  };
+  const handleView = (item) => fetchProtectedFile(item, "view");
+  const handleDownload = (item) => fetchProtectedFile(item, "download");
 
   // ========== RENDER BRANCH STEP ==========
   const renderBranchStep = () => {
@@ -906,7 +1108,7 @@ const MPharm = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            All semesters are unlocked!
+            Har semester ka payment category aur branch ke hisaab se alag hai.
           </p>
         </div>
 
@@ -920,8 +1122,8 @@ const MPharm = () => {
             return (
               <div
                 key={sem}
-                onClick={() => isAvailable && handleSemesterClick(sem)}
-                className={`group relative cursor-pointer ${!isAvailable ? "opacity-50 cursor-not-allowed" : ""}`}
+                onClick={() => isAvailable && (unlockedSemesters.includes(sem) ? handleSemesterClick(sem) : handlePremiumPurchase(sem))}
+                className={`group relative ${isAvailable ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}`}
               >
                 {isAvailable && (
                   <div
@@ -979,20 +1181,25 @@ const MPharm = () => {
                     </div>
 
                     {isAvailable ? (
-                      <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                        <CheckCircle size={11} className="sm:size-3" />
-                        Open
-                      </div>
+                      unlockedSemesters.includes(sem) ? (
+                        <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
+                          <CheckCircle size={11} className="sm:size-3" /> Open
+                        </div>
+                      ) : (
+                        <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold">
+                          <Lock size={11} className="sm:size-3" /> {accessLoading ? "Checking..." : "Pay to Unlock"}
+                        </div>
+                      )
                     ) : (
                       <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
-                        <Lock size={11} className="sm:size-3" />
-                        Locked
+                        <Lock size={11} className="sm:size-3" /> Locked
                       </div>
                     )}
 
                     {isAvailable && (
                       <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">
                         {branchData[sem]?.length || 0} Subjects
+                        {!unlockedSemesters.includes(sem) && <span className="block text-amber-600 mt-1">Tap to purchase access</span>}
                       </div>
                     )}
                   </div>
@@ -1597,29 +1804,6 @@ const MPharm = () => {
           <div className="bg-white rounded-2xl p-6 flex items-center gap-3 shadow-2xl">
             <div className="w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="font-['Inter'] text-gray-700 font-medium">Loading...</span>
-          </div>
-        </div>
-      )}
-
-      {!isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button
-            onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
-          >
-            <Crown size={20} className="text-yellow-300" />
-            <span>Get Premium - ₹{premiumPrice}</span>
-            <Rocket size={20} className="text-yellow-300" />
-          </button>
-        </div>
-      )}
-
-      {isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />
-            Premium Member
-            <Shield size={18} className="text-yellow-300" />
           </div>
         </div>
       )}

@@ -432,6 +432,186 @@ const PharmD = () => {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+
+  // ========== PHARM.D YEAR-WISE CONTENT PAYMENT ==========
+  const getToken = () =>
+    localStorage.getItem("token") ||
+    localStorage.getItem("userToken") ||
+    localStorage.getItem("authToken");
+
+  const getPharmDContentScope = (category = selectedCategory, year = selectedYear) => {
+    const categorySlug = String(category || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const yearNumber = Number(year);
+    const contentKey = `pharm.d|${categorySlug}|${yearNumber}`;
+    return {
+      course: "Pharm.D",
+      category: String(category || ""),
+      semester: "",
+      year: String(yearNumber),
+      // Pharm.D material in this page has no language selector. Keep the
+      // backend's required recovery metadata consistent with its English PDFs.
+      language: "English",
+      specialization: "",
+      contentKey,
+    };
+  };
+
+  const checkPharmDAccess = async (scope) => {
+    const token = getToken();
+    if (!token) return false;
+    const params = new URLSearchParams(scope);
+    const response = await axios.get(
+      `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(scope.contentKey)}?${params.toString()}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return Boolean(response.data?.success && response.data?.hasAccess);
+  };
+
+  const recoverPharmDPayment = async (scope) => {
+    const token = getToken();
+    try {
+      const response = await axios.post(
+        `${API_BASE}/api/payment/recover-course-content`,
+        { contentKey: scope.contentKey },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return Boolean(response.data?.success && response.data?.hasAccess);
+    } catch (error) {
+      if ([404, 409].includes(error.response?.status)) return false;
+      throw error;
+    }
+  };
+
+  const startPharmDCheckout = async (scope, onSuccess) => {
+    const token = getToken();
+    if (!token) {
+      toast.error("Payment se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
+
+    const productTitle = `Pharm.D ${scope.category} - Year ${scope.year}`;
+    try {
+      setLoading(true);
+      const scriptLoaded = await new Promise((resolve) => {
+        if (window.Razorpay) return resolve(true);
+        const existing = document.querySelector('script[data-razorpay-checkout="true"]');
+        if (existing) {
+          existing.addEventListener("load", () => resolve(Boolean(window.Razorpay)), { once: true });
+          existing.addEventListener("error", () => resolve(false), { once: true });
+          return;
+        }
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        script.dataset.razorpayCheckout = "true";
+        script.onload = () => resolve(Boolean(window.Razorpay));
+        script.onerror = () => resolve(false);
+        document.body.appendChild(script);
+      });
+      if (!scriptLoaded) throw new Error("Razorpay checkout load nahi hua. Dobara try karo.");
+
+      const orderResponse = await axios.post(
+        `${API_BASE}/api/payment/create-order`,
+        {
+          productType: "course-content",
+          productId: scope.contentKey,
+          productTitle,
+          ...scope,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const order = orderResponse.data;
+      if (!order?.success || !order?.orderId || !order?.key) {
+        throw new Error(order?.message || "Payment order create nahi hua.");
+      }
+
+      const options = {
+        key: order.key,
+        amount: Math.round(Number(order.amount) * 100),
+        currency: order.currency || "INR",
+        name: "PharmaVerse",
+        description: productTitle,
+        order_id: order.orderId,
+        handler: async (paymentResponse) => {
+          try {
+            const verified = await axios.post(
+              `${API_BASE}/api/payment/verify-payment`,
+              {
+                orderId: paymentResponse.razorpay_order_id,
+                paymentId: paymentResponse.razorpay_payment_id,
+                signature: paymentResponse.razorpay_signature,
+                productType: "course-content",
+                productId: scope.contentKey,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (verified.data?.success && verified.data?.hasAccess) {
+              toast.success(`${productTitle} unlock ho gaya!`);
+              window.dispatchEvent(new CustomEvent("pharmaverse:purchase-verified", {
+                detail: { course: "Pharm.D", category: scope.category, year: Number(scope.year), contentKey: scope.contentKey }
+              }));
+              onSuccess?.();
+            } else {
+              toast.error(verified.data?.message || "Payment verification pending hai.");
+            }
+          } catch (verifyError) {
+            console.error("Pharm.D payment verification error:", verifyError);
+            toast.error(verifyError.response?.data?.message || "Payment ho gaya ho sakta hai. Dobara payment mat karna; access recovery try karo.");
+            try {
+              if (await recoverPharmDPayment(scope)) {
+                toast.success("Payment recover ho gaya. Content unlock hai.");
+                onSuccess?.();
+              }
+            } catch (recoveryError) {
+              console.error("Pharm.D payment recovery error:", recoveryError);
+            }
+          }
+        },
+        modal: {
+          ondismiss: () => toast("Payment close kar diya gaya.", { icon: "ℹ️" }),
+        },
+        theme: { color: "#6d28d9" },
+      };
+      const checkout = new window.Razorpay(options);
+      checkout.on("payment.failed", (event) => {
+        toast.error(event?.error?.description || "Payment fail ho gaya. Dobara try karo.");
+      });
+      checkout.open();
+    } catch (error) {
+      console.error("Pharm.D purchase error:", error);
+      toast.error(error.response?.data?.message || error.message || "Payment start nahi ho paya.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const ensureSelectedPharmDAccess = async () => {
+    const scope = getPharmDContentScope();
+    const token = getToken();
+    if (!token) {
+      toast.error("Content dekhne ke liye login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return false;
+    }
+    try {
+      if (await checkPharmDAccess(scope)) return true;
+      if (await recoverPharmDPayment(scope)) {
+        toast.success("Aapka pehle ka payment recover ho gaya.");
+        return true;
+      }
+      toast.error("Is content ko access karne ke liye pehle payment karo.");
+      return false;
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Access check nahi ho paaya.");
+      return false;
+    }
+  };
+
   // ========== HANDLERS ==========
   // ✅ FIX: Har category Year step (step 2) pe jaayegi
   const handleCategoryClick = (categoryId) => {
@@ -449,16 +629,46 @@ const PharmD = () => {
     setCurrentStep(2);
   };
 
-  const handleYearClick = (year) => {
-    contentRequestIdRef.current += 1;
-    if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+  const handleYearClick = async (year) => {
+    const scope = getPharmDContentScope(selectedCategory, year);
+    const token = getToken();
+    if (!token) {
+      toast.error("Payment se pehle login karo.");
+      navigate("/login", { state: { from: location.pathname } });
+      return;
+    }
 
-    setSelectedYear(year);
-    setCurrentStep(3);
-    setSelectedSubject(null);
-    setUnits([]);
-    setUnitContent([]);
-    setDirectFiles([]);
+    try {
+      setLoading(true);
+      let hasAccess = await checkPharmDAccess(scope);
+      if (!hasAccess) hasAccess = await recoverPharmDPayment(scope);
+      if (!hasAccess) {
+        await startPharmDCheckout(scope, () => {
+          contentRequestIdRef.current += 1;
+          if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+          setSelectedYear(year);
+          setCurrentStep(3);
+          setSelectedSubject(null);
+          setUnits([]);
+          setUnitContent([]);
+          setDirectFiles([]);
+        });
+        return;
+      }
+
+      contentRequestIdRef.current += 1;
+      if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+      setSelectedYear(year);
+      setCurrentStep(3);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Payment access check failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubjectClick = (subject) => {
@@ -596,34 +806,59 @@ const PharmD = () => {
     });
   };
 
-  const handleView = (item) => {
+  const handleView = async (item) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
-    const previewUrl = `${API_BASE}/api/admin/public/preview/note/${item._id}`;
-    const win = window.open(previewUrl, "_blank", "noopener,noreferrer");
-    if (!win) toast.error("Please allow popups to preview the PDF");
+    if (!(await ensureSelectedPharmDAccess())) return;
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `${API_BASE}/api/admin/public/preview/note/${item._id}`,
+        { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }
+      );
+      const blobUrl = URL.createObjectURL(response.data);
+      const previewWindow = window.open(blobUrl, "_blank", "noopener,noreferrer");
+      if (!previewWindow) {
+        URL.revokeObjectURL(blobUrl);
+        toast.error("Please allow popups to preview the PDF");
+        return;
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      toast.error(error.response?.status === 403
+        ? "Is PDF ke liye payment required hai."
+        : error.response?.data?.message || "PDF preview nahi ho paaya.");
+    }
   };
 
-  const handleDownload = (item) => {
+  const handleDownload = async (item) => {
     if (!item?._id || !/^[a-fA-F0-9]{24}$/.test(String(item._id))) {
       toast.error("Invalid document ID");
       return;
     }
-    const downloadUrl = `${API_BASE}/api/admin/public/download/note/${item._id}`;
-    const link = document.createElement("a");
-    link.href = downloadUrl;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Download started!");
-  };
-
-  const handlePremiumPurchase = async () => {
-    toast.info("💎 Premium purchase flow - Coming soon!");
+    if (!(await ensureSelectedPharmDAccess())) return;
+    try {
+      const token = getToken();
+      const response = await axios.get(
+        `${API_BASE}/api/admin/public/download/note/${item._id}`,
+        { headers: { Authorization: `Bearer ${token}` }, responseType: "blob" }
+      );
+      const blobUrl = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = item.fileName || item.title || "PharmD-content.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      toast.success("Download started!");
+    } catch (error) {
+      toast.error(error.response?.status === 403
+        ? "Is PDF ke liye payment required hai."
+        : error.response?.data?.message || "Download nahi ho paaya.");
+    }
   };
 
   // ========== RENDER CATEGORY STEP ==========
@@ -745,7 +980,7 @@ const PharmD = () => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            All years are unlocked!
+            Select a year to unlock its Notes, Exam Crash Course or PYQs.
           </p>
         </div>
 
@@ -792,7 +1027,7 @@ const PharmD = () => {
                     </div>
 
                     <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                      <CheckCircle size={11} className="sm:size-3" />Open
+                      <Lock size={11} className="sm:size-3" />Pay to Unlock
                     </div>
 
                     <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
