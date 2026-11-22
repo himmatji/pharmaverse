@@ -1003,7 +1003,12 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
     "PhD": { price: 199, discount: 0 }
   });
   const [contentPrices, setContentPrices] = useState([]);
-  const [interviewMaterialPrice, setInterviewMaterialPrice] = useState({ accessType: "paid", price: 199, discount: 0, isActive: true });
+  const [interviewMaterialPrice, setInterviewMaterialPrice] = useState({
+    accessType: "paid",
+    price: 99,
+    discount: 0,
+    isActive: true
+  });
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [savingPrices, setSavingPrices] = useState(false);
   const [expandedPriceCourse, setExpandedPriceCourse] = useState("");
@@ -1458,15 +1463,14 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             discount: toSafeNumber(item.discount, 0),
             isActive: item.isActive !== false
           })) : []);
-          const interviewPricing = response.interviewMaterial && typeof response.interviewMaterial === "object"
-            ? response.interviewMaterial
-            : {};
-          setInterviewMaterialPrice({
-            accessType: interviewPricing.accessType === "free" ? "free" : "paid",
-            price: toSafeNumber(interviewPricing.price, 199),
-            discount: toSafeNumber(interviewPricing.discount, 0),
-            isActive: interviewPricing.isActive !== false
-          });
+          if (response.interviewMaterial && typeof response.interviewMaterial === "object") {
+            setInterviewMaterialPrice({
+              accessType: response.interviewMaterial.accessType === "free" ? "free" : "paid",
+              price: toSafeNumber(response.interviewMaterial.price, 99),
+              discount: toSafeNumber(response.interviewMaterial.discount, 0),
+              isActive: response.interviewMaterial.isActive !== false
+            });
+          }
         }
       }
 
@@ -1504,17 +1508,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
       }
     }
 
-    const interviewPrice = Number(interviewMaterialPrice.price);
-    const interviewDiscount = Number(interviewMaterialPrice.discount);
-    if (!Number.isFinite(interviewPrice) || interviewPrice < 0) {
-      alert("Interview Material price cannot be negative or invalid");
-      return;
-    }
-    if (!Number.isFinite(interviewDiscount) || interviewDiscount < 0 || interviewDiscount > 100) {
-      alert("Interview Material discount must be between 0 and 100");
-      return;
-    }
-
     setSavingPrices(true);
     try {
       const headers = getAuthHeaders();
@@ -1539,7 +1532,24 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
         return;
       }
 
+      const interviewPrice = Number(interviewMaterialPrice.price);
+      const interviewDiscount = Number(interviewMaterialPrice.discount);
+      if (!Number.isFinite(interviewPrice) || interviewPrice < 0) {
+        alert("Interview Material price cannot be negative or invalid");
+        return;
+      }
+      if (!Number.isFinite(interviewDiscount) || interviewDiscount < 0 || interviewDiscount > 100) {
+        alert("Interview Material discount must be between 0 and 100");
+        return;
+      }
+
       await axios.put(`${API_URL}/course-prices`, {
+        interviewMaterial: {
+          accessType: interviewMaterialPrice.accessType === "free" ? "free" : "paid",
+          price: interviewMaterialPrice.accessType === "free" ? 0 : interviewPrice,
+          discount: interviewMaterialPrice.accessType === "free" ? 0 : interviewDiscount,
+          isActive: interviewMaterialPrice.isActive !== false
+        },
         prices: Object.fromEntries(
           Object.entries(coursePrices).map(([course, data]) => [
             course,
@@ -1549,12 +1559,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             }
           ])
         ),
-        interviewMaterial: {
-          accessType: interviewMaterialPrice.accessType === "free" ? "free" : "paid",
-          price: interviewMaterialPrice.accessType === "free" ? 0 : interviewPrice,
-          discount: interviewMaterialPrice.accessType === "free" ? 0 : Math.min(100, Math.max(0, interviewDiscount)),
-          isActive: interviewMaterialPrice.isActive !== false
-        },
         contentPrices: contentPrices.map((item) => ({
           ...item,
           contentKey: item.course === "B.Pharm"
@@ -2799,34 +2803,6 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
             {/* ── Scrollable Body ── */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 space-y-8">
 
-              {/* Interview Material: one-time access for all interview PDFs */}
-              <section className="rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white p-4 sm:p-5 space-y-4">
-                <div>
-                  <h4 className="text-sm font-['Inter'] font-bold uppercase tracking-wider text-violet-900">Interview Material</h4>
-                  <p className="text-xs text-slate-600 mt-1">Ek baar payment karne par student ko saare Interview Material PDFs ka access milega. Isme semester, year ya language selection nahi hai.</p>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="col-span-2 sm:col-span-1">
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Access</label>
-                    <select value={interviewMaterialPrice.accessType} onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, accessType: e.target.value, ...(e.target.value === "free" ? { price: 0, discount: 0 } : {}) }))} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm">
-                      <option value="paid">Paid</option><option value="free">Free</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Price ₹</label>
-                    <input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" disabled={interviewMaterialPrice.accessType === "free"} value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.price} onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, price: value })); }} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Discount %</label>
-                    <input type="text" inputMode="decimal" pattern="[0-9]*[.]?[0-9]*" disabled={interviewMaterialPrice.accessType === "free"} value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.discount} onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, discount: value })); }} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
-                  </div>
-                  <div className="flex items-end">
-                    <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-3"><input type="checkbox" checked={interviewMaterialPrice.isActive !== false} onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, isActive: e.target.checked }))} /> Active</label>
-                  </div>
-                </div>
-                <div className="text-xs font-semibold text-violet-800">Final price: ₹{interviewMaterialPrice.accessType === "free" ? "0.00" : (Math.max(0, Number(interviewMaterialPrice.price) || 0) * (1 - Math.min(100, Math.max(0, Number(interviewMaterialPrice.discount) || 0)) / 100)).toFixed(2)}</div>
-              </section>
-
               {/* Hierarchical course -> category -> semester/year pricing */}
               <section className="space-y-3">
                 <div className="mb-4">
@@ -2911,7 +2887,52 @@ const AdminDashboard = ({ initialTab = "dashboard", onLogout }) => {
                     </div>
                   );
                 })}
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-sky-50 border border-sky-100 text-xs text-sky-800"><Info size={15} className="shrink-0 mt-0.5"/><p>Har category aur semester/year ka rule alag save hota hai. D.Pharm mein Hindi aur English ki pricing bhi alag hai. Save karne ke baad payment API ko isi course/category/semester/year/language/specialization identity se match karna hoga.</p></div>
+
+                {/* One-time global Interview Material pricing */}
+                <div className="rounded-2xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 via-white to-amber-50 p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h4 className="font-bold text-slate-900">Interview Material</h4>
+                      <p className="text-xs text-slate-500 mt-1">One-time payment · Unlock all Interview Material PDFs</p>
+                    </div>
+                    <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-orange-100 text-orange-700">Global Access</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Access</label>
+                      <select
+                        value={interviewMaterialPrice.accessType}
+                        onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, accessType: e.target.value, ...(e.target.value === "free" ? { price: 0, discount: 0 } : {}) }))}
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm"
+                      >
+                        <option value="paid">Paid</option>
+                        <option value="free">Free</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Price ₹</label>
+                      <input type="text" inputMode="decimal" value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.price} disabled={interviewMaterialPrice.accessType === "free"}
+                        onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, price: value })); }}
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1">Discount %</label>
+                      <input type="text" inputMode="decimal" value={interviewMaterialPrice.accessType === "free" ? "0" : interviewMaterialPrice.discount} disabled={interviewMaterialPrice.accessType === "free"}
+                        onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) setInterviewMaterialPrice((current) => ({ ...current, discount: value })); }}
+                        className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-sm disabled:bg-slate-100" />
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 pb-3">
+                        <input type="checkbox" checked={interviewMaterialPrice.isActive !== false} onChange={(e) => setInterviewMaterialPrice((current) => ({ ...current, isActive: e.target.checked }))} /> Active
+                      </label>
+                    </div>
+                  </div>
+                  <div className="text-xs font-semibold text-emerald-700">
+                    Final Price: ₹{interviewMaterialPrice.accessType === "free" ? "0.00" : (Math.max(0, Number(interviewMaterialPrice.price) || 0) * (1 - Math.min(100, Math.max(0, Number(interviewMaterialPrice.discount) || 0)) / 100)).toFixed(2)}
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-sky-50 border border-sky-100 text-xs text-sky-800"><Info size={15} className="shrink-0 mt-0.5"/><p>Har category aur semester/year ka rule alag save hota hai. D.Pharm mein Hindi aur English ki pricing bhi alag hai. Interview Material ke liye ek hi payment se saare PDFs unlock honge.</p></div>
               </section>
             </div>
 
