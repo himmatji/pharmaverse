@@ -154,6 +154,8 @@ const DPharm = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
+  const [unlockedYears, setUnlockedYears] = useState([]);
+  const [yearAccessLoading, setYearAccessLoading] = useState(false);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -793,6 +795,58 @@ const DPharm = () => {
     contentKey: getDPharmContentKey(overrides),
   });
 
+  // Show the real access state for each year/category/language.
+  // Notes retain their existing contentKey and payment behavior.
+  useEffect(() => {
+    let cancelled = false;
+    const loadYearAccess = async () => {
+      if (!selectedCategory || !selectedLanguage) {
+        setUnlockedYears([]);
+        setYearAccessLoading(false);
+        return;
+      }
+
+      const token = getToken();
+      setUnlockedYears([]);
+      if (!token) {
+        setYearAccessLoading(false);
+        return;
+      }
+
+      setYearAccessLoading(true);
+      try {
+        const results = await Promise.all([1, 2].map(async (year) => {
+          const scope = getScopeDetails({ year });
+          const params = new URLSearchParams({
+            contentKey: scope.contentKey,
+            course: scope.course,
+            category: scope.category,
+            semester: "",
+            year: scope.year,
+            language: scope.language,
+            specialization: "",
+          });
+          const response = await axios.get(
+            `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(scope.contentKey)}?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          return response.data?.hasAccess ? year : null;
+        }));
+        if (!cancelled) setUnlockedYears(results.filter((year) => year !== null));
+      } catch (error) {
+        if (!cancelled) {
+          console.error("D.Pharm year access check failed:", error);
+          setUnlockedYears([]);
+        }
+      } finally {
+        if (!cancelled) setYearAccessLoading(false);
+      }
+    };
+
+    loadYearAccess();
+    return () => { cancelled = true; };
+  }, [selectedCategory, selectedLanguage]);
+
   const checkDPharmAccess = async (scopeOverride = null) => {
     const token = getToken();
     if (!token) {
@@ -1272,7 +1326,7 @@ const handleDownload = async (item) => {
           <div className="w-24 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto rounded-full mt-4 animate-gradient"></div>
           <p className="text-gray-500 text-base mt-4 font-['Inter'] font-medium flex items-center justify-center gap-2">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            Select a year to unlock its content with payment.
+            {yearAccessLoading ? "Checking your access..." : "Each category, language and year has separate access."}
           </p>
         </div>
 
@@ -1282,8 +1336,9 @@ const handleDownload = async (item) => {
             const cardId = `year-${year}`;
             const delay = `year-card-${index + 1}`;
 
+            const isUnlocked = unlockedYears.includes(year);
             return (
-              <div key={year} onClick={() => !loading && handleYearClick(year)} className={`group relative ${loading ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
+              <div key={year} onClick={() => !loading && !yearAccessLoading && handleYearClick(year)} className={`group relative ${loading || yearAccessLoading ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
                 <div
                   className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
@@ -1328,17 +1383,16 @@ const handleDownload = async (item) => {
                       {year === 1 ? "1st Year" : "2nd Year"}
                     </div>
 
-                    <div className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                      <CheckCircle size={12} />
-                      Open
+                    <div className={`mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full ${isUnlocked ? "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-200/50" : "bg-gradient-to-r from-slate-600 to-gray-700 shadow-gray-300/50"} text-white text-xs font-['Inter'] font-bold shadow-lg status-pulse`}>
+                      {isUnlocked ? <><CheckCircle size={12} />Open</> : <><Lock size={12} />Locked · Unlock</>}
                     </div>
 
                     <div className={`mt-3 h-0.5 w-16 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
                     <div className="mt-3 text-sm font-['Inter'] font-medium text-gray-400">{DPHARM_SUBJECTS[year]?.length || 0} Subjects</div>
                     <div className="mt-1 flex items-center justify-center gap-1">
-                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></div>
-                      <span className="text-xs font-['Inter'] font-medium text-emerald-500">Available</span>
-                      <div className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" style={{ animationDelay: "0.5s" }}></div>
+                      <div className={`w-1 h-1 rounded-full ${isUnlocked ? "bg-emerald-400 animate-pulse" : "bg-gray-400"}`}></div>
+                      <span className={`text-xs font-['Inter'] font-medium ${isUnlocked ? "text-emerald-500" : "text-gray-500"}`}>{isUnlocked ? "Available" : "Payment required"}</span>
+                      <div className={`w-1 h-1 rounded-full ${isUnlocked ? "bg-emerald-400 animate-pulse" : "bg-gray-400"}`}></div>
                     </div>
                   </div>
                 </div>
@@ -1961,19 +2015,6 @@ const handleDownload = async (item) => {
             <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <span className="font-['Inter'] text-gray-700 font-medium">Loading...</span>
           </div>
-        </div>
-      )}
-
-      {!isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button
-            onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
-          >
-            <Crown size={20} className="text-yellow-300" />
-            <span>Unlock Selected Content</span>
-            <Rocket size={20} className="text-yellow-300" />
-          </button>
         </div>
       )}
 
