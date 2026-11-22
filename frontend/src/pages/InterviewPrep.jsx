@@ -313,7 +313,10 @@ const InterviewPrep = () => {
   ========================= */
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-sky-50/40 to-white">
+    <div className="relative min-h-screen bg-gradient-to-b from-white via-sky-50/40 to-white">
+      <div className={`min-h-screen ${
+        !accessLoading && !hasAccess ? "blur-[5px] pointer-events-none select-none" : ""
+      }`}>
 
       {/* =========================
           TOASTER
@@ -560,35 +563,6 @@ const InterviewPrep = () => {
             Browse all interview preparation PDFs uploaded by our team.
           </p>
 
-          {!accessLoading && !hasAccess && (
-            <div className="max-w-2xl mx-auto mt-7 rounded-3xl border border-sky-100 bg-white shadow-xl p-5 sm:p-7 text-left">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-sky-500 to-purple-600 flex items-center justify-center shadow-lg">
-                  <Lock className="text-white" size={25} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-['Space_Grotesk'] font-extrabold text-gray-900">Unlock All Interview Materials</h3>
-                  <p className="text-sm text-gray-500 font-['Inter'] mt-1">One-time payment se saare Interview Material PDFs ka access unlock ho jayega.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleBuyInterviewMaterial}
-                  disabled={buying}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {buying ? <Loader2 size={17} className="animate-spin" /> : <Unlock size={17} />}
-                  {buying ? "Please wait..." : "Unlock All PDFs"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!accessLoading && hasAccess && (
-            <div className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 font-['Inter'] text-sm font-bold">
-              <Unlock size={16} /> All Interview Materials Unlocked
-            </div>
-          )}
-
         </div>
 
         {/* =========================
@@ -821,6 +795,35 @@ const InterviewPrep = () => {
           )}
 
       </div>
+      </div>
+
+      {!accessLoading && !hasAccess && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/35 backdrop-blur-md px-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-7 sm:p-9 text-center shadow-2xl">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-purple-600 shadow-lg shadow-sky-200">
+              <Lock className="text-white" size={30} />
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-['Space_Grotesk'] font-extrabold text-slate-900">
+              Unlock Interview Material
+            </h2>
+            <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-600 font-['Inter']">
+              Ek baar payment karke saare Interview Preparation PDFs ka access unlock karein.
+            </p>
+            <button
+              type="button"
+              onClick={handleBuyInterviewMaterial}
+              disabled={buying}
+              className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 px-6 py-4 text-base font-['Inter'] font-bold text-white shadow-lg shadow-sky-200 transition-all hover:scale-[1.02] hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {buying ? <Loader2 size={20} className="animate-spin" /> : <Unlock size={20} />}
+              {buying ? "Please wait..." : "Unlock All PDFs"}
+            </button>
+            <p className="mt-3 text-xs text-slate-400">
+              Secure one-time payment · All PDFs unlock after verification
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );
