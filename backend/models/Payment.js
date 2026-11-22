@@ -55,7 +55,8 @@ const paymentSchema = new mongoose.Schema({
       'note',
       'paper',
       'video',
-      'course-content'
+      'course-content',
+      'interview-material'
     ],
     required: true,
     trim: true

@@ -4205,7 +4205,10 @@ router.get("/course-prices", adminAuth, async (req, res) => {
         "Pharm.D": normalized.PharmD,
         PhD: normalized.PhD
       },
-      contentPrices
+      contentPrices,
+      interviewMaterial: req.admin?.role === "super_admin"
+        ? (record?.interviewMaterial || { price: 99, discount: 0, accessType: "paid", isActive: true })
+        : undefined
     });
   } catch (error) {
     console.error("Admin course prices GET error:", error);
@@ -4246,6 +4249,41 @@ router.put("/course-prices", adminAuth, async (req, res) => {
         ? Object.fromEntries(record.prices)
         : (record.prices || {})
     );
+
+    // Interview Material has one global price for complete access. Only a
+    // super-admin can change it; omitting the field leaves its current value intact.
+    if (Object.prototype.hasOwnProperty.call(body, "interviewMaterial")) {
+      if (req.admin?.role !== "super_admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Only super admin can manage Interview Material pricing"
+        });
+      }
+
+      const input = body.interviewMaterial || {};
+      const price = Number(input.price);
+      const discount = Number(input.discount);
+      const accessType = String(input.accessType || "paid").toLowerCase();
+      const isActive = input.isActive !== false;
+
+      if (!Number.isFinite(price) || price < 0 ||
+          !Number.isFinite(discount) || discount < 0 || discount > 100 ||
+          !["free", "paid"].includes(accessType)) {
+        return res.status(400).json({
+          success: false,
+          message: "Interview Material price, discount or access type is invalid"
+        });
+      }
+
+      record.interviewMaterial = {
+        price: Math.round(price * 100) / 100,
+        discount: Math.round(discount * 100) / 100,
+        accessType,
+        isActive,
+        updatedAt: new Date(),
+        updatedBy: req.admin?.id || null
+      };
+    }
 
     // New scoped prices are optional in legacy updates. If supplied, validate
     // the entire array before saving so a malformed request cannot partially
@@ -4309,7 +4347,10 @@ router.put("/course-prices", adminAuth, async (req, res) => {
         ? savedContentPrices
         : savedContentPrices.filter((item) =>
             (req.admin?.permissions?.courses || []).includes(item.course)
-          )
+          ),
+      interviewMaterial: req.admin?.role === "super_admin"
+        ? record.interviewMaterial
+        : undefined
     });
   } catch (error) {
     console.error("Admin course prices PUT error:", error);
@@ -5410,9 +5451,34 @@ router.get(
   }
 );
 
-// Public: preview interview material
+// Interview Material is a single one-time purchase covering every PDF.
+const INTERVIEW_MATERIAL_PRODUCT_TYPE = "interview-material";
+const INTERVIEW_MATERIAL_PRODUCT_ID = "all-interview-material";
+
+const hasInterviewMaterialAccess = async (user) => {
+  if (!user) return false;
+
+  const purchased = Array.isArray(user.purchasedItems) &&
+    user.purchasedItems.some((item) =>
+      item.productType === INTERVIEW_MATERIAL_PRODUCT_TYPE &&
+      String(item.productId) === INTERVIEW_MATERIAL_PRODUCT_ID
+    );
+  if (purchased) return true;
+
+  // Admin may explicitly make all Interview Material free.
+  const pricingRecord = await CoursePrice.findOne().select("interviewMaterial").lean();
+  const pricing = pricingRecord?.interviewMaterial || {};
+  const basePrice = Number(pricing.price ?? 99);
+  const discount = Number(pricing.discount ?? 0);
+  const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+  return pricing.isActive !== false &&
+    (pricing.accessType === "free" || finalPrice <= 0);
+};
+
+// Preview requires login and verified complete Interview Material access.
 router.get(
   "/public/preview/interview-pdf/:id",
+  authMiddleware,
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -5430,6 +5496,14 @@ router.get(
         return res.status(404).json({
           success: false,
           message: "Interview material file not found"
+        });
+      }
+
+      if (!(await hasInterviewMaterialAccess(req.user))) {
+        return res.status(403).json({
+          success: false,
+          code: "INTERVIEW_MATERIAL_PAYMENT_REQUIRED",
+          message: "Purchase Interview Material to preview this PDF"
         });
       }
 
@@ -5483,6 +5557,7 @@ router.get(
 // Public: download interview material
 router.get(
   "/public/download/interview-pdf/:id",
+  authMiddleware,
   async (req, res) => {
     try {
       const { id } = req.params;
@@ -5500,6 +5575,14 @@ router.get(
         return res.status(404).json({
           success: false,
           message: "Interview material file not found"
+        });
+      }
+
+      if (!(await hasInterviewMaterialAccess(req.user))) {
+        return res.status(403).json({
+          success: false,
+          code: "INTERVIEW_MATERIAL_PAYMENT_REQUIRED",
+          message: "Purchase Interview Material to preview this PDF"
         });
       }
 

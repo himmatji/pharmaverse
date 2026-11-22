@@ -127,6 +127,43 @@ const ContentPriceSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const InterviewMaterialPriceSchema = new mongoose.Schema(
+  {
+    // One-time price for complete Interview Material access.
+    price: {
+      type: Number,
+      default: 99,
+      min: 0,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    accessType: {
+      type: String,
+      enum: ["free", "paid"],
+      default: "paid",
+      required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Admin",
+      default: null,
+    },
+  },
+  { _id: false }
+);
+
 const CoursePriceSchema = new mongoose.Schema({
   // LEGACY COURSE-WIDE PRICES: kept for compatibility with existing code.
   // Keys must not contain "." (e.g. use BPharm, not B.Pharm).
@@ -149,6 +186,18 @@ const CoursePriceSchema = new mongoose.Schema({
     default: [],
   },
 
+  // NEW: one-time complete access pricing for all Interview Material PDFs.
+  // This is separate from course-wise semester/year/content pricing.
+  interviewMaterial: {
+    type: InterviewMaterialPriceSchema,
+    default: () => ({
+      price: 99,
+      discount: 0,
+      accessType: "paid",
+      isActive: true,
+    }),
+  },
+
   updatedAt: {
     type: Date,
     default: Date.now,
@@ -167,5 +216,3 @@ CoursePriceSchema.pre("save", function () {
 });
 
 module.exports = mongoose.model("CoursePrice", CoursePriceSchema);
-
-

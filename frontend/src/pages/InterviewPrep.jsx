@@ -9,6 +9,8 @@ import {
   Loader2,
   Search,
   BookOpen,
+  Lock,
+  Unlock,
 } from "lucide-react";
 
 const API_BASE =
@@ -31,6 +33,219 @@ const InterviewPrep = () => {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [loadingItemId, setLoadingItemId] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [buying, setBuying] = useState(false);
+
+  const INTERVIEW_PRODUCT_TYPE = "interview-material";
+  const INTERVIEW_PRODUCT_ID = "all-interview-material";
+
+  const getUserToken = () => {
+    const keys = ["token", "userToken", "authToken", "accessToken"];
+    for (const key of keys) {
+      const value = localStorage.getItem(key);
+      if (value) return value;
+    }
+    return "";
+  };
+
+  const getAuthHeaders = () => {
+    const token = getUserToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
+
+  const checkInterviewAccess = async () => {
+    const token = getUserToken();
+    if (!token) {
+      setHasAccess(false);
+      setAccessLoading(false);
+      return false;
+    }
+
+    try {
+      const res = await axios.get(
+        `${API_BASE}/api/payment/check-access/${INTERVIEW_PRODUCT_TYPE}/${INTERVIEW_PRODUCT_ID}`,
+        { headers: getAuthHeaders(), timeout: 12000 }
+      );
+      const allowed = Boolean(res?.data?.hasAccess);
+      setHasAccess(allowed);
+      return allowed;
+    } catch (err) {
+      console.error("Interview material access check error:", err);
+      setHasAccess(false);
+      return false;
+    } finally {
+      setAccessLoading(false);
+    }
+  };
+
+  const loadRazorpayScript = () =>
+    new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const existing = document.querySelector('script[data-razorpay="true"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => resolve(false), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.dataset.razorpay = "true";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+
+  const handleBuyInterviewMaterial = async () => {
+    if (!getUserToken()) {
+      toast.error("Interview Material kharidne ke liye pehle login karo.");
+      return;
+    }
+
+    setBuying(true);
+    try {
+      const loaded = await loadRazorpayScript();
+      if (!loaded || !window.Razorpay) {
+        throw new Error("Payment gateway load nahi ho paaya. Dobara try karo.");
+      }
+
+      const orderRes = await axios.post(
+        `${API_BASE}/api/payment/create-order`,
+        {
+          productType: INTERVIEW_PRODUCT_TYPE,
+          productId: INTERVIEW_PRODUCT_ID,
+          productTitle: "Complete Interview Material Access",
+        },
+        { headers: getAuthHeaders(), timeout: 20000 }
+      );
+
+      const order = orderRes?.data;
+      if (!order?.orderId || !order?.key) {
+        throw new Error(order?.message || "Payment order create nahi hua.");
+      }
+
+      const options = {
+        key: order.key,
+        amount: Math.round(Number(order.amount) * 100),
+        currency: order.currency || "INR",
+        name: "PharmaVerse",
+        description: "All Interview Material PDFs - Lifetime Access",
+        order_id: order.orderId,
+        prefill: {},
+        theme: { color: "#0ea5e9" },
+        handler: async (response) => {
+          try {
+            const verifyRes = await axios.post(
+              `${API_BASE}/api/payment/verify-payment`,
+              {
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                productType: INTERVIEW_PRODUCT_TYPE,
+                productId: INTERVIEW_PRODUCT_ID,
+              },
+              { headers: getAuthHeaders(), timeout: 20000 }
+            );
+
+            if (verifyRes?.data?.success) {
+              setHasAccess(true);
+              toast.success("Payment successful! All Interview Material unlocked.");
+            } else {
+              toast.error(verifyRes?.data?.message || "Payment verification pending.");
+            }
+          } catch (verifyError) {
+            console.error("Interview material payment verification error:", verifyError);
+            toast.error(
+              verifyError?.response?.data?.message ||
+              "Payment received, lekin verification pending hai. Please retry after login."
+            );
+          } finally {
+            setBuying(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setBuying(false),
+        },
+      };
+
+      const checkout = new window.Razorpay(options);
+      checkout.on("payment.failed", (response) => {
+        toast.error(response?.error?.description || "Payment failed. Please try again.");
+        setBuying(false);
+      });
+      checkout.open();
+    } catch (err) {
+      console.error("Interview material purchase error:", err);
+      toast.error(err?.response?.data?.message || err.message || "Payment start nahi ho paaya.");
+      setBuying(false);
+    }
+  };
+
+  const fetchProtectedFile = async (item, mode) => {
+    if (!item?._id) {
+      toast.error("Invalid document");
+      return;
+    }
+    if (!getUserToken()) {
+      toast.error("PDF access ke liye pehle login karo.");
+      return;
+    }
+
+    const previewWindow = mode === "preview"
+      ? window.open("about:blank", "_blank")
+      : null;
+    if (mode === "preview" && !previewWindow) {
+      toast.error("Please allow popups to preview the PDF");
+      return;
+    }
+
+    setLoadingItemId(item._id);
+    try {
+      const endpoint = mode === "preview" ? "preview" : "download";
+      const response = await axios.get(
+        `${API_BASE}/api/admin/public/${endpoint}/interview-pdf/${item._id}`,
+        {
+          headers: getAuthHeaders(),
+          responseType: "blob",
+          timeout: 60000,
+        }
+      );
+      const contentType = response.headers?.["content-type"] || "application/pdf";
+      const blob = new Blob([response.data], { type: contentType });
+      const objectUrl = URL.createObjectURL(blob);
+
+      if (mode === "preview") {
+        previewWindow.location.href = objectUrl;
+        previewWindow.opener = null;
+        toast.success("PDF opened");
+      } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = item.fileName || `${item.title || "interview-material"}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast.success("Download started!");
+      }
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    } catch (err) {
+      if (previewWindow && !previewWindow.closed) previewWindow.close();
+      console.error(`Interview material ${mode} error:`, err);
+      const status = err?.response?.status;
+      if (status === 401) {
+        toast.error("Session expire ho gaya. Dobara login karo.");
+      } else if (status === 403) {
+        toast.error("Pehle Interview Material ka payment complete karo.");
+      } else {
+        toast.error(err?.response?.data?.message || "File open nahi ho paayi.");
+      }
+    } finally {
+      setLoadingItemId(null);
+    }
+  };
+
+  const handleView = (item) => fetchProtectedFile(item, "preview");
+  const handleDownload = (item) => fetchProtectedFile(item, "download");
 
   /* =========================
      FETCH INTERVIEW PDFs
@@ -71,6 +286,7 @@ const InterviewPrep = () => {
     };
 
     fetchPdfs();
+    checkInterviewAccess();
   }, []);
 
   /* =========================
@@ -91,63 +307,6 @@ const InterviewPrep = () => {
         .includes(q)
     );
   });
-
-  /* =========================
-     VIEW PDF
-  ========================= */
-
-  const handleView = (item) => {
-    if (!item?._id) {
-      toast.error("Invalid document");
-      return;
-    }
-
-    const previewUrl = `${API_BASE}/api/admin/public/preview/interview-pdf/${item._id}`;
-
-    const win = window.open(
-      previewUrl,
-      "_blank",
-      "noopener,noreferrer"
-    );
-
-    if (!win) {
-      toast.error("Please allow popups to preview the PDF");
-    }
-  };
-
-  /* =========================
-     DOWNLOAD PDF
-  ========================= */
-
-  const handleDownload = (item) => {
-    if (!item?._id) {
-      toast.error("Invalid document");
-      return;
-    }
-
-    setLoadingItemId(item._id);
-
-    try {
-      const downloadUrl = `${API_BASE}/api/admin/public/download/interview-pdf/${item._id}`;
-
-      const link = document.createElement("a");
-
-      link.href = downloadUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("Download started!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Download failed");
-    } finally {
-      setLoadingItemId(null);
-    }
-  };
 
   /* =========================
      PAGE
@@ -401,6 +560,35 @@ const InterviewPrep = () => {
             Browse all interview preparation PDFs uploaded by our team.
           </p>
 
+          {!accessLoading && !hasAccess && (
+            <div className="max-w-2xl mx-auto mt-7 rounded-3xl border border-sky-100 bg-white shadow-xl p-5 sm:p-7 text-left">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br from-sky-500 to-purple-600 flex items-center justify-center shadow-lg">
+                  <Lock className="text-white" size={25} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-['Space_Grotesk'] font-extrabold text-gray-900">Unlock All Interview Materials</h3>
+                  <p className="text-sm text-gray-500 font-['Inter'] mt-1">One-time payment se saare Interview Material PDFs ka access unlock ho jayega.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleBuyInterviewMaterial}
+                  disabled={buying}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-bold shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {buying ? <Loader2 size={17} className="animate-spin" /> : <Unlock size={17} />}
+                  {buying ? "Please wait..." : "Unlock All PDFs"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!accessLoading && hasAccess && (
+            <div className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 font-['Inter'] text-sm font-bold">
+              <Unlock size={16} /> All Interview Materials Unlocked
+            </div>
+          )}
+
         </div>
 
         {/* =========================
@@ -593,44 +781,31 @@ const InterviewPrep = () => {
                       </div>
                     )}
 
-                    {/* BUTTONS */}
-
-                    <div className="flex gap-2.5 mt-5">
-
-                      {/* PREVIEW */}
-
-                      <button
-                        onClick={() =>
-                          handleView(item)
-                        }
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-['Inter'] font-semibold text-xs sm:text-sm hover:bg-gray-200 transition-colors"
-                      >
-
-                        <Eye size={15} />
-
-                        Preview
-
-                      </button>
-
-                      {/* DOWNLOAD */}
-
-                      <button
-                        onClick={() =>
-                          handleDownload(item)
-                        }
-                        disabled={
-                          loadingItemId === item._id
-                        }
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg hover:scale-[1.03] transition-all disabled:opacity-50"
-                      >
-
-                        <Download size={15} />
-
-                        Download
-
-                      </button>
-
-                    </div>
+                    {/* PAYMENT-LOCKED ACTIONS */}
+                    {hasAccess ? (
+                      <div className="flex gap-2.5 mt-5">
+                        <button
+                          onClick={() => handleView(item)}
+                          disabled={loadingItemId === item._id}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gray-100 text-gray-700 font-['Inter'] font-semibold text-xs sm:text-sm hover:bg-gray-200 transition-colors disabled:opacity-50"
+                        >
+                          {loadingItemId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Eye size={15} />}
+                          Preview
+                        </button>
+                        <button
+                          onClick={() => handleDownload(item)}
+                          disabled={loadingItemId === item._id}
+                          className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 text-white font-['Inter'] font-semibold text-xs sm:text-sm shadow-md hover:shadow-lg hover:scale-[1.03] transition-all disabled:opacity-50"
+                        >
+                          <Download size={15} />
+                          Download
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-amber-700 font-['Inter'] text-xs sm:text-sm font-semibold">
+                        <Lock size={15} /> Pay once to unlock Preview & Download
+                      </div>
+                    )}
 
                   </div>
 

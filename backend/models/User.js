@@ -18,7 +18,8 @@ const purchasedItemSchema = new mongoose.Schema({
       'premium_course',
       'paper',
       'video',
-      'course-content'
+      'course-content',
+      'interview-material'
     ]
   },
   // Supports ObjectId and String identifiers used by existing products.

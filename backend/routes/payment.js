@@ -19,6 +19,8 @@ const razorpay = new Razorpay({
 // These fields are intentionally stored with the purchase so that access to
 // one semester/year/language/category does not unlock unrelated content.
 const COURSE_CONTENT_TYPE = 'course-content';
+const INTERVIEW_MATERIAL_TYPE = 'interview-material';
+const INTERVIEW_MATERIAL_ID = 'all-interview-material';
 
 const COURSE_VALUES = new Set([
   'B.Pharm',
@@ -221,6 +223,15 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       });
     }
 
+    const interviewMaterial = productType.trim() === INTERVIEW_MATERIAL_TYPE;
+
+    if (interviewMaterial && String(productId).trim() !== INTERVIEW_MATERIAL_ID) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid Interview Material product ID'
+      });
+    }
+
     const courseContent = isCourseContentRequest(req.body);
     const courseDetails = getCourseContentDetails(req.body);
 
@@ -239,7 +250,27 @@ router.post('/create-order', authenticateToken, async (req, res) => {
     // Legacy product types retain the previous amount-based contract.
     let amount;
 
-    if (courseContent) {
+    if (interviewMaterial) {
+      const CoursePrice = require('../models/CoursePrice');
+      const pricingDoc = await CoursePrice.findOne({});
+      const pricing = pricingDoc?.interviewMaterial;
+
+      if (!pricing || pricing.isActive === false) {
+        return res.status(404).json({ success: false, message: 'Interview Material is currently unavailable' });
+      }
+
+      const basePrice = Number(pricing.price);
+      const discount = Number(pricing.discount || 0);
+      if (!Number.isFinite(basePrice) || basePrice < 0 || !Number.isFinite(discount) || discount < 0 || discount > 100) {
+        return res.status(400).json({ success: false, message: 'Configured Interview Material price is invalid' });
+      }
+
+      const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+      if (pricing.accessType === 'free' || finalPrice <= 0) {
+        return res.status(400).json({ success: false, message: 'Interview Material is free; no payment order is required', accessType: 'free' });
+      }
+      amount = finalPrice;
+    } else if (courseContent) {
       const CoursePrice = require('../models/CoursePrice');
       const pricingDoc = await CoursePrice.findOne({});
 
@@ -313,6 +344,7 @@ router.post('/create-order', authenticateToken, async (req, res) => {
         productType: productType.trim(),
         productId: String(productId),
         userId: req.user._id.toString(),
+        ...(interviewMaterial ? { productTitle: 'All Interview Material PDFs' } : {}),
         ...(courseContent ? {
           contentKey: courseDetails.contentKey,
           course: courseDetails.course,
@@ -360,7 +392,8 @@ router.post('/create-order', authenticateToken, async (req, res) => {
       key: razorpayKeyId,
       productType: productType.trim(),
       productId: String(productId),
-      ...(courseContent ? courseDetails : {})
+      ...(courseContent ? courseDetails : {}),
+      ...(interviewMaterial ? { accessType: 'paid' } : {})
     });
   } catch (error) {
     console.error('Create Order Error:', error);
@@ -467,6 +500,10 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
         success: false,
         message: 'Product ID does not match the payment order'
       });
+    }
+
+    if (paymentRecord.productType === INTERVIEW_MATERIAL_TYPE && String(paymentRecord.productId) !== INTERVIEW_MATERIAL_ID) {
+      return res.status(400).json({ success: false, message: 'Invalid Interview Material payment record' });
     }
 
     const courseContent = paymentRecord.productType === COURSE_CONTENT_TYPE ||
@@ -784,6 +821,34 @@ router.post('/recover-course-content', authenticateToken, async (req, res) => {
 router.get('/check-access/:type/:id', authenticateToken, async (req, res) => {
   try {
     const { type, id } = req.params;
+
+    if (type === INTERVIEW_MATERIAL_TYPE && id === INTERVIEW_MATERIAL_ID) {
+      const alreadyPurchased = req.user.purchasedItems?.some((item) =>
+        item.productType === INTERVIEW_MATERIAL_TYPE && String(item.productId) === INTERVIEW_MATERIAL_ID
+      );
+
+      if (alreadyPurchased) {
+        return res.json({ success: true, hasAccess: true, accessType: 'purchased', isPremium: false });
+      }
+
+      const CoursePrice = require('../models/CoursePrice');
+      const pricingDoc = await CoursePrice.findOne({});
+      const pricing = pricingDoc?.interviewMaterial;
+      if (pricing && pricing.isActive !== false) {
+        const basePrice = Number(pricing.price);
+        const discount = Number(pricing.discount || 0);
+        const validPricing = Number.isFinite(basePrice) && basePrice >= 0 && Number.isFinite(discount) && discount >= 0 && discount <= 100;
+        const finalPrice = validPricing ? Math.round(basePrice * (1 - discount / 100) * 100) / 100 : null;
+        if (validPricing && (pricing.accessType === 'free' || finalPrice <= 0)) {
+          return res.json({ success: true, hasAccess: true, accessType: 'free', isPremium: false, price: basePrice, discount });
+        }
+        if (validPricing) {
+          return res.json({ success: true, hasAccess: false, accessType: 'paid', isPremium: false, price: basePrice, discount, finalPrice });
+        }
+      }
+      return res.json({ success: true, hasAccess: false, accessType: 'locked', isPremium: false });
+    }
+
     const contentKey = normalizeText(req.query.contentKey);
     const course = normalizeText(req.query.course);
     const category = normalizeComparable(req.query.category);
