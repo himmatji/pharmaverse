@@ -1625,29 +1625,6 @@ const PharmD = () => {
         </div>
       )}
 
-      {!isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 animate-bounce w-[90%] sm:w-auto">
-          <button
-            onClick={handlePremiumPurchase}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-2xl hover:scale-105 transition-all duration-300 flex items-center gap-3 text-sm sm:text-base w-full justify-center"
-          >
-            <Crown size={20} className="text-yellow-300" />
-            <span>Get Premium - ₹{premiumPrice}</span>
-            <Rocket size={20} className="text-yellow-300" />
-          </button>
-        </div>
-      )}
-
-      {isPremium && (
-        <div className="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[90%] sm:w-auto">
-          <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-4 sm:px-6 py-3 sm:py-4 rounded-2xl font-['Inter'] font-bold shadow-xl flex items-center gap-3 text-sm sm:text-base animate-float-text">
-            <Gem size={18} className="text-yellow-300" />
-            Premium Member
-            <Shield size={18} className="text-yellow-300" />
-          </div>
-        </div>
-      )}
-
       {/* HERO */}
       <div className="w-screen bg-gradient-to-br from-[#0a1628] via-[#0f2847] to-[#1a3a5c] overflow-hidden relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <div className="relative h-[320px] sm:h-[390px] md:h-[470px] w-full">
