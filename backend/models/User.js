@@ -67,6 +67,12 @@ const purchasedItemSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Course-content access expires six calendar months after purchase.
+  // Optional so legacy purchase records continue to load.
+  expiresAt: {
+    type: Date,
+    default: undefined
+  },
   razorpayOrderId: {
     type: String,
     trim: true

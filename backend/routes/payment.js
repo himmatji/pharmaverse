@@ -64,6 +64,28 @@ const normalizeUserLanguage = (value) => {
   return '';
 };
 
+// Course-content purchases stay valid for six calendar months from purchase.
+const COURSE_ACCESS_MONTHS = 6;
+
+const getCourseAccessExpiry = (purchasedAt = new Date()) => {
+  const expiry = new Date(purchasedAt);
+  expiry.setMonth(expiry.getMonth() + COURSE_ACCESS_MONTHS);
+  return expiry;
+};
+
+const isPurchaseActive = (item, now = new Date()) => {
+  // Only scoped course-content purchases use the six-month expiry.
+  if (item.productType !== COURSE_CONTENT_TYPE) return true;
+
+  // Backward compatibility: older records without expiresAt expire six
+  // months after their original purchasedAt date.
+  const expiry = item.expiresAt
+    ? new Date(item.expiresAt)
+    : getCourseAccessExpiry(item.purchasedAt || now);
+
+  return Number.isFinite(expiry.getTime()) && expiry > now;
+};
+
 const getCourseContentDetails = (body = {}) => {
   const course = normalizeText(body.course);
   const category = normalizeComparable(body.category);
@@ -555,6 +577,7 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
       productTitle: paymentRecord.productTitle || 'Premium Content',
       amount: paymentRecord.amount,
       purchasedAt: new Date(),
+      ...(courseContent ? { expiresAt: getCourseAccessExpiry(new Date()) } : {}),
       razorpayOrderId: orderId,
       razorpayPaymentId: paymentId
     };
@@ -584,10 +607,18 @@ router.post('/verify-payment', authenticateToken, async (req, res) => {
       req.user.purchasedItems = [];
     }
 
-    if (!alreadyPurchased) {
+    if (courseContent) {
+      const existingPurchase = req.user.purchasedItems?.find((item) => isSamePurchase(item, purchase));
+      if (existingPurchase) {
+        // A repeat purchase renews the six-month access window.
+        Object.assign(existingPurchase, purchase);
+      } else {
+        req.user.purchasedItems.unshift(purchase);
+      }
+      // Save access before marking the payment order successful.
+      await req.user.save();
+    } else if (!alreadyPurchased) {
       req.user.purchasedItems.unshift(purchase);
-      // Save the access record before marking the payment order successful.
-      // A retry is safe because purchases are checked for duplicates above.
       await req.user.save();
     }
 
@@ -668,6 +699,7 @@ router.post('/recover-payment/:orderId', authenticateToken, async (req, res) => 
       productTitle: paymentRecord.productTitle || 'Premium Content',
       amount: paymentRecord.amount,
       purchasedAt: new Date(),
+      expiresAt: getCourseAccessExpiry(new Date()),
       razorpayOrderId: orderId,
       razorpayPaymentId: captured.id,
       course: paymentRecord.get('course') || '',
@@ -694,11 +726,13 @@ router.post('/recover-payment/:orderId', authenticateToken, async (req, res) => 
     }
 
     if (!Array.isArray(req.user.purchasedItems)) req.user.purchasedItems = [];
-    const alreadyPurchased = req.user.purchasedItems.some((item) => isSamePurchase(item, purchase));
-    if (!alreadyPurchased) {
+    const existingPurchase = req.user.purchasedItems.find((item) => isSamePurchase(item, purchase));
+    if (existingPurchase) {
+      Object.assign(existingPurchase, purchase);
+    } else {
       req.user.purchasedItems.unshift(purchase);
-      await req.user.save();
     }
+    await req.user.save();
 
     paymentRecord.paymentId = captured.id;
     paymentRecord.signature = crypto.createHmac('sha256', razorpayKeySecret)
@@ -762,6 +796,7 @@ router.post('/recover-course-content', authenticateToken, async (req, res) => {
       productTitle: paymentRecord.productTitle || 'Premium Content',
       amount: paymentRecord.amount,
       purchasedAt: new Date(),
+      expiresAt: getCourseAccessExpiry(new Date()),
       razorpayOrderId: paymentRecord.orderId,
       razorpayPaymentId: captured.id,
       course: paymentRecord.get('course') || '',
@@ -788,11 +823,13 @@ router.post('/recover-course-content', authenticateToken, async (req, res) => {
     }
 
     if (!Array.isArray(req.user.purchasedItems)) req.user.purchasedItems = [];
-    const alreadyPurchased = req.user.purchasedItems.some((item) => isSamePurchase(item, purchase));
-    if (!alreadyPurchased) {
+    const existingPurchase = req.user.purchasedItems.find((item) => isSamePurchase(item, purchase));
+    if (existingPurchase) {
+      Object.assign(existingPurchase, purchase);
+    } else {
       req.user.purchasedItems.unshift(purchase);
-      await req.user.save();
     }
+    await req.user.save();
 
     paymentRecord.paymentId = captured.id;
     paymentRecord.signature = crypto.createHmac('sha256', razorpayKeySecret)
@@ -901,6 +938,7 @@ router.get('/check-access/:type/:id', authenticateToken, async (req, res) => {
     const hasAccess = req.user.purchasedItems?.some((item) => {
       if (isScopedCourseContent) {
         return (
+          isPurchaseActive(item) &&
           item.productType === COURSE_CONTENT_TYPE &&
           normalizeComparable(item.productId) === normalizeComparable(id) &&
           normalizeComparable(item.contentKey) === normalizeComparable(contentKey) &&

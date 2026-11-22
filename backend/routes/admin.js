@@ -160,10 +160,33 @@ const normalizeDPharmYear = (value) => {
 ========================================================= */
 /* =========================================================
    COURSE CONTENT PAYMENT PROTECTION
-   - Keeps the existing D.Pharm Notes protection.
-   - Protects B.Pharm Exam Crash Course and PYQs by semester.
-   - B.Pharm Notes and all unrelated content keep their current behavior.
+   - Paid course-content purchases expire after 6 calendar months.
+   - Applies to B.Pharm semester Notes, Exam Crash Course and PYQs.
+   - Keeps the existing D.Pharm year/language scope protection.
+   - Free content and unrelated products keep their current behavior.
 ========================================================= */
+const isCoursePurchaseActive = (purchase, now = new Date()) => {
+  if (!purchase || String(purchase.productType || "").toLowerCase() !== "course-content") {
+    return false;
+  }
+
+  // Prefer the explicit expiry saved at payment verification.
+  if (purchase.expiresAt) {
+    const expiresAt = new Date(purchase.expiresAt);
+    return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now.getTime();
+  }
+
+  // Backward compatibility for purchases made before expiresAt was added.
+  // Missing/invalid purchasedAt fails closed instead of granting lifetime access.
+  if (!purchase.purchasedAt) return false;
+  const purchasedAt = new Date(purchase.purchasedAt);
+  if (Number.isNaN(purchasedAt.getTime())) return false;
+
+  const expiresAt = new Date(purchasedAt);
+  expiresAt.setMonth(expiresAt.getMonth() + 6);
+  return expiresAt.getTime() > now.getTime();
+};
+
 const protectDPharmNotes = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -192,6 +215,7 @@ const protectDPharmNotes = async (req, res, next) => {
     // -------------------------------------------------------
     const isBPharm = course === "b.pharm" || course === "bpharm";
     const isBPharmPaidCategory =
+      category === "notes" ||
       category === "exam crash course" ||
       category === "exam-crash-course" ||
       category === "pyqs";
@@ -207,13 +231,21 @@ const protectDPharmNotes = async (req, res, next) => {
         });
       }
 
-      const categorySlug = category === "exam crash course" || category === "exam-crash-course"
-        ? "exam-crash-course"
-        : "pyqs";
+      const categorySlug =
+        category === "notes"
+          ? "notes"
+          : category === "exam crash course" || category === "exam-crash-course"
+            ? "exam-crash-course"
+            : "pyqs";
       const contentKey = `bpharm:${categorySlug}:semester:${semesterNumber}`;
       const scope = {
         course: "B.Pharm",
-        category: categorySlug === "exam-crash-course" ? "Exam Crash Course" : "PYQs",
+        category:
+          categorySlug === "notes"
+            ? "Notes"
+            : categorySlug === "exam-crash-course"
+              ? "Exam Crash Course"
+              : "PYQs",
         semester: String(semesterNumber),
         year: "",
         language: "",
@@ -255,7 +287,7 @@ const protectDPharmNotes = async (req, res, next) => {
           const hasPurchased = Array.isArray(req.user.purchasedItems) &&
             req.user.purchasedItems.some((purchase) =>
               purchase &&
-              same(purchase.productType, "course-content") &&
+              isCoursePurchaseActive(purchase) &&
               same(purchase.productId, scope.contentKey) &&
               same(purchase.contentKey, scope.contentKey) &&
               same(purchase.course, scope.course) &&
@@ -350,7 +382,7 @@ const protectDPharmNotes = async (req, res, next) => {
         const hasPurchased = Array.isArray(req.user.purchasedItems) &&
           req.user.purchasedItems.some((purchase) =>
             purchase &&
-            same(purchase.productType, "course-content") &&
+            isCoursePurchaseActive(purchase) &&
             same(purchase.productId, scope.contentKey) &&
             same(purchase.contentKey, scope.contentKey) &&
             same(purchase.course, scope.course) &&

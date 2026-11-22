@@ -174,76 +174,192 @@ const Profile = () => {
     }
   };
 
-  // =============================================
-  // ========== FIXED handleViewFile - 100% WORKING MOBILE ==========
-  // =============================================
+  // Resolve a purchased course scope (example: d.pharm|notes|1|hindi)
+  // to the actual MongoDB document ID used by the protected download API.
+  const resolvePurchasedFile = async (item) => {
+    const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+    const productId = String(item?.productId || "");
+
+    // Older purchases may already store the actual MongoDB document ID.
+    if (/^[a-f\d]{24}$/i.test(productId)) {
+      return {
+        url: `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${productId}`,
+        title: item.productTitle || "Purchased file",
+      };
+    }
+
+    const parts = productId.split("|").map((part) => part.trim());
+    if (parts.length < 3) {
+      throw new Error("Purchase reference is invalid. Please contact support.");
+    }
+
+    const courseRaw = parts[0].toLowerCase();
+    const category = parts[1].toLowerCase();
+    const scopeValue = parts[2].toLowerCase();
+    const language = (parts[3] || "").toLowerCase();
+
+    const courseMap = {
+      "d.pharm": "D.Pharm",
+      dpharm: "D.Pharm",
+      "b.pharm": "B.Pharm",
+      bpharm: "B.Pharm",
+      "m.pharm": "M.Pharm",
+      mpharm: "M.Pharm",
+      "pharm.d": "Pharm.D",
+      pharmd: "Pharm.D",
+      phd: "PhD",
+    };
+    const course = courseMap[courseRaw];
+    if (!course) throw new Error("Course information not found in this purchase.");
+
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const base = "https://api.pharmaverse.co.in/api/admin/public";
+    const endpoints = category.includes("paper")
+      ? [`${base}/papers?course=${encodeURIComponent(course)}`]
+      : category.includes("video")
+        ? [`${base}/videos?course=${encodeURIComponent(course)}`]
+        : [
+            `${base}/paid-pdfs?course=${encodeURIComponent(course)}`,
+            `${base}/notes?course=${encodeURIComponent(course)}`,
+          ];
+
+    const responses = await Promise.all(
+      endpoints.map(async (url) => {
+        try {
+          const response = await axios.get(url, { headers });
+          return Array.isArray(response.data) ? response.data : [];
+        } catch (error) {
+          console.warn("Could not load purchased content list:", url, error);
+          return [];
+        }
+      })
+    );
+
+    const allFiles = [...new Map(
+      responses.flat().filter((file) => file?._id).map((file) => [String(file._id), file])
+    ).values()];
+
+    const normalizeYear = (value) => {
+      const text = String(value ?? "").toLowerCase();
+      const match = text.match(/[1-5]/);
+      return match ? match[0] : text;
+    };
+
+    const matches = allFiles.filter((file) => {
+      const fileYear = normalizeYear(file.year ?? file.semester);
+      const scopeMatches = fileYear === normalizeYear(scopeValue);
+      const fileLanguage = String(file.language || "").toLowerCase();
+      const languageMatches = !language || !fileLanguage || fileLanguage === language;
+      const fileCategory = String(file.category || file.type || "").toLowerCase();
+      const categoryMatches =
+        category.includes("note") ||
+        category.includes("pdf") ||
+        category.includes("paper") ||
+        !fileCategory ||
+        fileCategory.includes(category);
+      return scopeMatches && languageMatches && categoryMatches;
+    });
+
+    if (!matches.length) {
+      throw new Error(
+        "Is purchase ke liye PDF nahi mili. Please confirm the purchased course, year/semester and language."
+      );
+    }
+
+    // A single purchase can cover multiple PDFs in the same year/language.
+    // Open the first matching PDF; the API still enforces the purchase expiry.
+    const file = matches[0];
+    const downloadType = file.fileType === "note" || endpoints.some((url) => url.includes("/notes?"))
+      ? "note"
+      : category.includes("paper")
+        ? "paper"
+        : "paid-pdf";
+
+    return {
+      url: `${base}/download/${downloadType}/${file._id}`,
+      title: file.title || file.fileName || item.productTitle || "Purchased file",
+      file,
+    };
+  };
+
   const handleViewFile = async (item) => {
     setViewerLoading(true);
     setViewingFile(item);
-  
+
     try {
       const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-  
       if (!token) {
         alert("Please login again");
         navigate("/");
         return;
       }
-  
-      const baseUrl = `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${item.productId}`;
-  
-      const response = await fetch(baseUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+
+      const resolved = await resolvePurchasedFile(item);
+      const response = await fetch(resolved.url, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       if (!response.ok) {
-        throw new Error("Failed to fetch file");
+        let message = "Failed to fetch file. Your access may have expired.";
+        try {
+          const data = await response.json();
+          message = data.message || message;
+        } catch (_) {}
+        throw new Error(message);
       }
-  
+
       const blob = await response.blob();
-      const contentType = response.headers.get("content-type") || "application/octet-stream";
+      const contentType = response.headers.get("content-type") || blob.type || "application/octet-stream";
       const blobUrl = URL.createObjectURL(blob);
-  
-      // ========== MOBILE / TABLET DETECTION ==========
-      const isMobileOrTablet = /Android|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent) || window.innerWidth < 1024;
-      
-      if (isMobileOrTablet && blob.type === "application/pdf") {
-        // Mobile par custom PDF viewer use karo
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          const dataUri = e.target.result;
-          setFileUrl(dataUri);
-          setFileType("application/pdf");
-          setShowViewer(true);
-          setViewerLoading(false);
-        };
-        reader.readAsDataURL(blob);
-        return;
-      }
-      
+
+      setViewingFile({ ...item, productTitle: resolved.title });
       setFileUrl(blobUrl);
       setFileType(contentType);
       setShowViewer(true);
     } catch (error) {
       console.error("View error:", error);
-      alert("Error loading file");
+      alert(error.message || "Error loading file");
     } finally {
       setViewerLoading(false);
     }
   };
 
-  const handleDownloadFile = (item) => {
-    const token = localStorage.getItem("userToken") || localStorage.getItem("token");
-    if (!token) {
-      alert("Please login again");
-      navigate("/");
-      return;
+  const handleDownloadFile = async (item) => {
+    try {
+      const token = localStorage.getItem("userToken") || localStorage.getItem("token");
+      if (!token) {
+        alert("Please login again");
+        navigate("/");
+        return;
+      }
+
+      const resolved = await resolvePurchasedFile(item);
+      const response = await fetch(resolved.url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        let message = "Download failed. Your access may have expired.";
+        try {
+          const data = await response.json();
+          message = data.message || message;
+        } catch (_) {}
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = resolved.file?.fileName || resolved.title || "PharmaVerse-file";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert(error.message || "Download failed");
     }
-    
-    const downloadUrl = `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${item.productId}?token=${token}`;
-    window.open(downloadUrl, "_blank");
   };
 
   // Delete using unique _id
