@@ -474,11 +474,27 @@ const Profile = () => {
   };
 
   const findPurchaseForDownload = (download) => {
-    const id = String(download?.productId ?? "");
-    return (user?.purchasedItems || []).find((purchase) =>
-      String(purchase?.productId ?? "") === id &&
-      (!download?.productType || !purchase?.productType || purchase.productType === download.productType)
-    ) || null;
+    const purchasesList = user?.purchasedItems || [];
+    const id = String(download?.productId ?? "").trim();
+    const exactMatch = purchasesList.find((purchase) =>
+      id && String(purchase?.productId ?? "").trim() === id
+    );
+    if (exactMatch) return exactMatch;
+
+    // Legacy records may store a content type (e.g. "note") while the
+    // purchase stores a course scope (e.g. "D.Pharm Notes - Hindi - Year 1").
+    const title = String(download?.productTitle ?? "").trim().toLowerCase();
+    const titleMatch = title && purchasesList.find((purchase) => {
+      const purchaseTitle = String(purchase?.productTitle ?? "").trim().toLowerCase();
+      return purchaseTitle && (purchaseTitle.includes(title) || title.includes(purchaseTitle));
+    });
+    if (titleMatch) return titleMatch;
+
+    // When there is only one purchase, the student's downloads belong to
+    // that purchase even if older history rows have incompatible IDs/types.
+    if (purchasesList.length === 1) return purchasesList[0];
+
+    return null;
   };
 
   const allPurchases = user?.purchasedItems || [];
@@ -658,11 +674,15 @@ const Profile = () => {
                             <span className="text-xs text-gray-400 flex items-center gap-1">
                               <Clock size={12} /> {formatRelativeTime(item.downloadedAt)}
                             </span>
-                            {findPurchaseForDownload(item) && (
-                              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${getCountdown(findPurchaseForDownload(item)).expired ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
-                                <Clock size={12} /> {getCountdown(findPurchaseForDownload(item)).label}
-                              </span>
-                            )}
+                            {(() => {
+                              const linkedPurchase = findPurchaseForDownload(item);
+                              return (
+                                <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${linkedPurchase && getCountdown(linkedPurchase).expired ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
+                                  <Clock size={12} />
+                                  {linkedPurchase ? getCountdown(linkedPurchase).label : "Link purchase to see expiry"}
+                                </span>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
