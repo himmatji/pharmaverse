@@ -4943,6 +4943,49 @@ const sendStoredFile = async (
         .trim() ||
       "document.pdf";
 
+    // Save a download record only for actual downloads, never previews.
+    // File delivery should continue even if history persistence fails.
+    const recordUserDownload = async () => {
+      if (disposition !== "attachment") return;
+
+      try {
+        if (typeof item.incrementDownloads === "function") {
+          await item.incrementDownloads();
+        } else {
+          item.downloadCount = Number(item.downloadCount || 0) + 1;
+          await item.save();
+        }
+
+        if (req.user?.type !== "user") return;
+
+        const userId = req.user.id || req.user._id || req.user.userId;
+        if (!userId) {
+          console.warn("Download history skipped: authenticated user ID missing");
+          return;
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+          console.warn("Download history skipped: user not found", userId);
+          return;
+        }
+
+        if (!Array.isArray(user.downloadHistory)) user.downloadHistory = [];
+
+        user.downloadHistory.push({
+          productId: item._id,
+          productTitle: item.title || safeFileName,
+          productType: type,
+          downloadedAt: new Date()
+        });
+
+        await user.save();
+        console.log(`Download history saved for user ${userId}: ${item.title || safeFileName}`);
+      } catch (historyError) {
+        console.error("Download history/count update failed:", historyError);
+      }
+    };
+
     // Large direct files are stored on disk.
     if (
       item.isDirectFile &&
@@ -4992,15 +5035,7 @@ const sendStoredFile = async (
         `${disposition}; filename="${safeFileName}"`
       );
 
-      if (
-        disposition === "attachment" &&
-        typeof item.incrementDownloads ===
-          "function"
-      ) {
-        item
-          .incrementDownloads()
-          .catch(() => {});
-      }
+      await recordUserDownload();
 
       return fs.createReadStream(
         resolvedPath
@@ -5060,15 +5095,7 @@ const sendStoredFile = async (
       `${disposition}; filename="${safeFileName}"`
     );
 
-    if (
-      disposition === "attachment" &&
-      typeof item.incrementDownloads ===
-        "function"
-    ) {
-      item
-        .incrementDownloads()
-        .catch(() => {});
-    }
+    await recordUserDownload();
 
     return res.end(buffer);
 
@@ -5118,6 +5145,7 @@ router.get(
 router.get(
   "/public/download/:type/:id",
   protectDPharmNotes,
+  authMiddleware,
   async (req, res, next) => {
     // IMPORTANT:
     // interview-pdf has its own dedicated route below.
