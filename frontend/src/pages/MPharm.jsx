@@ -1172,11 +1172,15 @@ const MPharm = () => {
                     <div
                       className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold ${
                         isAvailable ? `gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent` : "text-gray-400"
-                      } leading-none number-glow`}
+                      } leading-none number-glow ${
+                        isAvailable && !unlockedSemesters.includes(sem) ? "blur-[3px] select-none" : ""
+                      }`}
                     >
                       {sem}
                     </div>
-                    <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 ${isAvailable ? "text-gray-500" : "text-gray-400"}`}>
+                    <div className={`text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 ${
+                      isAvailable ? "text-gray-500" : "text-gray-400"
+                    } ${isAvailable && !unlockedSemesters.includes(sem) ? "blur-[2px] select-none" : ""}`}>
                       Semester
                     </div>
 
@@ -1197,10 +1201,18 @@ const MPharm = () => {
                     )}
 
                     {isAvailable && (
-                      <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">
-                        {branchData[sem]?.length || 0} Subjects
-                        {!unlockedSemesters.includes(sem) && <span className="block text-amber-600 mt-1">Tap to purchase access</span>}
-                      </div>
+                      <>
+                        <div className={`mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400 ${
+                          !unlockedSemesters.includes(sem) ? "blur-[2px] select-none" : ""
+                        }`}>
+                          {branchData[sem]?.length || 0} Subjects
+                        </div>
+                        {!unlockedSemesters.includes(sem) && (
+                          <div className="mt-1 text-[10px] font-['Inter'] font-semibold text-amber-600">
+                            Tap to purchase access
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

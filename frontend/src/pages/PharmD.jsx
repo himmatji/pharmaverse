@@ -117,6 +117,8 @@ const PharmD = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [user, setUser] = useState(null);
   const [premiumPrice, setPremiumPrice] = useState(999);
+  const [unlockedYears, setUnlockedYears] = useState([]);
+  const [accessLoading, setAccessLoading] = useState(false);
 
   // Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
@@ -486,6 +488,36 @@ const PharmD = () => {
     }
   };
 
+  // Refresh year-wise access for the selected category.
+  useEffect(() => {
+    let cancelled = false;
+    const loadYearAccess = async () => {
+      if (!selectedCategory) {
+        setUnlockedYears([]);
+        setAccessLoading(false);
+        return;
+      }
+      setUnlockedYears([]);
+      setAccessLoading(true);
+      try {
+        const results = await Promise.all([1, 2, 3, 4, 5].map(async (year) => {
+          const scope = getPharmDContentScope(selectedCategory, year);
+          let hasAccess = await checkPharmDAccess(scope);
+          if (!hasAccess) hasAccess = await recoverPharmDPayment(scope);
+          return hasAccess ? year : null;
+        }));
+        if (!cancelled) setUnlockedYears(results.filter((year) => year !== null));
+      } catch (error) {
+        console.error("Pharm.D year access check failed:", error);
+        if (!cancelled) setUnlockedYears([]);
+      } finally {
+        if (!cancelled) setAccessLoading(false);
+      }
+    };
+    loadYearAccess();
+    return () => { cancelled = true; };
+  }, [selectedCategory]);
+
   const startPharmDCheckout = async (scope, onSuccess) => {
     const token = getToken();
     if (!token) {
@@ -644,6 +676,7 @@ const PharmD = () => {
       if (!hasAccess) hasAccess = await recoverPharmDPayment(scope);
       if (!hasAccess) {
         await startPharmDCheckout(scope, () => {
+          setUnlockedYears((current) => current.includes(Number(year)) ? current : [...current, Number(year)]);
           contentRequestIdRef.current += 1;
           if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
           setSelectedYear(year);
@@ -656,6 +689,7 @@ const PharmD = () => {
         return;
       }
 
+      setUnlockedYears((current) => current.includes(Number(year)) ? current : [...current, Number(year)]);
       contentRequestIdRef.current += 1;
       if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
       setSelectedYear(year);
@@ -1019,19 +1053,24 @@ const PharmD = () => {
                   <div className="absolute inset-[2px] rounded-[14px] bg-gradient-to-br from-white/40 via-transparent to-white/10 pointer-events-none"></div>
 
                   <div className="relative z-10">
-                    <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>
-                      {yr}
+                    <div className={unlockedYears.includes(Number(yr)) ? "" : "blur-[3px] opacity-60 select-none"}>
+                      <div className={`text-4xl sm:text-5xl font-['Space_Grotesk'] font-extrabold gradient-text bg-gradient-to-r ${colors.gradient} bg-clip-text text-transparent leading-none number-glow`}>
+                        {yr}
+                      </div>
+                      <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">
+                        {yr === 1 ? "1st Year" : yr === 2 ? "2nd Year" : yr === 3 ? "3rd Year" : yr === 4 ? "4th Year" : "5th Year"}
+                      </div>
+                      <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
+                      <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{subjectCount} Subjects</div>
                     </div>
-                    <div className="text-[10px] sm:text-xs font-['Inter'] font-semibold uppercase tracking-widest mt-1.5 text-gray-500 group-hover:text-gray-700">
-                      {yr === 1 ? "1st Year" : yr === 2 ? "2nd Year" : yr === 3 ? "3rd Year" : yr === 4 ? "4th Year" : "5th Year"}
+                    <div className={`mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg ${
+                      unlockedYears.includes(Number(yr))
+                        ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-200/50"
+                        : "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                    }`}>
+                      {unlockedYears.includes(Number(yr)) ? <CheckCircle size={11} className="sm:size-3" /> : <Lock size={11} className="sm:size-3" />}
+                      {unlockedYears.includes(Number(yr)) ? "Unlocked" : accessLoading ? "Checking..." : "Pay to Unlock"}
                     </div>
-
-                    <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg shadow-emerald-200/50 status-pulse">
-                      <Lock size={11} className="sm:size-3" />Pay to Unlock
-                    </div>
-
-                    <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
-                    <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{subjectCount} Subjects</div>
                   </div>
                 </div>
               </div>
