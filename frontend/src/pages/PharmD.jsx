@@ -454,9 +454,9 @@ const PharmD = () => {
       category: String(category || ""),
       semester: "",
       year: String(yearNumber),
-      // Pharm.D material in this page has no language selector. Keep the
-      // backend's required recovery metadata consistent with its English PDFs.
-      language: "English",
+      // Admin Pharm.D pricing has no language scope, so keep this blank
+      // to match the exact contentPrices entry.
+      language: "",
       specialization: "",
       contentKey,
     };
@@ -1753,5 +1753,6 @@ const PharmD = () => {
     </div>
   );
 };
+
 
 export default PharmD;
