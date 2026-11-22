@@ -28,6 +28,12 @@ const Profile = () => {
   const [updateError, setUpdateError] = useState("");
   const [updateSuccess, setUpdateSuccess] = useState("");
   const [activeTab, setActiveTab] = useState("downloads");
+  const [clockNow, setClockNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   
   const [showViewer, setShowViewer] = useState(false);
   const [viewingFile, setViewingFile] = useState(null);
@@ -443,8 +449,47 @@ const Profile = () => {
     return formatDate(date);
   };
 
-  const purchases = user?.purchasedItems || [];
-  const downloads = user?.downloadHistory || [];
+  // Six-calendar-month expiry. Prefer backend expiresAt; calculate for legacy rows.
+  const getExpiryDate = (purchase) => {
+    if (!purchase) return null;
+    if (purchase.expiresAt) return new Date(purchase.expiresAt);
+    const start = purchase.purchasedAt ? new Date(purchase.purchasedAt) : null;
+    if (!start || Number.isNaN(start.getTime())) return null;
+    const expiry = new Date(start);
+    expiry.setMonth(expiry.getMonth() + 6);
+    return expiry;
+  };
+
+  const getCountdown = (purchase) => {
+    const expiry = getExpiryDate(purchase);
+    if (!expiry) return { expired: false, label: "Expiry not available" };
+    const remaining = expiry.getTime() - clockNow;
+    if (remaining <= 0) return { expired: true, label: "Expired" };
+    const totalSeconds = Math.floor(remaining / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return { expired: false, label: `${days}d ${hours}h ${minutes}m ${seconds}s left` };
+  };
+
+  const findPurchaseForDownload = (download) => {
+    const id = String(download?.productId ?? "");
+    return (user?.purchasedItems || []).find((purchase) =>
+      String(purchase?.productId ?? "") === id &&
+      (!download?.productType || !purchase?.productType || purchase.productType === download.productType)
+    ) || null;
+  };
+
+  const allPurchases = user?.purchasedItems || [];
+  const allDownloads = user?.downloadHistory || [];
+  // Hide expired records immediately in the profile UI. Server-side cleanup must
+  // still run to physically remove expired subdocuments from MongoDB.
+  const purchases = allPurchases.filter((item) => !getCountdown(item).expired);
+  const downloads = allDownloads.filter((item) => {
+    const purchase = findPurchaseForDownload(item);
+    return !purchase || !getCountdown(purchase).expired;
+  });
   const totalSpent = purchases.reduce((sum, item) => sum + (item.amount || 499), 0);
   const totalDownloads = downloads.length;
 
@@ -613,6 +658,11 @@ const Profile = () => {
                             <span className="text-xs text-gray-400 flex items-center gap-1">
                               <Clock size={12} /> {formatRelativeTime(item.downloadedAt)}
                             </span>
+                            {findPurchaseForDownload(item) && (
+                              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${getCountdown(findPurchaseForDownload(item)).expired ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
+                                <Clock size={12} /> {getCountdown(findPurchaseForDownload(item)).label}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -678,6 +728,7 @@ const Profile = () => {
                           <div className="flex items-center gap-3 mt-1 flex-wrap">
                             <span className={`text-xs px-3 py-1 rounded-full ${getProductLightColor(item.productType)} font-medium`}>{getProductTypeName(item.productType)}</span>
                             <span className="text-xs text-gray-400 flex items-center gap-1"><Calendar size={12} /> {new Date(item.purchasedAt).toLocaleDateString()}</span>
+                            <span className="text-xs px-2 py-1 rounded-full bg-amber-50 text-amber-700 flex items-center gap-1"><Clock size={12} /> {getCountdown(item).label}</span>
                           </div>
                         </div>
                       </div>
