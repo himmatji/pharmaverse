@@ -175,12 +175,11 @@ const Profile = () => {
   };
 
   // Resolve a purchased course scope (example: d.pharm|notes|1|hindi)
-  // to the actual MongoDB document ID used by the protected download API.
+  // into the actual MongoDB document ID used by the protected download API.
   const resolvePurchasedFile = async (item) => {
     const token = localStorage.getItem("userToken") || localStorage.getItem("token");
     const productId = String(item?.productId || "");
 
-    // Older purchases may already store the actual MongoDB document ID.
     if (/^[a-f\d]{24}$/i.test(productId)) {
       return {
         url: `https://api.pharmaverse.co.in/api/admin/public/download/${item.productType}/${productId}`,
@@ -194,89 +193,87 @@ const Profile = () => {
     }
 
     const courseRaw = parts[0].toLowerCase();
-    const category = parts[1].toLowerCase();
+    const category = parts[1].toLowerCase().replace(/[\s_-]+/g, "");
     const scopeValue = parts[2].toLowerCase();
     const language = (parts[3] || "").toLowerCase();
 
     const courseMap = {
-      "d.pharm": "D.Pharm",
-      dpharm: "D.Pharm",
-      "b.pharm": "B.Pharm",
-      bpharm: "B.Pharm",
-      "m.pharm": "M.Pharm",
-      mpharm: "M.Pharm",
-      "pharm.d": "Pharm.D",
-      pharmd: "Pharm.D",
-      phd: "PhD",
+      "d.pharm": "D.Pharm", dpharm: "D.Pharm",
+      "b.pharm": "B.Pharm", bpharm: "B.Pharm",
+      "m.pharm": "M.Pharm", mpharm: "M.Pharm",
+      "pharm.d": "Pharm.D", pharmd: "Pharm.D", phd: "PhD",
     };
     const course = courseMap[courseRaw];
     if (!course) throw new Error("Course information not found in this purchase.");
 
+    const yearLabel = (value) => {
+      const n = Number.parseInt(value, 10);
+      return n ? `${n}${n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"} Year` : value;
+    };
+
+    const query = new URLSearchParams({ course });
+    let endpoint;
+    let downloadType = "note";
+
+    if (category.includes("note")) {
+      query.set("category", "Notes");
+      if (course === "D.Pharm" || course === "Pharm.D") {
+        query.set("year", yearLabel(scopeValue));
+      } else {
+        query.set("semester", scopeValue);
+      }
+      if (language) query.set("language", language);
+      endpoint = `https://api.pharmaverse.co.in/api/admin/public/notes?${query.toString()}`;
+      downloadType = "note";
+    } else if (category.includes("examcrash") || category.includes("pyq") || category.includes("paper")) {
+      const categoryLabel = category.includes("examcrash")
+        ? "Exam Crash Course"
+        : category.includes("pyq") ? "PYQs" : "Papers";
+      query.set("category", categoryLabel);
+      endpoint = `https://api.pharmaverse.co.in/api/admin/public/direct-files?${query.toString()}`;
+      downloadType = "note";
+    } else if (category.includes("video")) {
+      endpoint = `https://api.pharmaverse.co.in/api/admin/public/videos?${query.toString()}`;
+      downloadType = "video";
+    } else {
+      endpoint = `https://api.pharmaverse.co.in/api/admin/public/paid-pdfs?${query.toString()}`;
+      downloadType = "paid-pdf";
+    }
+
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
-    const base = "https://api.pharmaverse.co.in/api/admin/public";
-    const endpoints = category.includes("paper")
-      ? [`${base}/papers?course=${encodeURIComponent(course)}`]
-      : category.includes("video")
-        ? [`${base}/videos?course=${encodeURIComponent(course)}`]
-        : [
-            `${base}/paid-pdfs?course=${encodeURIComponent(course)}`,
-            `${base}/notes?course=${encodeURIComponent(course)}`,
-          ];
+    const response = await axios.get(endpoint, { headers });
+    const payload = response.data;
+    const files = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.pdfs)
+          ? payload.pdfs
+          : [];
 
-    const responses = await Promise.all(
-      endpoints.map(async (url) => {
-        try {
-          const response = await axios.get(url, { headers });
-          return Array.isArray(response.data) ? response.data : [];
-        } catch (error) {
-          console.warn("Could not load purchased content list:", url, error);
-          return [];
-        }
-      })
-    );
-
-    const allFiles = [...new Map(
-      responses.flat().filter((file) => file?._id).map((file) => [String(file._id), file])
-    ).values()];
-
-    const normalizeYear = (value) => {
+    const normalizeScope = (value) => {
       const text = String(value ?? "").toLowerCase();
-      const match = text.match(/[1-5]/);
+      const match = text.match(/[1-6]/);
       return match ? match[0] : text;
     };
 
-    const matches = allFiles.filter((file) => {
-      const fileYear = normalizeYear(file.year ?? file.semester);
-      const scopeMatches = fileYear === normalizeYear(scopeValue);
+    const matches = files.filter((file) => {
+      const fileScope = file.year ?? file.semester;
+      const scopeMatches = normalizeScope(fileScope) === normalizeScope(scopeValue);
       const fileLanguage = String(file.language || "").toLowerCase();
       const languageMatches = !language || !fileLanguage || fileLanguage === language;
-      const fileCategory = String(file.category || file.type || "").toLowerCase();
-      const categoryMatches =
-        category.includes("note") ||
-        category.includes("pdf") ||
-        category.includes("paper") ||
-        !fileCategory ||
-        fileCategory.includes(category);
-      return scopeMatches && languageMatches && categoryMatches;
+      return scopeMatches && languageMatches;
     });
 
     if (!matches.length) {
-      throw new Error(
-        "Is purchase ke liye PDF nahi mili. Please confirm the purchased course, year/semester and language."
-      );
+      throw new Error("Is purchase ke liye PDF nahi mili. Year/semester aur language check karein.");
     }
 
-    // A single purchase can cover multiple PDFs in the same year/language.
-    // Open the first matching PDF; the API still enforces the purchase expiry.
     const file = matches[0];
-    const downloadType = file.fileType === "note" || endpoints.some((url) => url.includes("/notes?"))
-      ? "note"
-      : category.includes("paper")
-        ? "paper"
-        : "paid-pdf";
+    if (!file._id) throw new Error("File ID nahi mili. Please contact support.");
 
     return {
-      url: `${base}/download/${downloadType}/${file._id}`,
+      url: `https://api.pharmaverse.co.in/api/admin/public/download/${downloadType}/${file._id}`,
       title: file.title || file.fileName || item.productTitle || "Purchased file",
       file,
     };
