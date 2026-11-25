@@ -287,8 +287,11 @@ if (bPharmMatch) {
       return match ? match[0] : text;
     };
 
+
+    
+
     const matches = files.filter((file) => {
-      const fileScope = file.year ?? file.semester;
+      const fileScope = file.year || file.semester;
       const scopeMatches = normalizeScope(fileScope) === normalizeScope(scopeValue);
       const fileLanguage = String(file.language || "").toLowerCase();
       const languageMatches = !language || !fileLanguage || fileLanguage === language;
