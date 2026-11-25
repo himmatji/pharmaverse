@@ -61,7 +61,9 @@ const normalizeUserLanguage = (value) => {
   if (language === 'english') return 'English';
   if (language === 'both') return 'Both';
   if (language === 'other') return 'Other';
-  return '';
+   return undefined;
+
+   
 };
 
 // Course-content purchases stay valid for six calendar months from purchase.
