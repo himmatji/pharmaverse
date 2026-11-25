@@ -185,6 +185,12 @@ const Profile = () => {
   const resolvePurchasedFile = async (item) => {
     const token = localStorage.getItem("userToken") || localStorage.getItem("token");
     const productId = String(item?.productId || "");
+    console.log("PURCHASE DEBUG:", {
+  productId,
+  productType: item?.productType,
+  productTitle: item?.productTitle,
+  fullItem: item
+});
 
     if (/^[a-f\d]{24}$/i.test(productId)) {
       return {
