@@ -505,25 +505,27 @@ if (bPharmMatch) {
 
   const findPurchaseForDownload = (download) => {
     const purchasesList = user?.purchasedItems || [];
-    const id = String(download?.productId ?? "").trim();
-    const exactMatch = purchasesList.find((purchase) =>
-      id && String(purchase?.productId ?? "").trim() === id
-    );
-    if (exactMatch) return exactMatch;
 
-    // Legacy records may store a content type (e.g. "note") while the
-    // purchase stores a course scope (e.g. "D.Pharm Notes - Hindi - Year 1").
-    const title = String(download?.productTitle ?? "").trim().toLowerCase();
-    const titleMatch = title && purchasesList.find((purchase) => {
-      const purchaseTitle = String(purchase?.productTitle ?? "").trim().toLowerCase();
-      return purchaseTitle && (purchaseTitle.includes(title) || title.includes(purchaseTitle));
-    });
-    if (titleMatch) return titleMatch;
+    // Prefer the exact purchase subdocument ID saved with the download.
+    const purchaseId = String(download?.purchaseId ?? "").trim();
+    if (purchaseId) {
+      return purchasesList.find(
+        (purchase) => String(purchase?._id ?? "").trim() === purchaseId
+      ) || null;
+    }
 
-    // When there is only one purchase, the student's downloads belong to
-    // that purchase even if older history rows have incompatible IDs/types.
-    if (purchasesList.length === 1) return purchasesList[0];
+    // Backward compatibility: use contentKey only when it identifies
+    // exactly one purchase. Never guess by title or product document ID.
+    const contentKey = String(download?.contentKey ?? "").trim();
+    if (contentKey) {
+      const matches = purchasesList.filter(
+        (purchase) =>
+          String(purchase?.contentKey ?? "").trim() === contentKey
+      );
+      return matches.length === 1 ? matches[0] : null;
+    }
 
+    // Old history records without a reliable link cannot be associated safely.
     return null;
   };
 

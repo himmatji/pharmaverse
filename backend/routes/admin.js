@@ -182,13 +182,8 @@ const isCoursePurchaseActive = (purchase, now = new Date()) => {
   const purchasedAt = new Date(purchase.purchasedAt);
   if (Number.isNaN(purchasedAt.getTime())) return false;
 
-
-
-
-
-
   const expiresAt = new Date(purchasedAt);
-  expiresAt.setMinutes(expiresAt.getMinutes() + 2);
+  expiresAt.setMonth(expiresAt.getMonth() + 6);
   return expiresAt.getTime() > now.getTime();
 };
 
@@ -289,29 +284,23 @@ const protectDPharmNotes = async (req, res, next) => {
           );
 
           const isFree = matchingPrice && same(matchingPrice.accessType, "free");
-          const matchingPurchase = Array.isArray(req.user.purchasedItems)
-  ? req.user.purchasedItems.find((purchase) =>
-      purchase &&
-      isCoursePurchaseActive(purchase) &&
-      same(purchase.productId, scope.contentKey) &&
-      same(purchase.contentKey, scope.contentKey) &&
-      same(purchase.course, scope.course) &&
-      same(purchase.category, scope.category) &&
-      same(purchase.semester, scope.semester) &&
-      same(purchase.year, scope.year) &&
-      same(purchase.language, scope.language) &&
-      same(purchase.specialization, scope.specialization)
-    )
-  : null;
 
-const hasPurchased = Boolean(matchingPurchase);
+          // Find the exact active purchase for this content scope.
+          // The same purchase ID is stored with the download history.
+          const matchingPurchase = (req.user.purchasedItems || []).find((purchase) =>
+            purchase &&
+            isCoursePurchaseActive(purchase) &&
+            same(purchase.productId, scope.contentKey) &&
+            same(purchase.contentKey, scope.contentKey) &&
+            same(purchase.course, scope.course) &&
+            same(purchase.category, scope.category) &&
+            same(purchase.semester, scope.semester) &&
+            same(purchase.year, scope.year) &&
+            same(purchase.language, scope.language) &&
+            same(purchase.specialization, scope.specialization)
+          );
 
-if (matchingPurchase) {
-  req.coursePurchaseId = matchingPurchase._id;
-  req.courseContentKey = scope.contentKey;
-}
-
-          if (!isFree && !hasPurchased) {
+          if (!isFree && !matchingPurchase) {
             return res.status(403).json({
               success: false,
               paymentRequired: true,
@@ -320,6 +309,13 @@ if (matchingPurchase) {
               scope
             });
           }
+
+          // Free downloads remain unlinked; paid downloads point to the
+          // exact purchase that granted access.
+          req.coursePurchaseId = !isFree && matchingPurchase
+            ? matchingPurchase._id
+            : null;
+          req.courseContentKey = contentKey;
 
           return next();
         })().catch((error) => {
@@ -392,21 +388,22 @@ if (matchingPurchase) {
         );
 
         const isFree = matchingPrice && normalize(matchingPrice.accessType) === "free";
-        const hasPurchased = Array.isArray(req.user.purchasedItems) &&
-          req.user.purchasedItems.some((purchase) =>
-            purchase &&
-            isCoursePurchaseActive(purchase) &&
-            same(purchase.productId, scope.contentKey) &&
-            same(purchase.contentKey, scope.contentKey) &&
-            same(purchase.course, scope.course) &&
-            same(purchase.category, scope.category) &&
-            same(purchase.semester, scope.semester) &&
-            same(purchase.year, scope.year) &&
-            same(purchase.language, scope.language) &&
-            same(purchase.specialization, scope.specialization)
-          );
 
-        if (!isFree && !hasPurchased) {
+        // Find the exact active purchase for this D.Pharm year/language scope.
+        const matchingPurchase = (req.user.purchasedItems || []).find((purchase) =>
+          purchase &&
+          isCoursePurchaseActive(purchase) &&
+          same(purchase.productId, scope.contentKey) &&
+          same(purchase.contentKey, scope.contentKey) &&
+          same(purchase.course, scope.course) &&
+          same(purchase.category, scope.category) &&
+          same(purchase.semester, scope.semester) &&
+          same(purchase.year, scope.year) &&
+          same(purchase.language, scope.language) &&
+          same(purchase.specialization, scope.specialization)
+        );
+
+        if (!isFree && !matchingPurchase) {
           return res.status(403).json({
             success: false,
             paymentRequired: true,
@@ -415,6 +412,13 @@ if (matchingPurchase) {
             scope
           });
         }
+
+        // Free downloads remain unlinked; paid downloads point to the
+        // exact purchase that granted access.
+        req.coursePurchaseId = !isFree && matchingPurchase
+          ? matchingPurchase._id
+          : null;
+        req.courseContentKey = contentKey;
 
         return next();
       })().catch((error) => {
@@ -4985,8 +4989,15 @@ const sendStoredFile = async (
 
         if (!Array.isArray(user.downloadHistory)) user.downloadHistory = [];
 
+        // Never guess a purchase from the number of active purchases.
+        // The access middleware has already identified the exact purchase.
+        const linkedPurchaseId = req.coursePurchaseId || null;
+        const linkedContentKey = String(req.courseContentKey || "").trim();
+
         user.downloadHistory.push({
           productId: item._id,
+          purchaseId: linkedPurchaseId,
+          contentKey: linkedContentKey,
           productTitle: item.title || safeFileName,
           productType: type,
           downloadedAt: new Date()
