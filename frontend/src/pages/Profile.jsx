@@ -193,16 +193,34 @@ const Profile = () => {
       };
     }
 
-    const parts = productId.split("|").map((part) => part.trim());
-    if (parts.length < 3) {
-      throw new Error("Purchase reference is invalid. Please contact support.");
-    }
+   let courseRaw;
+let category;
+let scopeValue;
+let language;
 
-    const courseRaw = parts[0].toLowerCase();
-    const category = parts[1].toLowerCase().replace(/[\s_-]+/g, "");
-    const scopeValue = parts[2].toLowerCase();
-    const language = (parts[3] || "").toLowerCase();
+const bPharmMatch = productId.match(
+  /^bpharm:(.+):semester:(\d+)$/i
+);
 
+if (bPharmMatch) {
+  // B.Pharm format: bpharm:notes:semester:1
+  courseRaw = "b.pharm";
+  category = bPharmMatch[1].toLowerCase().replace(/[\s_-]+/g, "");
+  scopeValue = bPharmMatch[2];
+  language = "";
+} else {
+  // Existing D.Pharm, M.Pharm, Pharm.D legacy format
+  const parts = productId.split("|").map((part) => part.trim());
+
+  if (parts.length < 3) {
+    throw new Error("Purchase reference is invalid. Please contact support.");
+  }
+
+  courseRaw = parts[0].toLowerCase();
+  category = parts[1].toLowerCase().replace(/[\s_-]+/g, "");
+  scopeValue = parts[2].toLowerCase();
+  language = (parts[3] || "").toLowerCase();
+}
     const courseMap = {
       "d.pharm": "D.Pharm", dpharm: "D.Pharm",
       "b.pharm": "B.Pharm", bpharm: "B.Pharm",
