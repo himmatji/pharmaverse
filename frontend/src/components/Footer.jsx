@@ -435,9 +435,20 @@ const Footer = () => {
                 Empowering pharmacy students with high-quality study materials, 
                 video tutorials, and practice tools for academic excellence.
               </p>
-              <div className="mt-4 flex items-center justify-center md:justify-start gap-2 text-xs text-gray-400">
-                <Copy size={14} className="text-amber-500" />
-                <span>All Rights Reserved</span>
+              <div className="mt-4 flex flex-col items-center md:items-start gap-2">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <Copy size={14} className="text-amber-500" />
+                  <span>All Rights Reserved</span>
+                </div>
+
+                <a
+                  href="https://t.me/PharmaVerse_official"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs sm:text-sm font-medium text-amber-600 hover:text-amber-700 hover:underline transition-all duration-300 text-center md:text-left"
+                >
+                  For Old syllabus Exam crash course, Books,Practical Files etc.
+                </a>
               </div>
             </div>
 
