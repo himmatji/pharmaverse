@@ -239,18 +239,10 @@ const DoubtSection = () => {
         isOpen={showAuthModal}
         onClose={handleCloseModal}
         onLoginSuccess={handleLoginSuccess}
+        
       />
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 md:px-8">
-        {/* LUXURY HEADER */}
-        <div className="text-center mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-sky-500/20 to-purple-500/20 backdrop-blur-md border border-white/10 mb-5">
-            <Crown className="text-amber-300" size={14} />
-            <span className="text-xs font-['Inter'] font-bold text-sky-200 tracking-widest uppercase">
-              Premium Doubt Lounge
-            </span>
-            <Crown className="text-amber-300" size={14} />
-          </div>
+      
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold leading-[1.1] mb-4">
             <span className="text-white">Ask Your</span>{" "}
