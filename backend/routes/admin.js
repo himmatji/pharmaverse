@@ -186,7 +186,7 @@ const isCoursePurchaseActive = (purchase, now = new Date()) => {
 
 
 
-  
+
   const expiresAt = new Date(purchasedAt);
   expiresAt.setMinutes(expiresAt.getMinutes() + 2);
   return expiresAt.getTime() > now.getTime();
@@ -289,19 +289,27 @@ const protectDPharmNotes = async (req, res, next) => {
           );
 
           const isFree = matchingPrice && same(matchingPrice.accessType, "free");
-          const hasPurchased = Array.isArray(req.user.purchasedItems) &&
-            req.user.purchasedItems.some((purchase) =>
-              purchase &&
-              isCoursePurchaseActive(purchase) &&
-              same(purchase.productId, scope.contentKey) &&
-              same(purchase.contentKey, scope.contentKey) &&
-              same(purchase.course, scope.course) &&
-              same(purchase.category, scope.category) &&
-              same(purchase.semester, scope.semester) &&
-              same(purchase.year, scope.year) &&
-              same(purchase.language, scope.language) &&
-              same(purchase.specialization, scope.specialization)
-            );
+          const matchingPurchase = Array.isArray(req.user.purchasedItems)
+  ? req.user.purchasedItems.find((purchase) =>
+      purchase &&
+      isCoursePurchaseActive(purchase) &&
+      same(purchase.productId, scope.contentKey) &&
+      same(purchase.contentKey, scope.contentKey) &&
+      same(purchase.course, scope.course) &&
+      same(purchase.category, scope.category) &&
+      same(purchase.semester, scope.semester) &&
+      same(purchase.year, scope.year) &&
+      same(purchase.language, scope.language) &&
+      same(purchase.specialization, scope.specialization)
+    )
+  : null;
+
+const hasPurchased = Boolean(matchingPurchase);
+
+if (matchingPurchase) {
+  req.coursePurchaseId = matchingPurchase._id;
+  req.courseContentKey = scope.contentKey;
+}
 
           if (!isFree && !hasPurchased) {
             return res.status(403).json({
