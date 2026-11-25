@@ -457,7 +457,7 @@ const Profile = () => {
     if (!start || Number.isNaN(start.getTime())) return null;
     const expiry = new Date(start);
 
-    
+
     expiry.setMinutes(expiry.getMinutes() + 2);
     return expiry;
   };
@@ -503,11 +503,15 @@ const Profile = () => {
   const allDownloads = user?.downloadHistory || [];
   // Hide expired records immediately in the profile UI. Server-side cleanup must
   // still run to physically remove expired subdocuments from MongoDB.
-  const purchases = allPurchases.filter((item) => !getCountdown(item).expired);
-  const downloads = allDownloads.filter((item) => {
-    const purchase = findPurchaseForDownload(item);
-    return !purchase || !getCountdown(purchase).expired;
-  });
+  const purchases = allPurchases.filter(
+  (item) => !getCountdown(item).expired
+);
+
+const downloads = allDownloads.filter((item) => {
+  const purchase = findPurchaseForDownload(item);
+
+  return purchase && !getCountdown(purchase).expired;
+});
   const totalSpent = purchases.reduce((sum, item) => sum + (item.amount || 499), 0);
   const totalDownloads = downloads.length;
 
