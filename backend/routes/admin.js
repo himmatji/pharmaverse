@@ -182,8 +182,13 @@ const isCoursePurchaseActive = (purchase, now = new Date()) => {
   const purchasedAt = new Date(purchase.purchasedAt);
   if (Number.isNaN(purchasedAt.getTime())) return false;
 
+
+
+
+
+  
   const expiresAt = new Date(purchasedAt);
-  expiresAt.setMonth(expiresAt.getMonth() + 6);
+  expiresAt.setMinutes(expiresAt.getMinutes() + 2);
   return expiresAt.getTime() > now.getTime();
 };
 

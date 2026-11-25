@@ -456,7 +456,9 @@ const Profile = () => {
     const start = purchase.purchasedAt ? new Date(purchase.purchasedAt) : null;
     if (!start || Number.isNaN(start.getTime())) return null;
     const expiry = new Date(start);
-    expiry.setMonth(expiry.getMonth() + 6);
+
+    
+    expiry.setMinutes(expiry.getMinutes() + 2);
     return expiry;
   };
 
