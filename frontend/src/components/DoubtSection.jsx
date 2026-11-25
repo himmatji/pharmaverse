@@ -242,8 +242,8 @@ const DoubtSection = () => {
         
       />
 
-      
-
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="text-center mb-12">
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-['Space_Grotesk'] font-extrabold leading-[1.1] mb-4">
             <span className="text-white">Ask Your</span>{" "}
             <span className="bg-gradient-to-r from-sky-300 via-cyan-300 to-purple-300 bg-clip-text text-transparent">
