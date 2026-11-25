@@ -288,7 +288,7 @@ if (bPharmMatch) {
     };
 
 
-    
+
 
     const matches = files.filter((file) => {
       const fileScope = file.year || file.semester;
@@ -386,6 +386,7 @@ if (bPharmMatch) {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(blobUrl);
+      await refreshUserData();
     } catch (error) {
       console.error("Download error:", error);
       alert(error.message || "Download failed");
@@ -537,7 +538,8 @@ if (bPharmMatch) {
 const downloads = allDownloads.filter((item) => {
   const purchase = findPurchaseForDownload(item);
 
-  return purchase && !getCountdown(purchase).expired;
+  
+  return !purchase || !getCountdown(purchase).expired;
 });
   const totalSpent = purchases.reduce((sum, item) => sum + (item.amount || 499), 0);
   const totalDownloads = downloads.length;
