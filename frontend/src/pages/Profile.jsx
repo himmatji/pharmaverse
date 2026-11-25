@@ -486,7 +486,9 @@ if (bPharmMatch) {
     const expiry = new Date(start);
 
 
-    expiry.setMinutes(expiry.getMinutes() + 2);
+    expiry.setMonth(expiry.getMonth() + 6);
+
+    
     return expiry;
   };
 

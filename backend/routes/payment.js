@@ -63,18 +63,14 @@ const normalizeUserLanguage = (value) => {
   if (language === 'other') return 'Other';
    return undefined;
 
-   
+
 };
 
-// Course-content purchases stay valid for six calendar months from purchase.
-const COURSE_ACCESS_MINUTES = 2;
-
-
-
+const COURSE_ACCESS_MONTHS = 6;
 
 const getCourseAccessExpiry = (purchasedAt = new Date()) => {
   const expiry = new Date(purchasedAt);
-  expiry.setMinutes(expiry.getMinutes() + COURSE_ACCESS_MINUTES);
+  expiry.setMonth(expiry.getMonth() + COURSE_ACCESS_MONTHS);
   return expiry;
 };
 

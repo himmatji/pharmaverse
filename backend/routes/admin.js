@@ -176,6 +176,10 @@ const isCoursePurchaseActive = (purchase, now = new Date()) => {
     return !Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now.getTime();
   }
 
+
+
+
+  
   // Backward compatibility for purchases made before expiresAt was added.
   // Missing/invalid purchasedAt fails closed instead of granting lifetime access.
   if (!purchase.purchasedAt) return false;
