@@ -445,7 +445,7 @@ const Footer = () => {
                   href="https://t.me/PharmaVerse_official"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs sm:text-sm font-medium text-amber-600 hover:text-amber-700 hover:underline transition-all duration-300 text-center md:text-left"
+                  className="footer-telegram-link text-xs sm:text-sm font-semibold hover:underline transition-all duration-300 text-center md:text-left"
                 >
                   For Old syllabus Exam crash course, Books,Practical Files etc.
                 </a>
@@ -572,6 +572,19 @@ const Footer = () => {
       </LegalModal>
 
       <style>{`
+        @keyframes footerLinkColorPulse {
+          0%, 100% { color: #d97706; }
+          25% { color: #2563eb; }
+          50% { color: #16a34a; }
+          75% { color: #9333ea; }
+        }
+        .footer-telegram-link {
+          animation: footerLinkColorPulse 1s steps(1, end) infinite;
+          cursor: pointer;
+        }
+        .footer-telegram-link:hover {
+          text-decoration: underline;
+        }
         @keyframes fadeIn {
           from { opacity: 0; transform: scale(0.95); }
           to { opacity: 1; transform: scale(1); }
