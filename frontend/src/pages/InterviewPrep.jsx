@@ -904,15 +904,9 @@ const InterviewPrep = () => {
             <h2 className="text-2xl sm:text-3xl font-['Space_Grotesk'] font-extrabold text-slate-900">
               Unlock Interview Material
             </h2>
-            <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-600 font-['Inter']">
-              Ek baar payment karke saare Interview Preparation PDFs ka access unlock karein.
-            </p>
 
             <div className="mt-6 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-purple-50 px-5 py-4">
-              <p className="text-xs font-['Inter'] font-bold uppercase tracking-widest text-slate-500">
-                One-time access price
-              </p>
-
+             
               {priceLoading ? (
                 <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
                   <Loader2 size={16} className="animate-spin" />
@@ -941,9 +935,7 @@ const InterviewPrep = () => {
                   Price unavailable
                 </p>
               )}
-              <p className="mt-1 text-xs text-slate-500">
-                Pay once · Lifetime access to all interview PDFs
-              </p>
+              
             </div>
 
             <button
