@@ -1149,73 +1149,15 @@ const Navbar = () => {
 
     {
       name: "PhD",
-
-      items: [
-        {
-          name: "Notes",
+      items: ["Notes", "Exam Crash Course", "PYQs", "Research & Project"].map(
+        (category) => ({
+          name: category,
           path: "/phd",
-          sectionId: "notes",
+          course: "PhD",
+          category,
           hasSubmenu: false,
-        },
-
-        {
-          name: "Free Videos",
-          path: "/phd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Free Papers",
-          path: "/phd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Semester PDFs",
-          hasSubmenu: true,
-
-          submenuItems: [
-            {
-              name: "Semester 1",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 1,
-            },
-            {
-              name: "Semester 2",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 2,
-            },
-            {
-              name: "Semester 3",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 3,
-            },
-            {
-              name: "Semester 4",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 4,
-            },
-            {
-              name: "Semester 5",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 5,
-            },
-            {
-              name: "Semester 6",
-              path: "/phd",
-              sectionId: "yearwise",
-              year: 6,
-            },
-          ],
-        },
-      ],
+        })
+      ),
     },
   ];
 
