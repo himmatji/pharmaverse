@@ -157,6 +157,8 @@ const MPharm = () => {
   const [contentError, setContentError] = useState("");
   const [isPremium, setIsPremium] = useState(false);
   const [premiumPrice, setPremiumPrice] = useState(999);
+  const [semesterPricing, setSemesterPricing] = useState([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
   const [unlockedSemesters, setUnlockedSemesters] = useState([]);
   const [accessLoading, setAccessLoading] = useState(false);
 
@@ -448,6 +450,87 @@ const MPharm = () => {
     specialization: String(branch || ""),
     contentKey: getMPharmContentKey(category, semester, branch),
   });
+
+  // Fetch semester-specific prices configured in Admin > Manage Prices.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSemesterPricing = async () => {
+      if (!selectedBranch || !selectedCategory) {
+        setSemesterPricing([]);
+        setPricingLoading(false);
+        return;
+      }
+
+      setPricingLoading(true);
+      try {
+        const response = await axios.get(`${API_BASE}/api/admin/public-price`, {
+          timeout: 12000,
+          headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        });
+
+        const records = Array.isArray(response?.data?.contentPrices)
+          ? response.data.contentPrices
+          : [];
+
+        const expectedBranch = String(selectedBranch).trim().toLowerCase();
+        const expectedCategory = String(selectedCategory).trim().toLowerCase();
+
+        const matchingPrices = records.filter((item) => {
+          const itemCourse = String(item?.course || "").trim().toLowerCase();
+          const itemCategory = String(item?.category || "").trim().toLowerCase();
+          const itemBranch = String(item?.specialization || "").trim().toLowerCase();
+          return itemCourse === "m.pharm" &&
+            itemCategory === expectedCategory &&
+            itemBranch === expectedBranch &&
+            item?.isActive !== false;
+        });
+
+        if (!cancelled) setSemesterPricing(matchingPrices);
+      } catch (error) {
+        console.error("M.Pharm semester pricing fetch error:", error);
+        if (!cancelled) setSemesterPricing([]);
+      } finally {
+        if (!cancelled) setPricingLoading(false);
+      }
+    };
+
+    fetchSemesterPricing();
+    return () => { cancelled = true; };
+  }, [selectedBranch, selectedCategory]);
+
+  const getSemesterPricing = (semester) => {
+    const expectedKey = getMPharmContentKey(selectedCategory, semester, selectedBranch);
+    return semesterPricing.find((item) =>
+      String(item?.contentKey || "").trim().toLowerCase() === expectedKey.toLowerCase() &&
+      String(item?.semester || "").trim() === String(semester)
+    ) || null;
+  };
+
+  const getSemesterPriceDetails = (semester) => {
+    const pricing = getSemesterPricing(semester);
+    if (!pricing || pricing.isActive === false) return null;
+    if (pricing.accessType === "free") {
+      return { isFree: true, basePrice: 0, discount: 0, finalPrice: 0 };
+    }
+
+    const basePrice = Number(pricing.price);
+    const discount = Number(pricing.discount ?? 0);
+    if (!Number.isFinite(basePrice) || basePrice < 0 ||
+        !Number.isFinite(discount) || discount < 0 || discount > 100) {
+      return null;
+    }
+
+    return {
+      isFree: basePrice === 0,
+      basePrice,
+      discount,
+      finalPrice: Math.round(basePrice * (1 - discount / 100) * 100) / 100,
+    };
+  };
+
+  const formatPrice = (value) =>
+    `₹${Number(value).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
   const checkMPharmAccess = async (category, semester, branch) => {
     const token = getToken();
@@ -1197,6 +1280,41 @@ const MPharm = () => {
                     ) : (
                       <div className="mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-200 text-gray-500 text-[9px] sm:text-[10px] font-['Inter'] font-bold">
                         <Lock size={11} className="sm:size-3" /> Locked
+                      </div>
+                    )}
+
+                    {isAvailable && !unlockedSemesters.includes(sem) && (
+                      <div className="mt-2 flex flex-col items-center gap-0.5">
+                        {pricingLoading ? (
+                          <span className="text-[10px] text-gray-500">Loading price...</span>
+                        ) : (() => {
+                          const priceDetails = getSemesterPriceDetails(sem);
+                          if (!priceDetails) {
+                            return <span className="text-[10px] font-semibold text-amber-700">Price not set</span>;
+                          }
+                          if (priceDetails.isFree) {
+                            return <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">FREE</span>;
+                          }
+                          return (
+                            <>
+                              {priceDetails.discount > 0 && (
+                                <span className="text-[10px] text-gray-500 line-through">
+                                  {formatPrice(priceDetails.basePrice)}
+                                </span>
+                              )}
+                              <div className="flex items-center justify-center gap-1.5">
+                                <span className="text-sm sm:text-base font-extrabold text-gray-800">
+                                  {formatPrice(priceDetails.finalPrice)}
+                                </span>
+                                {priceDetails.discount > 0 && (
+                                  <span className="rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">
+                                    {priceDetails.discount}% OFF
+                                  </span>
+                                )}
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     )}
 

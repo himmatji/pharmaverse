@@ -119,6 +119,8 @@ const PharmD = () => {
   const [premiumPrice, setPremiumPrice] = useState(999);
   const [unlockedYears, setUnlockedYears] = useState([]);
   const [accessLoading, setAccessLoading] = useState(false);
+  const [yearPricing, setYearPricing] = useState([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   // Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
@@ -462,6 +464,61 @@ const PharmD = () => {
     };
   };
 
+  // Load Admin > Manage Prices values for each Pharm.D category/year.
+  useEffect(() => {
+    let cancelled = false;
+    const loadYearPricing = async () => {
+      if (!selectedCategory) {
+        setYearPricing([]);
+        setPricingLoading(false);
+        return;
+      }
+      setPricingLoading(true);
+      try {
+        const response = await axios.get(`${API_BASE}/api/admin/public-price`, {
+          headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        });
+        const records = Array.isArray(response.data?.contentPrices)
+          ? response.data.contentPrices
+          : Array.isArray(response.data?.data?.contentPrices)
+            ? response.data.data.contentPrices
+            : [];
+        const expectedKeys = [1, 2, 3, 4, 5].map(
+          (year) => getPharmDContentScope(selectedCategory, year).contentKey
+        );
+        const filtered = records.filter((item) =>
+          item &&
+          item.isActive !== false &&
+          expectedKeys.includes(String(item.contentKey || "").trim().toLowerCase())
+        );
+        if (!cancelled) setYearPricing(filtered);
+      } catch (error) {
+        console.error("Pharm.D pricing load failed:", error);
+        if (!cancelled) setYearPricing([]);
+      } finally {
+        if (!cancelled) setPricingLoading(false);
+      }
+    };
+    loadYearPricing();
+    return () => { cancelled = true; };
+  }, [selectedCategory]);
+
+  const getYearPricing = (year) => {
+    const contentKey = getPharmDContentScope(selectedCategory, year).contentKey.toLowerCase();
+    return yearPricing.find(
+      (item) => String(item.contentKey || "").trim().toLowerCase() === contentKey
+    ) || null;
+  };
+
+  const isYearFree = (year) => {
+    const price = getYearPricing(year);
+    return Boolean(
+      price &&
+      (String(price.accessType || "").toLowerCase() === "free" ||
+        Number(price.finalPrice ?? price.discountedPrice ?? price.price ?? 0) <= 0)
+    );
+  };
+
   const checkPharmDAccess = async (scope) => {
     const token = getToken();
     if (!token) return false;
@@ -663,6 +720,27 @@ const PharmD = () => {
 
   const handleYearClick = async (year) => {
     const scope = getPharmDContentScope(selectedCategory, year);
+    const openYear = () => {
+      setUnlockedYears((current) => current.includes(Number(year)) ? current : [...current, Number(year)]);
+      contentRequestIdRef.current += 1;
+      if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+      setSelectedYear(year);
+      setCurrentStep(3);
+      setSelectedSubject(null);
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
+    };
+
+    if (pricingLoading) {
+      toast("Price load ho rahi hai, ek moment wait karo.", { icon: "ℹ️" });
+      return;
+    }
+    if (isYearFree(year)) {
+      openYear();
+      return;
+    }
+
     const token = getToken();
     if (!token) {
       toast.error("Payment se pehle login karo.");
@@ -675,29 +753,10 @@ const PharmD = () => {
       let hasAccess = await checkPharmDAccess(scope);
       if (!hasAccess) hasAccess = await recoverPharmDPayment(scope);
       if (!hasAccess) {
-        await startPharmDCheckout(scope, () => {
-          setUnlockedYears((current) => current.includes(Number(year)) ? current : [...current, Number(year)]);
-          contentRequestIdRef.current += 1;
-          if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
-          setSelectedYear(year);
-          setCurrentStep(3);
-          setSelectedSubject(null);
-          setUnits([]);
-          setUnitContent([]);
-          setDirectFiles([]);
-        });
+        await startPharmDCheckout(scope, openYear);
         return;
       }
-
-      setUnlockedYears((current) => current.includes(Number(year)) ? current : [...current, Number(year)]);
-      contentRequestIdRef.current += 1;
-      if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
-      setSelectedYear(year);
-      setCurrentStep(3);
-      setSelectedSubject(null);
-      setUnits([]);
-      setUnitContent([]);
-      setDirectFiles([]);
+      openYear();
     } catch (error) {
       toast.error(error.response?.data?.message || "Payment access check failed.");
     } finally {
@@ -1069,7 +1128,38 @@ const PharmD = () => {
                         : "bg-gradient-to-r from-amber-500 to-orange-500 text-white"
                     }`}>
                       {unlockedYears.includes(Number(yr)) ? <CheckCircle size={11} className="sm:size-3" /> : <Lock size={11} className="sm:size-3" />}
-                      {unlockedYears.includes(Number(yr)) ? "Unlocked" : accessLoading ? "Checking..." : "Pay to Unlock"}
+                      {unlockedYears.includes(Number(yr)) || isYearFree(yr)
+                        ? "FREE / Unlocked"
+                        : accessLoading ? "Checking..." : "Pay to Unlock"}
+                    </div>
+                    <div className="mt-3 min-h-[34px] flex flex-col items-center justify-center gap-1">
+                      {pricingLoading ? (
+                        <span className="text-[10px] sm:text-xs text-gray-500 font-semibold">Loading price...</span>
+                      ) : isYearFree(yr) ? (
+                        <span className="text-sm sm:text-base font-extrabold text-emerald-600">FREE</span>
+                      ) : getYearPricing(yr) ? (
+                        <>
+                          {Number(getYearPricing(yr).discount || 0) > 0 && (
+                            <span className="text-[10px] sm:text-xs text-gray-400 line-through">
+                              ₹{Number(getYearPricing(yr).price || 0).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          <span className="text-sm sm:text-base font-extrabold text-gray-800">
+                            ₹{Number(
+                              getYearPricing(yr).finalPrice ??
+                              getYearPricing(yr).discountedPrice ??
+                              (Number(getYearPricing(yr).price || 0) * (1 - Number(getYearPricing(yr).discount || 0) / 100))
+                            ).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </span>
+                          {Number(getYearPricing(yr).discount || 0) > 0 && (
+                            <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700">
+                              {Number(getYearPricing(yr).discount)}% OFF
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-[10px] sm:text-xs text-gray-400">Price not set</span>
+                      )}
                     </div>
                   </div>
                 </div>

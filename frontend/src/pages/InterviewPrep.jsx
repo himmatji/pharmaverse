@@ -36,6 +36,8 @@ const InterviewPrep = () => {
   const [accessLoading, setAccessLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [buying, setBuying] = useState(false);
+  const [interviewPrice, setInterviewPrice] = useState(null);
+  const [priceLoading, setPriceLoading] = useState(true);
 
   const INTERVIEW_PRODUCT_TYPE = "interview-material";
   const INTERVIEW_PRODUCT_ID = "all-interview-material";
@@ -246,6 +248,82 @@ const InterviewPrep = () => {
 
   const handleView = (item) => fetchProtectedFile(item, "preview");
   const handleDownload = (item) => fetchProtectedFile(item, "download");
+
+  /* =========================
+     FETCH INTERVIEW MATERIAL PRICE
+  ========================= */
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchInterviewPrice = async () => {
+      setPriceLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/admin/public-price`, {
+          timeout: 12000,
+        });
+
+        const records = Array.isArray(res?.data?.contentPrices)
+          ? res.data.contentPrices
+          : Array.isArray(res?.data?.data?.contentPrices)
+          ? res.data.data.contentPrices
+          : [];
+
+        const normalize = (value) =>
+          String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+
+        const expectedKeys = [
+          "interview-material|all-interview-material",
+          "interview-material-all-interview-material",
+          "interview-material",
+          "all-interview-material",
+        ].map(normalize);
+
+        const match = records.find((item) => {
+          if (item?.isActive === false || item?.active === false) return false;
+
+          const key = normalize(
+            item?.contentKey || item?.key || item?.productId || item?.slug
+          );
+
+          return expectedKeys.includes(key) ||
+            (key.includes("interview") && key.includes("all"));
+        });
+
+        if (!mounted) return;
+
+        if (match) {
+          const price = Number(match.price ?? match.amount ?? match.basePrice ?? 0);
+          const discount = Number(match.discount ?? match.discountPercent ?? 0);
+          const explicitFinal = Number(
+            match.finalPrice ?? match.discountedPrice ?? match.salePrice
+          );
+          const finalPrice = Number.isFinite(explicitFinal) && explicitFinal >= 0
+            ? explicitFinal
+            : Math.max(0, price - (price * Math.max(0, discount) / 100));
+
+          setInterviewPrice({
+            price,
+            discount: Math.max(0, discount),
+            finalPrice,
+            accessType: match.accessType || "",
+          });
+        } else {
+          setInterviewPrice(null);
+        }
+      } catch (err) {
+        console.error("Interview material price fetch error:", err);
+        if (mounted) setInterviewPrice(null);
+      } finally {
+        if (mounted) setPriceLoading(false);
+      }
+    };
+
+    fetchInterviewPrice();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   /* =========================
      FETCH INTERVIEW PDFs
@@ -809,6 +887,45 @@ const InterviewPrep = () => {
             <p className="mt-3 text-sm sm:text-base leading-relaxed text-slate-600 font-['Inter']">
               Ek baar payment karke saare Interview Preparation PDFs ka access unlock karein.
             </p>
+
+            <div className="mt-6 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50 to-purple-50 px-5 py-4">
+              <p className="text-xs font-['Inter'] font-bold uppercase tracking-widest text-slate-500">
+                One-time access price
+              </p>
+
+              {priceLoading ? (
+                <div className="mt-2 flex items-center justify-center gap-2 text-sm font-semibold text-slate-500">
+                  <Loader2 size={16} className="animate-spin" />
+                  Loading price...
+                </div>
+              ) : interviewPrice ? (
+                <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+                  {interviewPrice.discount > 0 && interviewPrice.price > interviewPrice.finalPrice && (
+                    <span className="text-base font-semibold text-slate-400 line-through">
+                      ₹{interviewPrice.price.toLocaleString("en-IN")}
+                    </span>
+                  )}
+                  <span className="text-3xl font-extrabold text-slate-900">
+                    {interviewPrice.finalPrice <= 0
+                      ? "FREE"
+                      : `₹${interviewPrice.finalPrice.toLocaleString("en-IN")}`}
+                  </span>
+                  {interviewPrice.discount > 0 && interviewPrice.price > interviewPrice.finalPrice && (
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                      {interviewPrice.discount}% OFF
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  Price unavailable
+                </p>
+              )}
+              <p className="mt-1 text-xs text-slate-500">
+                Pay once · Lifetime access to all interview PDFs
+              </p>
+            </div>
+
             <button
               type="button"
               onClick={handleBuyInterviewMaterial}

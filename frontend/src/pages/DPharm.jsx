@@ -156,6 +156,8 @@ const DPharm = () => {
   const [premiumPrice, setPremiumPrice] = useState(999);
   const [unlockedYears, setUnlockedYears] = useState([]);
   const [yearAccessLoading, setYearAccessLoading] = useState(false);
+  const [yearPricing, setYearPricing] = useState([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -547,7 +549,7 @@ const DPharm = () => {
   // Year selection is the payment gate. Do not move to Subject/Preview
   // until this exact Year + Language + Category is free or purchased.
   const handleYearClick = async (year) => {
-    if (loading) return;
+    if (loading || pricingLoading) return;
 
     contentRequestIdRef.current += 1;
     if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
@@ -560,6 +562,15 @@ const DPharm = () => {
     setContentLoading(false);
 
     const scope = getScopeDetails({ year });
+    const pricing = getYearPricing(year);
+    const isFree = pricing?.accessType === "free" || (pricing && Number(pricing.price || 0) <= 0);
+
+    // Free content should open directly; it must not require login or Razorpay.
+    if (isFree) {
+      setUnlockedYears((previous) => previous.includes(Number(year)) ? previous : [...previous, Number(year)]);
+      setCurrentStep(4);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -794,6 +805,58 @@ const DPharm = () => {
     specialization: "",
     contentKey: getDPharmContentKey(overrides),
   });
+
+  // Fetch admin-managed prices for the selected D.Pharm category + language.
+  // The contentKey is shared with Admin > Manage Prices and payment creation.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadYearPricing = async () => {
+      if (!selectedCategory || !selectedLanguage) {
+        setYearPricing([]);
+        setPricingLoading(false);
+        return;
+      }
+
+      setPricingLoading(true);
+      try {
+        const response = await axios.get(`${API_BASE}/api/admin/public-price`, {
+          headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        });
+        const entries = Array.isArray(response.data?.contentPrices)
+          ? response.data.contentPrices
+          : [];
+
+        const matching = entries.filter((entry) => {
+          const entryKey = String(entry?.contentKey || "").trim().toLowerCase();
+          const entryCourse = String(entry?.course || "").trim().toLowerCase();
+          const entryCategory = String(entry?.category || "").trim().toLowerCase();
+
+          return (
+            entry?.isActive !== false &&
+            entryCourse === "d.pharm" &&
+            entryCategory === String(selectedCategory).trim().toLowerCase() &&
+            [1, 2].some((year) => entryKey === getDPharmContentKey({ year }).toLowerCase())
+          );
+        });
+
+        if (!cancelled) setYearPricing(matching);
+      } catch (error) {
+        console.error("D.Pharm year pricing load failed:", error);
+        if (!cancelled) setYearPricing([]);
+      } finally {
+        if (!cancelled) setPricingLoading(false);
+      }
+    };
+
+    loadYearPricing();
+    return () => { cancelled = true; };
+  }, [selectedCategory, selectedLanguage]);
+
+  const getYearPricing = (year) => {
+    const key = getDPharmContentKey({ year }).toLowerCase();
+    return yearPricing.find((entry) => String(entry?.contentKey || "").trim().toLowerCase() === key);
+  };
 
   // Show the real access state for each year/category/language.
   // Notes retain their existing contentKey and payment behavior.
@@ -1336,9 +1399,15 @@ const handleDownload = async (item) => {
             const cardId = `year-${year}`;
             const delay = `year-card-${index + 1}`;
 
-            const isUnlocked = unlockedYears.includes(year);
+            const pricing = getYearPricing(year);
+            const basePrice = Number(pricing?.price ?? 0);
+            const discount = Number(pricing?.discount ?? 0);
+            const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+            const isFree = pricing?.accessType === "free" || (pricing && Number.isFinite(finalPrice) && finalPrice <= 0);
+            const isUnlocked = isFree || unlockedYears.includes(year);
+            const hasPaidPrice = pricing?.accessType === "paid" && basePrice > 0;
             return (
-              <div key={year} onClick={() => !loading && !yearAccessLoading && handleYearClick(year)} className={`group relative ${loading || yearAccessLoading ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
+              <div key={year} onClick={() => !loading && !yearAccessLoading && !pricingLoading && handleYearClick(year)} className={`group relative ${loading || yearAccessLoading || pricingLoading ? "cursor-wait opacity-70" : "cursor-pointer"}`}>
                 <div
                   className="absolute -inset-2 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-700 blur-2xl"
                   style={{
@@ -1385,6 +1454,24 @@ const handleDownload = async (item) => {
 
                     <div className={`mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full ${isUnlocked ? "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-200/50" : "bg-gradient-to-r from-slate-600 to-gray-700 shadow-gray-300/50"} text-white text-xs font-['Inter'] font-bold shadow-lg status-pulse`}>
                       {isUnlocked ? <><CheckCircle size={12} />Open</> : <><Lock size={12} />Locked · Unlock</>}
+                    </div>
+
+                    <div className="mt-3 min-h-[42px] flex flex-col items-center justify-center gap-1">
+                      {isUnlocked ? (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700">FREE</span>
+                      ) : pricingLoading ? (
+                        <span className="text-xs font-semibold text-gray-500">Loading price...</span>
+                      ) : isFree ? (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700">FREE</span>
+                      ) : hasPaidPrice ? (
+                        <>
+                          {discount > 0 && <span className="text-xs text-gray-400 line-through">₹{basePrice.toLocaleString("en-IN")}</span>}
+                          <span className="text-xl font-extrabold text-gray-800">₹{finalPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                          {discount > 0 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{discount}% OFF</span>}
+                        </>
+                      ) : (
+                        <span className="text-xs font-semibold text-amber-700">Price not set</span>
+                      )}
                     </div>
 
                     <div className={`mt-3 h-0.5 w-16 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
