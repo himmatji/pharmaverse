@@ -1284,14 +1284,7 @@ const BPharm = () => {
                     </div>
                   </div>
                 </div>
-                {isLocked && (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-2xl bg-slate-900/10 pointer-events-none">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-xl border border-gray-200">
-                      <Lock size={23} className="text-slate-700" />
-                    </div>
-                    <span className="mt-2 rounded-full bg-slate-800/90 px-3 py-1 text-[10px] font-bold tracking-wider text-white shadow-lg">LOCKED</span>
-                  </div>
-                )}
+                
               </div>
             );
           })}
