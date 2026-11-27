@@ -1053,36 +1053,33 @@ const Navbar = () => {
 
     {
       name: "D.Pharm",
-
       items: [
         {
           name: "Notes",
-          hasSubmenu: true,
-
-          submenuItems:
-            createDPharmLanguageItems(
-              "Notes",
-              "notes"
-            ),
+          path: "/dpharm",
+          sectionId: "notes",
+          course: "D.Pharm",
+          category: "Notes",
+          contentType: "Notes",
+          hasSubmenu: false,
         },
-
         {
           name: "Exam Crash Course",
-          hasSubmenu: true,
-
-          submenuItems:
-            createDPharmLanguageItems(
-              "Exam Crash Course",
-              "exam-crash-course"
-            ),
+          path: "/dpharm",
+          sectionId: "exam-crash-course",
+          course: "D.Pharm",
+          category: "Exam Crash Course",
+          contentType: "Exam Crash Course",
+          hasSubmenu: false,
         },
-
         {
           name: "PYQs",
-          hasSubmenu: true,
-
-          submenuItems:
-            createDPharmPYQItems(),
+          path: "/dpharm",
+          sectionId: "pyqs",
+          course: "D.Pharm",
+          category: "PYQs",
+          contentType: "PYQs",
+          hasSubmenu: false,
         },
       ],
     },
