@@ -639,6 +639,23 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   };
 
+  const navigatePharmDMenuItem = (item) => {
+    if (!item?.path || !item?.category) return;
+    navigate(item.path, {
+      state: {
+        course: "Pharm.D",
+        category: item.category,
+        year: item.year,
+        scrollTo: item.sectionId,
+        contentType: item.contentType || item.category,
+      },
+    });
+    setOpenDropdown(null);
+    setOpenSubmenuPath([]);
+    setSubmenuPositions({});
+    setMobileMenuOpen(false);
+  };
+
   const handleHomeClick = () => {
     setSearchQuery("");
     setSearchResults([]);
@@ -1103,73 +1120,29 @@ const Navbar = () => {
 
     {
       name: "Pharm.D",
-
-      items: [
-        {
-          name: "Notes",
+      items: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+        name: category,
+        path: "/pharmd",
+        course: "Pharm.D",
+        category,
+        sectionId:
+          category === "Notes"
+            ? "notes"
+            : category === "Exam Crash Course"
+              ? "exam-crash-course"
+              : "pyqs",
+        contentType: category,
+        hasSubmenu: true,
+        submenuItems: [1, 2, 3, 4, 5].map((year) => ({
+          name: `${year}${year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} Year`,
           path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Free Videos",
-          path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Free Papers",
-          path: "/pharmd",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Year-wise PDFs",
-          hasSubmenu: true,
-
-          submenuItems: [
-            {
-              name: "1st Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 1,
-            },
-            {
-              name: "2nd Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 2,
-            },
-            {
-              name: "3rd Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 3,
-            },
-            {
-              name: "4th Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 4,
-            },
-            {
-              name: "5th Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 5,
-            },
-            {
-              name: "6th Year",
-              path: "/pharmd",
-              sectionId: "yearwise",
-              year: 6,
-            },
-          ],
-        },
-      ],
+          course: "Pharm.D",
+          category,
+          year,
+          sectionId: "yearwise",
+          contentType: category,
+        })),
+      })),
     },
 
     /* ================= PHD ================= */
@@ -1485,6 +1458,10 @@ const Navbar = () => {
                   navigateDPharmMenuItem(subItem);
                   return;
                 }
+                if (subItem.course === "Pharm.D" && subItem.path) {
+                  navigatePharmDMenuItem(subItem);
+                  return;
+                }
                 if (!subItem.path) return;
                 if (subItem.course === "B.Pharm") {
                   navigateBPharmMenuItem(subItem);
@@ -1660,6 +1637,11 @@ const Navbar = () => {
               navigateDPharmMenuItem(subItem);
               return;
             }
+            if (subItem.course === "Pharm.D") {
+              event.preventDefault();
+              navigatePharmDMenuItem(subItem);
+              return;
+            }
             if (subItem.course === "M.Pharm") {
               event.preventDefault();
               navigateMPharmMenuItem(subItem);
@@ -1806,6 +1788,11 @@ const Navbar = () => {
             if (subItem.course === "D.Pharm") {
               event.preventDefault();
               navigateDPharmMenuItem(subItem);
+              return;
+            }
+            if (subItem.course === "Pharm.D") {
+              event.preventDefault();
+              navigatePharmDMenuItem(subItem);
               return;
             }
             if (subItem.course === "M.Pharm") {

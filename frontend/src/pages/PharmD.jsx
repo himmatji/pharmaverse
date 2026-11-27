@@ -121,6 +121,8 @@ const PharmD = () => {
   const [accessLoading, setAccessLoading] = useState(false);
   const [yearPricing, setYearPricing] = useState([]);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingLoadedForCategory, setPricingLoadedForCategory] = useState(null);
+  const [pendingNavbarYear, setPendingNavbarYear] = useState(null);
 
   // Direct files for Crash Course / PYQs
   const [directFiles, setDirectFiles] = useState([]);
@@ -464,6 +466,29 @@ const PharmD = () => {
     };
   };
 
+  // Navbar deep-link: category -> year. Keep the same year payment gate as page clicks.
+  useEffect(() => {
+    const state = location.state;
+    if (state?.course !== "Pharm.D" || !state?.category) return;
+
+    const validCategories = ["Notes", "Exam Crash Course", "PYQs"];
+    const category = validCategories.includes(state.category) ? state.category : null;
+    const year = Number(state.year);
+
+    if (!category) return;
+
+    setSelectedCategory(category);
+    setSelectedYear(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+    setDirectFiles([]);
+    setCurrentStep(2);
+    setPendingNavbarYear(Number.isInteger(year) && year >= 1 && year <= 5 ? year : null);
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key]);
+
   // Load Admin > Manage Prices values for each Pharm.D category/year.
   useEffect(() => {
     let cancelled = false;
@@ -471,9 +496,11 @@ const PharmD = () => {
       if (!selectedCategory) {
         setYearPricing([]);
         setPricingLoading(false);
+        setPricingLoadedForCategory(null);
         return;
       }
       setPricingLoading(true);
+      setPricingLoadedForCategory(null);
       try {
         const response = await axios.get(`${API_BASE}/api/admin/public-price`, {
           headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -496,7 +523,10 @@ const PharmD = () => {
         console.error("Pharm.D pricing load failed:", error);
         if (!cancelled) setYearPricing([]);
       } finally {
-        if (!cancelled) setPricingLoading(false);
+        if (!cancelled) {
+          setPricingLoading(false);
+          setPricingLoadedForCategory(selectedCategory);
+        }
       }
     };
     loadYearPricing();
@@ -764,6 +794,19 @@ const PharmD = () => {
     }
   };
 
+  useEffect(() => {
+    if (
+      pendingNavbarYear == null ||
+      !selectedCategory ||
+      pricingLoading ||
+      pricingLoadedForCategory !== selectedCategory
+    ) return;
+
+    const year = pendingNavbarYear;
+    setPendingNavbarYear(null);
+    handleYearClick(year);
+  }, [pendingNavbarYear, selectedCategory, pricingLoading, pricingLoadedForCategory, yearPricing]);
+
   const handleSubjectClick = (subject) => {
     setSelectedSubject(subject);
     setCurrentStep(4);
@@ -791,6 +834,7 @@ const PharmD = () => {
   };
 
   const resetNavigation = () => {
+    setPendingNavbarYear(null);
     setCurrentStep(1);
     setSelectedCategory(null);
     setSelectedYear(null);
