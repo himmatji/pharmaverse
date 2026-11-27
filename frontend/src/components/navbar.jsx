@@ -766,19 +766,30 @@ const Navbar = () => {
     sectionId
   ) => ({
     name: categoryName,
+    path: "/bpharm",
+    sectionId,
+    course: "B.Pharm",
+    category: categoryName,
     hasSubmenu: true,
 
     submenuItems: bpharmSemesterSubjects.map(
       (semesterData) => ({
         name: `Semester ${semesterData.semester}`,
-        hasSubmenu: true,
+        path: "/bpharm",
+        sectionId,
+        course: "B.Pharm",
+        category: categoryName,
+        semester: semesterData.semester,
         semesterNumber: semesterData.semester,
+        hasSubmenu: true,
 
         submenuItems: semesterData.subjects.map(
           (subject) => ({
             name: subject,
             path: "/bpharm",
             sectionId,
+            course: "B.Pharm",
+            category: categoryName,
             semester: semesterData.semester,
             subject,
             contentType: categoryName,
@@ -1432,6 +1443,30 @@ const Navbar = () => {
             }}
           >
             <div
+              role={subItem.path ? "link" : undefined}
+              tabIndex={subItem.path ? 0 : undefined}
+              onClick={() => {
+                if (!subItem.path) return;
+                navigate(subItem.path, {
+                  state: {
+                    course: subItem.course,
+                    category: subItem.category || subItem.name,
+                    semester: subItem.semester,
+                    subject: subItem.subject,
+                    scrollTo: subItem.sectionId,
+                    contentType: subItem.contentType || subItem.category || subItem.name,
+                  },
+                });
+                setOpenDropdown(null);
+                setOpenSubmenuPath([]);
+                setSubmenuPositions({});
+              }}
+              onKeyDown={(event) => {
+                if (subItem.path && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  event.currentTarget.click();
+                }
+              }}
               className="
                 flex
                 items-center
@@ -1607,6 +1642,22 @@ const Navbar = () => {
           >
             <button
               onClick={() => {
+                if (subItem.path && subItem.course === "B.Pharm") {
+                  navigate(subItem.path, {
+                    state: {
+                      course: subItem.course,
+                      category: subItem.category || subItem.name,
+                      semester: subItem.semester,
+                      subject: subItem.subject,
+                      scrollTo: subItem.sectionId,
+                      contentType: subItem.contentType || subItem.category || subItem.name,
+                    },
+                  });
+                  setMobileMenuOpen(false);
+                  setOpenDropdown(null);
+                  setOpenSubmenuPath([]);
+                  return;
+                }
                 if (submenuIsOpen) {
                   setOpenSubmenuPath(
                     openSubmenuPath.slice(

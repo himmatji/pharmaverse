@@ -175,6 +175,36 @@ const BPharm = () => {
   const isDirectFilesCategoryRef = useRef(false);
 
   useEffect(() => {
+    const routeState = location.state || {};
+    if (routeState.course !== "B.Pharm" && location.pathname !== "/bpharm") return;
+
+    const category = routeState.category;
+    const semester = Number(routeState.semester);
+    const subject = routeState.subject;
+
+    if (["Notes", "Exam Crash Course", "PYQs"].includes(category)) {
+      setSelectedCategory(category);
+      if (Number.isInteger(semester) && semester >= 1 && semester <= 8) {
+        setSelectedSemester(semester);
+        if (subject) {
+          setSelectedSubject(subject);
+          setCurrentStep(4);
+        } else {
+          setSelectedSubject(null);
+          setCurrentStep(3);
+        }
+      } else {
+        setSelectedSemester(null);
+        setSelectedSubject(null);
+        setCurrentStep(2);
+      }
+      setUnits([]);
+      setUnitContent([]);
+      setDirectFiles([]);
+    }
+  }, [location.key, location.pathname]);
+
+  useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
 
