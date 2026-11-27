@@ -606,6 +606,22 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   };
 
+  const navigateDPharmMenuItem = (item) => {
+    if (!item?.path) return;
+    navigate(item.path, { state: {
+      course: "D.Pharm",
+      category: item.category,
+      language: item.language,
+      year: item.year,
+      scrollTo: item.sectionId,
+      contentType: item.contentType || item.category,
+    }});
+    setOpenDropdown(null);
+    setOpenSubmenuPath([]);
+    setSubmenuPositions({});
+    setMobileMenuOpen(false);
+  };
+
   const handleHomeClick = () => {
     setSearchQuery("");
     setSearchResults([]);
@@ -883,96 +899,17 @@ const Navbar = () => {
     ),
   });
 
-  /* =========================================================
-     D.PHARM SUBJECTS
-  ========================================================= */
-
-  const dpharmFirstYearSubjects = [
-    "Pharmaceutics",
-    "Pharmaceutical Chemistry",
-    "Pharmacognosy",
-    "Human Anatomy & Physiology",
-    "Social Pharmacy",
+  /* D.PHARM LANGUAGE -> YEAR MENU (no subjects in Navbar) */
+  const createDPharmYearItems = (categoryName, language, sectionId) => [
+    { name: "First Year", path: "/dpharm", course: "D.Pharm", category: categoryName, sectionId, year: 1, language, contentType: categoryName },
+    { name: "Second Year", path: "/dpharm", course: "D.Pharm", category: categoryName, sectionId, year: 2, language, contentType: categoryName },
   ];
 
-  const dpharmSecondYearSubjects = [
-    "Pharmacology",
-    "Community Pharmacy & Management",
-    "Biochemistry & Clinical Pathology",
-    "Pharmacotherapeutics",
-    "Hospital & Clinical Pharmacy",
-    "Pharmacy Law & Ethics",
-  ];
-
-  /* =========================================================
-     D.PHARM LANGUAGE -> YEAR -> SUBJECT MENU
-     Notes, Exam Crash Course and PYQs all use the same structure.
-  ========================================================= */
-
-  const createDPharmYearItems = (
-    categoryName,
-    language,
-    sectionId
-  ) => [
-    {
-      name: "First Year",
-      hasSubmenu: true,
-      year: 1,
-      submenuItems: dpharmFirstYearSubjects.map((subject) => ({
-        name: subject,
-        path: "/dpharm",
-        course: "D.Pharm",
-        category: categoryName,
-        sectionId,
-        year: 1,
-        language,
-        subject,
-        contentType: categoryName,
-      })),
-    },
-    {
-      name: "Second Year",
-      hasSubmenu: true,
-      year: 2,
-      submenuItems: dpharmSecondYearSubjects.map((subject) => ({
-        name: subject,
-        path: "/dpharm",
-        course: "D.Pharm",
-        category: categoryName,
-        sectionId,
-        year: 2,
-        language,
-        subject,
-        contentType: categoryName,
-      })),
-    },
-  ];
-
-  const createDPharmLanguageItems = (
-    categoryName,
-    sectionId
-  ) => {
+  const createDPharmLanguageItems = (categoryName, sectionId) => {
     const isNotes = categoryName === "Notes";
-
     return [
-      {
-        name: isNotes ? "Hindi Notes" : "Hindi",
-        hasSubmenu: true,
-        submenuItems: createDPharmYearItems(
-          categoryName,
-          "Hindi",
-          sectionId
-        ),
-      },
-      {
-        name: isNotes ? "English Notes" : "English",
-        hasSubmenu: true,
-        submenuItems: createDPharmYearItems(
-          categoryName,
-          "English",
-          sectionId
-        ),
-      },
+      { name: isNotes ? "Hindi Notes" : "Hindi", path: "/dpharm", course: "D.Pharm", category: categoryName, sectionId, language: "Hindi", hasSubmenu: true, submenuItems: createDPharmYearItems(categoryName, "Hindi", sectionId) },
+      { name: isNotes ? "English Notes" : "English", path: "/dpharm", course: "D.Pharm", category: categoryName, sectionId, language: "English", hasSubmenu: true, submenuItems: createDPharmYearItems(categoryName, "English", sectionId) },
     ];
   };
 
@@ -1011,14 +948,18 @@ const Navbar = () => {
       items: [
         {
           name: "Notes",
+          path: "/dpharm",
           course: "D.Pharm",
+          sectionId: "notes",
           category: "Notes",
           hasSubmenu: true,
           submenuItems: createDPharmLanguageItems("Notes", "notes"),
         },
         {
           name: "Exam Crash Course",
+          path: "/dpharm",
           course: "D.Pharm",
+          sectionId: "exam-crash-course",
           category: "Exam Crash Course",
           hasSubmenu: true,
           submenuItems: createDPharmLanguageItems(
@@ -1028,7 +969,9 @@ const Navbar = () => {
         },
         {
           name: "PYQs",
+          path: "/dpharm",
           course: "D.Pharm",
+          sectionId: "pyqs",
           category: "PYQs",
           hasSubmenu: true,
           submenuItems: createDPharmLanguageItems("PYQs", "pyqs"),
@@ -1479,6 +1422,10 @@ const Navbar = () => {
               role={subItem.path ? "link" : undefined}
               tabIndex={subItem.path ? 0 : undefined}
               onClick={() => {
+                if (subItem.course === "D.Pharm" && subItem.path) {
+                  navigateDPharmMenuItem(subItem);
+                  return;
+                }
                 if (!subItem.path) return;
                 if (subItem.course === "B.Pharm") {
                   navigateBPharmMenuItem(subItem);
@@ -1645,6 +1592,11 @@ const Navbar = () => {
               navigateBPharmMenuItem(subItem);
               return;
             }
+            if (subItem.course === "D.Pharm") {
+              event.preventDefault();
+              navigateDPharmMenuItem(subItem);
+              return;
+            }
             setOpenDropdown(null);
             setOpenSubmenuPath([]);
             setSubmenuPositions({});
@@ -1781,6 +1733,11 @@ const Navbar = () => {
             if (subItem.course === "B.Pharm") {
               event.preventDefault();
               navigateBPharmMenuItem(subItem);
+              return;
+            }
+            if (subItem.course === "D.Pharm") {
+              event.preventDefault();
+              navigateDPharmMenuItem(subItem);
               return;
             }
             setMobileMenuOpen(false);

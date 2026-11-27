@@ -158,6 +158,8 @@ const DPharm = () => {
   const [yearAccessLoading, setYearAccessLoading] = useState(false);
   const [yearPricing, setYearPricing] = useState([]);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingReadyKey, setPricingReadyKey] = useState("");
+  const [pendingNavbarYear, setPendingNavbarYear] = useState(null);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -524,6 +526,8 @@ const DPharm = () => {
     setSelectedCategory(categoryId);
     setSelectedLanguage(null);
     setSelectedYear(null);
+    setPendingNavbarYear([1, 2].includes(Number(state.year)) ? Number(state.year) : null);
+    setPricingReadyKey("");
     setSelectedSubject(null);
     setUnits([]);
     setUnitContent([]);
@@ -601,6 +605,34 @@ const DPharm = () => {
       setLoading(false);
     }
   };
+
+  // Navbar deep-links: open the requested category/language/year selection flow.
+  // A year link preselects category + language, then invokes the same year
+  // selection handler after pricing loads so the existing payment/access gate runs.
+  useEffect(() => {
+    const state = location.state;
+    if (state?.course !== "D.Pharm" || !state.category) return;
+
+    const validCategory = categories.some((item) => item.id === state.category);
+    const validLanguage = ["Hindi", "English"].includes(state.language);
+    if (!validCategory) return;
+
+    contentRequestIdRef.current += 1;
+    if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
+
+    setSelectedCategory(state.category);
+    setSelectedLanguage(validLanguage ? state.language : null);
+    setSelectedYear(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+    setDirectFiles([]);
+    setContentLoading(false);
+    setCurrentStep(validLanguage ? 3 : 2);
+
+    // Clear the navigation payload so revisiting the page does not replay it.
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key]);
 
   const handleSubjectClick = (subject) => {
     const category = selectedCategory;
@@ -819,6 +851,7 @@ const DPharm = () => {
       }
 
       setPricingLoading(true);
+      setPricingReadyKey("");
       try {
         const response = await axios.get(`${API_BASE}/api/admin/public-price`, {
           headers: { Accept: "application/json", "Cache-Control": "no-cache" },
@@ -845,7 +878,10 @@ const DPharm = () => {
         console.error("D.Pharm year pricing load failed:", error);
         if (!cancelled) setYearPricing([]);
       } finally {
-        if (!cancelled) setPricingLoading(false);
+        if (!cancelled) {
+          setPricingLoading(false);
+          setPricingReadyKey(`${selectedCategory}|${selectedLanguage}`);
+        }
       }
     };
 
@@ -857,6 +893,22 @@ const DPharm = () => {
     const key = getDPharmContentKey({ year }).toLowerCase();
     return yearPricing.find((entry) => String(entry?.contentKey || "").trim().toLowerCase() === key);
   };
+
+  // If Navbar supplied a year, run the same year-card handler only after
+  // the correct category/language pricing has loaded. This preserves Razorpay.
+  useEffect(() => {
+    if (
+      !pendingNavbarYear ||
+      pricingLoading ||
+      !selectedCategory ||
+      !selectedLanguage ||
+      pricingReadyKey !== `${selectedCategory}|${selectedLanguage}`
+    ) return;
+
+    const year = pendingNavbarYear;
+    setPendingNavbarYear(null);
+    handleYearClick(year);
+  }, [pendingNavbarYear, pricingLoading, pricingReadyKey, selectedCategory, selectedLanguage]);
 
   // Show the real access state for each year/category/language.
   // Notes retain their existing contentKey and payment behavior.
