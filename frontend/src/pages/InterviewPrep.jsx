@@ -11,6 +11,7 @@ import {
   BookOpen,
   Lock,
   Unlock,
+  X,
 } from "lucide-react";
 
 const API_BASE =
@@ -35,6 +36,7 @@ const InterviewPrep = () => {
   const [loadingItemId, setLoadingItemId] = useState(null);
   const [accessLoading, setAccessLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [showUnlockModal, setShowUnlockModal] = useState(true);
   const [buying, setBuying] = useState(false);
   const [interviewPrice, setInterviewPrice] = useState(null);
   const [priceLoading, setPriceLoading] = useState(true);
@@ -413,7 +415,7 @@ const InterviewPrep = () => {
   return (
     <div className="relative min-h-screen bg-gradient-to-b from-white via-sky-50/40 to-white">
       <div className={`min-h-screen ${
-        !accessLoading && !hasAccess ? "blur-[5px] pointer-events-none select-none" : ""
+        !accessLoading && !hasAccess && showUnlockModal ? "blur-[5px] pointer-events-none select-none" : ""
       }`}>
 
       {/* =========================
@@ -895,9 +897,19 @@ const InterviewPrep = () => {
       </div>
       </div>
 
-      {!accessLoading && !hasAccess && (
+      {!accessLoading && !hasAccess && showUnlockModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/35 backdrop-blur-md px-4">
-          <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-7 sm:p-9 text-center shadow-2xl">
+          <div className="relative w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-7 sm:p-9 text-center shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setShowUnlockModal(false)}
+              aria-label="Close unlock dialog"
+              title="Close"
+              className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400"
+            >
+              <X size={20} />
+            </button>
+
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-purple-600 shadow-lg shadow-sky-200">
               <Lock className="text-white" size={30} />
             </div>
