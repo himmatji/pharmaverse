@@ -522,6 +522,90 @@ const Navbar = () => {
     });
   };
 
+
+  // B.Pharm Navbar navigation must never skip the semester payment gate.
+  // If access is not confirmed, open the category's semester-selection step;
+  // the existing BPharm semester card then opens its normal purchase flow.
+  const navigateBPharmMenuItem = async (item) => {
+    if (!item?.path) return;
+
+    const category = item.category || item.name;
+    const semester = Number(item.semester);
+    const hasSemester = Number.isInteger(semester) && semester >= 1 && semester <= 8;
+
+    if (!hasSemester) {
+      navigate(item.path, {
+        state: {
+          course: "B.Pharm",
+          category,
+          scrollTo: item.sectionId,
+          contentType: item.contentType || category,
+        },
+      });
+      setOpenDropdown(null);
+      setOpenSubmenuPath([]);
+      setSubmenuPositions({});
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    const token =
+      localStorage.getItem("token") ||
+      localStorage.getItem("userToken") ||
+      localStorage.getItem("authToken");
+
+    const categorySlug = String(category)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const contentKey = `bpharm:${categorySlug}:semester:${semester}`;
+
+    let hasAccess = false;
+    if (token) {
+      try {
+        const apiBase = (
+          import.meta.env.VITE_API_URL || "https://api.pharmaverse.co.in"
+        ).replace(/\/$/, "");
+        const response = await axios.get(
+          `${apiBase}/api/payment/check-access/course-content/${encodeURIComponent(contentKey)}`,
+          {
+            params: {
+              contentKey,
+              course: "B.Pharm",
+              category,
+              semester: String(semester),
+              year: "",
+              language: "",
+              specialization: "",
+            },
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 15000,
+          }
+        );
+        hasAccess = Boolean(response.data?.hasAccess);
+      } catch (error) {
+        // Fail closed: an API/network error must not unlock the subject page.
+        console.error("B.Pharm Navbar access check failed:", error);
+      }
+    }
+
+    navigate(item.path, {
+      state: {
+        course: "B.Pharm",
+        category,
+        ...(hasAccess ? { semester, subject: item.subject } : {}),
+        scrollTo: item.sectionId,
+        contentType: item.contentType || category,
+      },
+    });
+
+    setOpenDropdown(null);
+    setOpenSubmenuPath([]);
+    setSubmenuPositions({});
+    setMobileMenuOpen(false);
+  };
+
   const handleHomeClick = () => {
     setSearchQuery("");
     setSearchResults([]);
@@ -1447,6 +1531,10 @@ const Navbar = () => {
               tabIndex={subItem.path ? 0 : undefined}
               onClick={() => {
                 if (!subItem.path) return;
+                if (subItem.course === "B.Pharm") {
+                  navigateBPharmMenuItem(subItem);
+                  return;
+                }
                 navigate(subItem.path, {
                   state: {
                     course: subItem.course,
@@ -1604,7 +1692,12 @@ const Navbar = () => {
             text-sm
             leading-5
           "
-          onClick={() => {
+          onClick={(event) => {
+            if (subItem.course === "B.Pharm") {
+              event.preventDefault();
+              navigateBPharmMenuItem(subItem);
+              return;
+            }
             setOpenDropdown(null);
             setOpenSubmenuPath([]);
             setSubmenuPositions({});
@@ -1643,19 +1736,7 @@ const Navbar = () => {
             <button
               onClick={() => {
                 if (subItem.path && subItem.course === "B.Pharm") {
-                  navigate(subItem.path, {
-                    state: {
-                      course: subItem.course,
-                      category: subItem.category || subItem.name,
-                      semester: subItem.semester,
-                      subject: subItem.subject,
-                      scrollTo: subItem.sectionId,
-                      contentType: subItem.contentType || subItem.category || subItem.name,
-                    },
-                  });
-                  setMobileMenuOpen(false);
-                  setOpenDropdown(null);
-                  setOpenSubmenuPath([]);
+                  navigateBPharmMenuItem(subItem);
                   return;
                 }
                 if (submenuIsOpen) {
@@ -1751,7 +1832,12 @@ const Navbar = () => {
             contentType:
               subItem.contentType,
           }}
-          onClick={() => {
+          onClick={(event) => {
+            if (subItem.course === "B.Pharm") {
+              event.preventDefault();
+              navigateBPharmMenuItem(subItem);
+              return;
+            }
             setMobileMenuOpen(false);
             setOpenDropdown(null);
             setOpenSubmenuPath([]);
