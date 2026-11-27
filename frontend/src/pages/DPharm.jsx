@@ -1457,9 +1457,7 @@ const handleDownload = async (item) => {
                     </div>
 
                     <div className="mt-3 min-h-[42px] flex flex-col items-center justify-center gap-1">
-                      {isUnlocked ? (
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700">FREE</span>
-                      ) : pricingLoading ? (
+                      {pricingLoading ? (
                         <span className="text-xs font-semibold text-gray-500">Loading price...</span>
                       ) : isFree ? (
                         <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700">FREE</span>
@@ -1468,6 +1466,7 @@ const handleDownload = async (item) => {
                           {discount > 0 && <span className="text-xs text-gray-400 line-through">₹{basePrice.toLocaleString("en-IN")}</span>}
                           <span className="text-xl font-extrabold text-gray-800">₹{finalPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
                           {discount > 0 && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">{discount}% OFF</span>}
+                          {isUnlocked && <span className="text-[10px] font-bold text-emerald-700">Already unlocked</span>}
                         </>
                       ) : (
                         <span className="text-xs font-semibold text-amber-700">Price not set</span>
