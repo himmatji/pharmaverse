@@ -2259,3 +2259,4 @@ const handleDownload = async (item) => {
 };
 
 export default DPharm;
+

@@ -606,16 +606,38 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   };
 
+  // D.Pharm Navbar links ALWAYS enter the DPharm page's own year access gate.
+  // Never pass a subject/year as an already-unlocked selection from Navbar.
   const navigateDPharmMenuItem = (item) => {
     if (!item?.path) return;
-    navigate(item.path, { state: {
-      course: "D.Pharm",
-      category: item.category,
-      language: item.language,
-      year: item.year,
-      scrollTo: item.sectionId,
-      contentType: item.contentType || item.category,
-    }});
+
+    const category = String(item.category || item.name || "").trim();
+    const rawLanguage = String(item.language || "").trim().toLowerCase();
+    const language = rawLanguage === "hindi"
+      ? "Hindi"
+      : rawLanguage === "english"
+        ? "English"
+        : null;
+    const parsedYear = Number(item.year);
+    const year = Number.isInteger(parsedYear) && [1, 2].includes(parsedYear)
+      ? parsedYear
+      : null;
+
+    // DPharm.jsx validates category/language/year and runs handleYearClick()
+    // after pricing loads. That handler checks access/recovery and opens Razorpay
+    // only when the exact category + language + year is still locked.
+    navigate(item.path, {
+      state: {
+        course: "D.Pharm",
+        category,
+        language,
+        year,
+        scrollTo: item.sectionId,
+        contentType: item.contentType || category,
+        type: item.contentType || category,
+      },
+    });
+
     setOpenDropdown(null);
     setOpenSubmenuPath([]);
     setSubmenuPositions({});
