@@ -914,17 +914,37 @@ router.get('/check-access/:type/:id', authenticateToken, async (req, res) => {
       const CoursePrice = require('../models/CoursePrice');
       const pricingDoc = await CoursePrice.findOne({});
 
-      const freeEntry = pricingDoc?.contentPrices?.find((entry) => (
-        entry.isActive !== false &&
-        entry.accessType === 'free' &&
-        normalizeComparable(entry.course) === normalizeComparable(course) &&
-        normalizeComparable(entry.category) === category &&
-        normalizeComparable(entry.semester) === normalizeComparable(semester) &&
-        normalizeComparable(entry.year) === normalizeComparable(year) &&
-        normalizeComparable(entry.language) === normalizeComparable(language) &&
-        normalizeComparable(entry.specialization) === normalizeComparable(specialization) &&
-        normalizeComparable(entry.contentKey) === normalizeComparable(contentKey)
-      ));
+      const freeEntry = pricingDoc?.contentPrices?.find((entry) => {
+        const basePrice = Number(entry.price);
+        const discount = Number(entry.discount ?? 0);
+
+        const validPricing =
+          Number.isFinite(basePrice) &&
+          basePrice >= 0 &&
+          Number.isFinite(discount) &&
+          discount >= 0 &&
+          discount <= 100;
+
+        const finalPrice = validPricing
+          ? Math.round(basePrice * (1 - discount / 100) * 100) / 100
+          : null;
+
+        const isFree =
+          entry.accessType === 'free' ||
+          (validPricing && finalPrice === 0);
+
+        return (
+          entry.isActive !== false &&
+          isFree &&
+          normalizeComparable(entry.course) === normalizeComparable(course) &&
+          normalizeComparable(entry.category) === category &&
+          normalizeComparable(entry.semester) === normalizeComparable(semester) &&
+          normalizeComparable(entry.year) === normalizeComparable(year) &&
+          normalizeComparable(entry.language) === normalizeComparable(language) &&
+          normalizeComparable(entry.specialization) === normalizeComparable(specialization) &&
+          normalizeComparable(entry.contentKey) === normalizeComparable(contentKey)
+        );
+      });
 
       if (freeEntry) {
         return res.json({

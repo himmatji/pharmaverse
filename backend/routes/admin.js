@@ -165,6 +165,29 @@ const normalizeDPharmYear = (value) => {
    - Keeps the existing D.Pharm year/language scope protection.
    - Free content and unrelated products keep their current behavior.
 ========================================================= */
+const isContentPriceFree = (entry) => {
+  if (!entry || entry.isActive === false) return false;
+
+  const accessType = String(entry.accessType || "").trim().toLowerCase();
+  if (accessType === "free") return true;
+
+  const price = Number(entry.price);
+  const discount = Number(entry.discount ?? 0);
+
+  if (
+    !Number.isFinite(price) ||
+    price < 0 ||
+    !Number.isFinite(discount) ||
+    discount < 0 ||
+    discount > 100
+  ) {
+    return false;
+  }
+
+  const finalPrice = Math.round(price * (1 - discount / 100) * 100) / 100;
+  return finalPrice === 0;
+};
+
 const isCoursePurchaseActive = (purchase, now = new Date()) => {
   if (!purchase || String(purchase.productType || "").toLowerCase() !== "course-content") {
     return false;
@@ -287,7 +310,7 @@ const protectDPharmNotes = async (req, res, next) => {
             same(entry.contentKey, scope.contentKey)
           );
 
-          const isFree = matchingPrice && same(matchingPrice.accessType, "free");
+          const isFree = isContentPriceFree(matchingPrice);
 
           // Find the exact active purchase for this content scope.
           // The same purchase ID is stored with the download history.
@@ -391,7 +414,7 @@ const protectDPharmNotes = async (req, res, next) => {
           same(entry.contentKey, scope.contentKey)
         );
 
-        const isFree = matchingPrice && normalize(matchingPrice.accessType) === "free";
+        const isFree = isContentPriceFree(matchingPrice);
 
         // Find the exact active purchase for this D.Pharm year/language scope.
         const matchingPurchase = (req.user.purchasedItems || []).find((purchase) =>
@@ -5222,6 +5245,18 @@ router.get("/public-price", async (req, res) => {
           accessType: String(item.accessType || "paid").trim(),
           price: Number(item.price ?? 0),
           discount: Number(item.discount ?? 0),
+          finalPrice: (() => {
+            const price = Number(item.price ?? 0);
+            const discount = Number(item.discount ?? 0);
+            if (
+              !Number.isFinite(price) ||
+              price < 0 ||
+              !Number.isFinite(discount) ||
+              discount < 0 ||
+              discount > 100
+            ) return null;
+            return Math.round(price * (1 - discount / 100) * 100) / 100;
+          })(),
           isActive: item.isActive !== false,
         }))
       : [];

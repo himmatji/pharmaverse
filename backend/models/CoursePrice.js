@@ -3,15 +3,15 @@ const mongoose = require("mongoose");
 /*
  * PharmaVerse CoursePrice model
  *
- * Backward-compatible:
- * - Keeps the legacy `prices` Map for existing dashboard/API compatibility.
- * - Adds `contentPrices` for course/category/semester/year/language/specialization pricing.
- * - Uses an array of subdocuments rather than a Map so keys can safely contain
- *   values such as "B.Pharm" without MongoDB/Mongoose Map-key restrictions.
+ * Supports:
+ * 1. Legacy course-wide prices through `prices` (kept for compatibility).
+ * 2. Exact content pricing through `contentPrices`.
+ * 3. Separate complete Interview Material pricing.
  *
- * NOTE:
- * Payment routes and Admin APIs must be updated to read/write contentPrices
- * and enforce access based on the exact content scope before this feature is live.
+ * Course content is identified by:
+ * course + category + semester + year + language + specialization + contentKey
+ *
+ * `contentKey` must be generated consistently by the backend/admin API.
  */
 
 const PriceSchema = new mongoose.Schema(
@@ -33,7 +33,6 @@ const PriceSchema = new mongoose.Schema(
 
 const ContentPriceSchema = new mongoose.Schema(
   {
-    // Course names deliberately stored as strings, not Map keys.
     course: {
       type: String,
       required: true,
@@ -41,14 +40,14 @@ const ContentPriceSchema = new mongoose.Schema(
       trim: true,
     },
 
-    // Examples: Notes, Exam Crash Course, PYQs.
+    // Expected values include: notes, exam-crash-course, pyqs, practical, other.
     category: {
       type: String,
       required: true,
       trim: true,
     },
 
-    // Semester for B.Pharm/M.Pharm; year for D.Pharm/Pharm.D.
+    // Semester-based courses use semester; year-based courses use year.
     semester: {
       type: Number,
       min: 1,
@@ -63,27 +62,26 @@ const ContentPriceSchema = new mongoose.Schema(
       default: undefined,
     },
 
-    // D.Pharm can distinguish Hindi and English; other courses may omit it.
     language: {
       type: String,
       enum: ["", "Hindi", "English", "Both", "Other", "hindi", "english", "both", "other"],
       default: "",
-      set: (value) => (value == null ? "" : value),
+      set: (value) => (value == null ? "" : String(value).trim()),
     },
 
-    // Required when the course/category is specialization-specific, e.g. M.Pharm.
     specialization: {
       type: String,
       trim: true,
-      default: undefined,
+      default: "",
     },
 
-    // "free" items open without payment; "paid" items require a verified purchase.
     accessType: {
       type: String,
       enum: ["free", "paid"],
       default: "paid",
       required: true,
+      lowercase: true,
+      trim: true,
     },
 
     price: {
@@ -93,6 +91,7 @@ const ContentPriceSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Decimal discounts such as 4.5 are supported.
     discount: {
       type: Number,
       default: 0,
@@ -106,7 +105,7 @@ const ContentPriceSchema = new mongoose.Schema(
       default: true,
     },
 
-    // Stable identifier to be generated/validated by the backend.
+    // Must match the contentKey used by payment.js and the frontend.
     contentKey: {
       type: String,
       trim: true,
@@ -127,34 +126,59 @@ const ContentPriceSchema = new mongoose.Schema(
   { _id: true }
 );
 
+// Computed value for code that explicitly uses subdocument virtuals.
+// Payment routes still calculate the payable amount independently on the server.
+ContentPriceSchema.virtual("finalPrice").get(function () {
+  const price = Number(this.price);
+  const discount = Number(this.discount ?? 0);
+
+  if (
+    !Number.isFinite(price) ||
+    price < 0 ||
+    !Number.isFinite(discount) ||
+    discount < 0 ||
+    discount > 100
+  ) {
+    return null;
+  }
+
+  return Math.round(price * (1 - discount / 100) * 100) / 100;
+});
+
 const InterviewMaterialPriceSchema = new mongoose.Schema(
   {
-    // One-time price for complete Interview Material access.
     price: {
       type: Number,
       default: 99,
       min: 0,
     },
+
     discount: {
       type: Number,
       default: 0,
       min: 0,
       max: 100,
     },
+
     accessType: {
       type: String,
       enum: ["free", "paid"],
       default: "paid",
       required: true,
+      lowercase: true,
+      trim: true,
     },
+
     isActive: {
       type: Boolean,
       default: true,
     },
+
     updatedAt: {
       type: Date,
       default: Date.now,
     },
+
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
@@ -164,9 +188,26 @@ const InterviewMaterialPriceSchema = new mongoose.Schema(
   { _id: false }
 );
 
+InterviewMaterialPriceSchema.virtual("finalPrice").get(function () {
+  const price = Number(this.price);
+  const discount = Number(this.discount ?? 0);
+
+  if (
+    !Number.isFinite(price) ||
+    price < 0 ||
+    !Number.isFinite(discount) ||
+    discount < 0 ||
+    discount > 100
+  ) {
+    return null;
+  }
+
+  return Math.round(price * (1 - discount / 100) * 100) / 100;
+});
+
 const CoursePriceSchema = new mongoose.Schema({
-  // LEGACY COURSE-WIDE PRICES: kept for compatibility with existing code.
-  // Keys must not contain "." (e.g. use BPharm, not B.Pharm).
+  // Legacy course-wide pricing retained for existing APIs.
+  // MongoDB Map keys cannot contain ".", so use BPharm rather than B.Pharm.
   prices: {
     type: Map,
     of: PriceSchema,
@@ -180,14 +221,13 @@ const CoursePriceSchema = new mongoose.Schema({
       ]),
   },
 
-  // NEW: exact content-scope pricing entries.
+  // Admin-managed exact course/category/semester/year pricing.
   contentPrices: {
     type: [ContentPriceSchema],
     default: [],
   },
 
-  // NEW: one-time complete access pricing for all Interview Material PDFs.
-  // This is separate from course-wise semester/year/content pricing.
+  // Separate one-time pricing for complete Interview Material access.
   interviewMaterial: {
     type: InterviewMaterialPriceSchema,
     default: () => ({
@@ -210,9 +250,23 @@ const CoursePriceSchema = new mongoose.Schema({
   },
 });
 
-// Auto update timestamp. Mongoose 8+ middleware does not use next() here.
+// Useful for locating a content pricing entry by its stable key.
+// Not unique: legacy/admin data may contain duplicate entries, which should
+// be cleaned by the admin API rather than causing index-build failures.
+CoursePriceSchema.index({ "contentPrices.contentKey": 1 });
+
 CoursePriceSchema.pre("save", function () {
   this.updatedAt = new Date();
+
+  if (Array.isArray(this.contentPrices)) {
+    const now = new Date();
+
+    this.contentPrices.forEach((entry) => {
+      if (entry.isModified && entry.isModified()) {
+        entry.updatedAt = now;
+      }
+    });
+  }
 });
 
 module.exports = mongoose.model("CoursePrice", CoursePriceSchema);

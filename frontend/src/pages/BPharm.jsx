@@ -157,6 +157,8 @@ const BPharm = () => {
   const [contentError, setContentError] = useState("");
   const [unlockedSemesters, setUnlockedSemesters] = useState([]);
   const [accessLoading, setAccessLoading] = useState(false);
+  const [semesterPricing, setSemesterPricing] = useState([]);
+  const [pricingLoading, setPricingLoading] = useState(false);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -380,6 +382,45 @@ const BPharm = () => {
       }
     };
   }, [selectedCategory, selectedSemester, selectedSubject]);
+
+  // Load admin-managed B.Pharm pricing for the selected category.
+  useEffect(() => {
+    let cancelled = false;
+    const loadSemesterPricing = async () => {
+      if (!["Notes", "Exam Crash Course", "PYQs"].includes(selectedCategory)) {
+        setSemesterPricing([]);
+        return;
+      }
+      setPricingLoading(true);
+      try {
+        const response = await axios.get(`${API_BASE}/api/admin/public-price`);
+        const entries = Array.isArray(response.data?.contentPrices)
+          ? response.data.contentPrices
+          : [];
+        const categorySlug = String(selectedCategory).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const expectedPrefix = `bpharm:${categorySlug}:semester:`;
+        const matching = entries.filter((entry) =>
+          entry?.isActive !== false &&
+          String(entry.course || "").trim().toLowerCase() === "b.pharm" &&
+          String(entry.category || "").trim().toLowerCase() === selectedCategory.toLowerCase() &&
+          String(entry.contentKey || "").trim().toLowerCase().startsWith(expectedPrefix)
+        );
+        if (!cancelled) setSemesterPricing(matching);
+      } catch (error) {
+        console.error("B.Pharm semester pricing load failed:", error);
+        if (!cancelled) setSemesterPricing([]);
+      } finally {
+        if (!cancelled) setPricingLoading(false);
+      }
+    };
+    loadSemesterPricing();
+    return () => { cancelled = true; };
+  }, [selectedCategory]);
+
+  const getSemesterPricing = (semester) => {
+    const contentKey = `bpharm:${String(selectedCategory || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}:semester:${Number(semester)}`;
+    return semesterPricing.find((entry) => String(entry.contentKey || "").trim().toLowerCase() === contentKey);
+  };
 
   // Load exact semester access independently for Notes, Exam Crash Course and PYQs.
   // Backend access is scoped by course + category + semester contentKey.
@@ -1090,7 +1131,14 @@ const BPharm = () => {
             const colors = semesterColors[index % semesterColors.length];
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
-            const isLocked = !unlockedSemesters.includes(Number(sem));
+            const pricing = getSemesterPricing(sem);
+            const isFree = pricing?.accessType === "free";
+            const isUnlocked = isFree || unlockedSemesters.includes(Number(sem));
+            const isLocked = !isUnlocked;
+            const basePrice = Number(pricing?.price || 0);
+            const discount = Number(pricing?.discount || 0);
+            const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+            const hasValidPaidPrice = pricing && pricing.accessType === "paid" && basePrice > 0;
             return (
               <div
                 key={sem}
@@ -1153,6 +1201,22 @@ const BPharm = () => {
                     <div className={`mt-2.5 inline-flex items-center gap-1 px-2.5 py-1 rounded-full ${isLocked ? "bg-gradient-to-r from-slate-600 to-gray-700 shadow-gray-300/50" : "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-emerald-200/50"} text-white text-[9px] sm:text-[10px] font-['Inter'] font-bold shadow-lg status-pulse`}>
                       {isLocked ? <><Lock size={11} className="sm:size-3" />Locked</> : <><CheckCircle size={11} className="sm:size-3" />Open</>}
                     </div>
+
+                    {isUnlocked ? (
+                      <div className="mt-2 inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-3 py-1 text-xs font-bold">FREE</div>
+                    ) : pricingLoading ? (
+                      <div className="mt-2 text-[10px] text-gray-500">Loading price...</div>
+                    ) : hasValidPaidPrice ? (
+                      <div className="mt-2 flex flex-col items-center gap-0.5">
+                        {discount > 0 && <span className="text-[10px] text-gray-500 line-through">₹{basePrice.toFixed(2).replace(/\.00$/, "")}</span>}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm sm:text-base font-extrabold text-gray-800">₹{finalPrice.toFixed(2).replace(/\.00$/, "")}</span>
+                          {discount > 0 && <span className="rounded-full bg-green-100 text-green-700 px-1.5 py-0.5 text-[9px] font-bold">{discount}% OFF</span>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-2 text-[10px] text-amber-700">Price not set</div>
+                    )}
 
                     <div className={`mt-3 h-0.5 w-10 sm:w-12 bg-gradient-to-r ${colors.gradient} mx-auto rounded-full transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-center`}></div>
                     <div className="mt-2 text-[10px] sm:text-xs font-['Inter'] font-medium text-gray-400">{BPHARM_SUBJECTS[sem]?.length || 0} Subjects</div>
