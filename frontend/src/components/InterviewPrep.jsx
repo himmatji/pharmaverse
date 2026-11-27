@@ -1,5 +1,3 @@
-FILE PATH: frontend/src/components/InterviewPrep.jsx
-
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
 
