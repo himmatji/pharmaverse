@@ -171,6 +171,32 @@ const MPharm = () => {
   const contentAbortControllerRef = useRef(null);
   const contentCacheRef = useRef(new Map());
 
+  // Navbar deep-link: M.Pharm > Branch > specialization > category.
+  // Open the selected branch/category directly at semester selection.
+  useEffect(() => {
+    const state = location.state || {};
+    if (state.course !== "M.Pharm" || !state.branch || !state.category) return;
+
+    const validBranch = branches.some((branch) => branch.id === state.branch);
+    const validCategory = categories.some((category) => category.id === state.category);
+    if (!validBranch || !validCategory) return;
+
+    if (contentAbortControllerRef.current) {
+      contentAbortControllerRef.current.abort();
+      contentAbortControllerRef.current = null;
+    }
+    contentRequestIdRef.current += 1;
+    setSelectedBranch(state.branch);
+    setSelectedCategory(state.category);
+    setSelectedSemester(null);
+    setSelectedSubject(null);
+    setUnits([]);
+    setUnitContent([]);
+    setDirectFiles([]);
+    setCurrentStep(3);
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.key]);
+
   // ========== HELPERS ==========
   const isResearchWork = (subject) =>
     String(subject || "").trim().toLowerCase() === "research work";

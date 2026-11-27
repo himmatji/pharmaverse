@@ -606,6 +606,23 @@ const Navbar = () => {
     setMobileMenuOpen(false);
   };
 
+  const navigateMPharmMenuItem = (item) => {
+    if (!item?.path || !item?.branch || !item?.category) return;
+    navigate(item.path, {
+      state: {
+        course: "M.Pharm",
+        branch: item.branch,
+        category: item.category,
+        scrollTo: item.sectionId,
+        contentType: item.contentType || item.category,
+      },
+    });
+    setOpenDropdown(null);
+    setOpenSubmenuPath([]);
+    setSubmenuPositions({});
+    setMobileMenuOpen(false);
+  };
+
   const navigateDPharmMenuItem = (item) => {
     if (!item?.path) return;
     navigate(item.path, { state: {
@@ -983,57 +1000,75 @@ const Navbar = () => {
 
     {
       name: "M.Pharm",
-
       items: [
         {
-          name: "Notes",
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Free Videos",
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Free Papers",
-          path: "/mpharm",
-          sectionId: "notes",
-          hasSubmenu: false,
-        },
-
-        {
-          name: "Semester PDFs",
+          name: "Branch",
           hasSubmenu: true,
-
           submenuItems: [
             {
-              name: "Semester 1",
-              path: "/mpharm",
-              sectionId: "semester",
-              semester: 1,
+              name: "Pharmaceutics",
+              hasSubmenu: true,
+              submenuItems: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+                name: category,
+                path: "/mpharm",
+                course: "M.Pharm",
+                branch: "Pharmaceutics",
+                category,
+                sectionId: category === "Notes" ? "notes" : category === "Exam Crash Course" ? "exam-crash-course" : "pyqs",
+                contentType: category,
+              })),
             },
             {
-              name: "Semester 2",
-              path: "/mpharm",
-              sectionId: "semester",
-              semester: 2,
+              name: "Pharmacology",
+              hasSubmenu: true,
+              submenuItems: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+                name: category,
+                path: "/mpharm",
+                course: "M.Pharm",
+                branch: "Pharmacology",
+                category,
+                sectionId: category === "Notes" ? "notes" : category === "Exam Crash Course" ? "exam-crash-course" : "pyqs",
+                contentType: category,
+              })),
             },
             {
-              name: "Semester 3",
-              path: "/mpharm",
-              sectionId: "semester",
-              semester: 3,
+              name: "Pharmaceutical Chemistry",
+              hasSubmenu: true,
+              submenuItems: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+                name: category,
+                path: "/mpharm",
+                course: "M.Pharm",
+                branch: "Pharmaceutical Chemistry",
+                category,
+                sectionId: category === "Notes" ? "notes" : category === "Exam Crash Course" ? "exam-crash-course" : "pyqs",
+                contentType: category,
+              })),
             },
             {
-              name: "Semester 4",
-              path: "/mpharm",
-              sectionId: "semester",
-              semester: 4,
+              name: "Pharmacognosy",
+              hasSubmenu: true,
+              submenuItems: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+                name: category,
+                path: "/mpharm",
+                course: "M.Pharm",
+                branch: "Pharmacognosy",
+                category,
+                sectionId: category === "Notes" ? "notes" : category === "Exam Crash Course" ? "exam-crash-course" : "pyqs",
+                contentType: category,
+              })),
+            },
+            {
+              name: "Regulatory Affairs",
+              hasSubmenu: true,
+              submenuItems: ["Notes", "Exam Crash Course", "PYQs"].map((category) => ({
+                name: category,
+                path: "/mpharm",
+                course: "M.Pharm",
+                branch: "Regulatory Affairs",
+                category,
+                sectionId: category === "Notes" ? "notes" : category === "Exam Crash Course" ? "exam-crash-course" : "pyqs",
+                contentType: category,
+              })),
             },
           ],
         },
@@ -1431,6 +1466,10 @@ const Navbar = () => {
                   navigateBPharmMenuItem(subItem);
                   return;
                 }
+                if (subItem.course === "M.Pharm") {
+                  navigateMPharmMenuItem(subItem);
+                  return;
+                }
                 navigate(subItem.path, {
                   state: {
                     course: subItem.course,
@@ -1597,6 +1636,11 @@ const Navbar = () => {
               navigateDPharmMenuItem(subItem);
               return;
             }
+            if (subItem.course === "M.Pharm") {
+              event.preventDefault();
+              navigateMPharmMenuItem(subItem);
+              return;
+            }
             setOpenDropdown(null);
             setOpenSubmenuPath([]);
             setSubmenuPositions({});
@@ -1738,6 +1782,11 @@ const Navbar = () => {
             if (subItem.course === "D.Pharm") {
               event.preventDefault();
               navigateDPharmMenuItem(subItem);
+              return;
+            }
+            if (subItem.course === "M.Pharm") {
+              event.preventDefault();
+              navigateMPharmMenuItem(subItem);
               return;
             }
             setMobileMenuOpen(false);
