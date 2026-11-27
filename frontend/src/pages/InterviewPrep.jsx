@@ -902,9 +902,9 @@ const InterviewPrep = () => {
           <div className="relative w-full max-w-md rounded-3xl border border-white/60 bg-white/95 p-7 sm:p-9 text-center shadow-2xl">
             <button
               type="button"
-              onClick={() => setShowUnlockModal(false)}
-              aria-label="Close unlock dialog"
-              title="Close"
+              onClick={() => { window.location.href = "/"; }}
+              aria-label="Return to home page"
+              title="Back to Home"
               className="absolute right-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-sky-400"
             >
               <X size={20} />
@@ -969,6 +969,5 @@ const InterviewPrep = () => {
     </div>
   );
 };
-
 
 export default InterviewPrep;
