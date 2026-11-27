@@ -5232,6 +5232,21 @@ router.get("/public-price", async (req, res) => {
     // Keep existing course-wide prices and their defaults.
     const normalizedPrices = normalizeCoursePrices(pricesObject);
 
+    // Interview Material has a separate global price for complete access.
+    const interview = coursePrices?.interviewMaterial || {};
+    const interviewPrice = Number(interview.price ?? 99);
+    const interviewDiscount = Number(interview.discount ?? 0);
+    const interviewMaterial = {
+      price: Number.isFinite(interviewPrice) && interviewPrice >= 0 ? interviewPrice : 99,
+      discount: Number.isFinite(interviewDiscount) && interviewDiscount >= 0 && interviewDiscount <= 100 ? interviewDiscount : 0,
+      finalPrice: Math.round(
+        (Number.isFinite(interviewPrice) && interviewPrice >= 0 ? interviewPrice : 99) *
+        (1 - (Number.isFinite(interviewDiscount) && interviewDiscount >= 0 && interviewDiscount <= 100 ? interviewDiscount : 0) / 100) * 100
+      ) / 100,
+      accessType: String(interview.accessType || "paid").toLowerCase(),
+      isActive: interview.isActive !== false,
+    };
+
     // Include semester/year/language/specialization-specific prices.
     const contentPrices = Array.isArray(coursePrices?.contentPrices)
       ? coursePrices.contentPrices.map((item) => ({
@@ -5269,6 +5284,7 @@ router.get("/public-price", async (req, res) => {
       "Pharm.D": normalizedPrices.PharmD,
       PhD: normalizedPrices.PhD,
       contentPrices,
+      interviewMaterial,
     });
   } catch (error) {
     console.error("Public course prices error:", error);
