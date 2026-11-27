@@ -526,7 +526,7 @@ const DPharm = () => {
     setSelectedCategory(categoryId);
     setSelectedLanguage(null);
     setSelectedYear(null);
-    setPendingNavbarYear([1, 2].includes(Number(state.year)) ? Number(state.year) : null);
+    setPendingNavbarYear(null);
     setPricingReadyKey("");
     setSelectedSubject(null);
     setUnits([]);
@@ -620,6 +620,13 @@ const DPharm = () => {
     contentRequestIdRef.current += 1;
     if (contentAbortControllerRef.current) contentAbortControllerRef.current.abort();
 
+    const requestedYear = Number(state.year);
+    const hasRequestedYear = validLanguage && [1, 2].includes(requestedYear);
+
+    // Reset any previous request before applying this Navbar deep-link.
+    setPendingNavbarYear(null);
+    setPricingReadyKey("");
+    setYearPricing([]);
     setSelectedCategory(state.category);
     setSelectedLanguage(validLanguage ? state.language : null);
     setSelectedYear(null);
@@ -629,6 +636,12 @@ const DPharm = () => {
     setDirectFiles([]);
     setContentLoading(false);
     setCurrentStep(validLanguage ? 3 : 2);
+
+    // Queue the requested year. The pricing effect below will invoke the
+    // same handleYearClick() used by the on-page year cards after pricing loads.
+    if (hasRequestedYear) {
+      setPendingNavbarYear(requestedYear);
+    }
 
     // Clear the navigation payload so revisiting the page does not replay it.
     navigate(location.pathname, { replace: true, state: null });
@@ -989,7 +1002,7 @@ const DPharm = () => {
       `${API_BASE}/api/payment/check-access/course-content/${encodeURIComponent(scope.contentKey)}?${params.toString()}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    return Boolean(response.data?.success && response.data?.hasAccess);
+    return Boolean(response.data?.hasAccess);
   };
 
   const tryRecoverDPharmPayment = async (scope) => {
@@ -1000,7 +1013,7 @@ const DPharm = () => {
         { contentKey: scope.contentKey },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      return Boolean(response.data?.success && response.data?.hasAccess);
+      return Boolean(response.data?.hasAccess);
     } catch (error) {
       // No pending/captured order is normal for a first-time purchase.
       if ([404, 409].includes(error.response?.status)) return false;
