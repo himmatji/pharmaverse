@@ -905,7 +905,8 @@ const Navbar = () => {
   ];
 
   /* =========================================================
-     D.PHARM YEAR ITEMS
+     D.PHARM LANGUAGE -> YEAR -> SUBJECT MENU
+     Notes, Exam Crash Course and PYQs all use the same structure.
   ========================================================= */
 
   const createDPharmYearItems = (
@@ -917,109 +918,63 @@ const Navbar = () => {
       name: "First Year",
       hasSubmenu: true,
       year: 1,
-
-      submenuItems: dpharmFirstYearSubjects.map(
-        (subject) => ({
-          name: subject,
-          path: "/dpharm",
-          sectionId,
-          year: 1,
-          language,
-          subject,
-          contentType: categoryName,
-        })
-      ),
+      submenuItems: dpharmFirstYearSubjects.map((subject) => ({
+        name: subject,
+        path: "/dpharm",
+        course: "D.Pharm",
+        category: categoryName,
+        sectionId,
+        year: 1,
+        language,
+        subject,
+        contentType: categoryName,
+      })),
     },
-
     {
       name: "Second Year",
       hasSubmenu: true,
       year: 2,
-
-      submenuItems: dpharmSecondYearSubjects.map(
-        (subject) => ({
-          name: subject,
-          path: "/dpharm",
-          sectionId,
-          year: 2,
-          language,
-          subject,
-          contentType: categoryName,
-        })
-      ),
+      submenuItems: dpharmSecondYearSubjects.map((subject) => ({
+        name: subject,
+        path: "/dpharm",
+        course: "D.Pharm",
+        category: categoryName,
+        sectionId,
+        year: 2,
+        language,
+        subject,
+        contentType: categoryName,
+      })),
     },
   ];
-
-  /* =========================================================
-     D.PHARM LANGUAGE
-  ========================================================= */
 
   const createDPharmLanguageItems = (
     categoryName,
     sectionId
-  ) => [
-    {
-      name: "Hindi Notes",
-      hasSubmenu: true,
+  ) => {
+    const isNotes = categoryName === "Notes";
 
-      submenuItems: createDPharmYearItems(
-        categoryName,
-        "Hindi",
-        sectionId
-      ),
-    },
-
-    {
-      name: "English Notes",
-      hasSubmenu: true,
-
-      submenuItems: createDPharmYearItems(
-        categoryName,
-        "English",
-        sectionId
-      ),
-    },
-  ];
-
-  /* =========================================================
-     D.PHARM PYQS
-  ========================================================= */
-
-  const createDPharmPYQItems = () => [
-    {
-      name: "First Year",
-      hasSubmenu: true,
-      year: 1,
-
-      submenuItems: dpharmFirstYearSubjects.map(
-        (subject) => ({
-          name: subject,
-          path: "/dpharm",
-          sectionId: "pyqs",
-          year: 1,
-          subject,
-          contentType: "PYQs",
-        })
-      ),
-    },
-
-    {
-      name: "Second Year",
-      hasSubmenu: true,
-      year: 2,
-
-      submenuItems: dpharmSecondYearSubjects.map(
-        (subject) => ({
-          name: subject,
-          path: "/dpharm",
-          sectionId: "pyqs",
-          year: 2,
-          subject,
-          contentType: "PYQs",
-        })
-      ),
-    },
-  ];
+    return [
+      {
+        name: isNotes ? "Hindi Notes" : "Hindi",
+        hasSubmenu: true,
+        submenuItems: createDPharmYearItems(
+          categoryName,
+          "Hindi",
+          sectionId
+        ),
+      },
+      {
+        name: isNotes ? "English Notes" : "English",
+        hasSubmenu: true,
+        submenuItems: createDPharmYearItems(
+          categoryName,
+          "English",
+          sectionId
+        ),
+      },
+    ];
+  };
 
   /* =========================================================
      COURSE DROPDOWN ITEMS
@@ -1056,30 +1011,27 @@ const Navbar = () => {
       items: [
         {
           name: "Notes",
-          path: "/dpharm",
-          sectionId: "notes",
           course: "D.Pharm",
           category: "Notes",
-          contentType: "Notes",
-          hasSubmenu: false,
+          hasSubmenu: true,
+          submenuItems: createDPharmLanguageItems("Notes", "notes"),
         },
         {
           name: "Exam Crash Course",
-          path: "/dpharm",
-          sectionId: "exam-crash-course",
           course: "D.Pharm",
           category: "Exam Crash Course",
-          contentType: "Exam Crash Course",
-          hasSubmenu: false,
+          hasSubmenu: true,
+          submenuItems: createDPharmLanguageItems(
+            "Exam Crash Course",
+            "exam-crash-course"
+          ),
         },
         {
           name: "PYQs",
-          path: "/dpharm",
-          sectionId: "pyqs",
           course: "D.Pharm",
           category: "PYQs",
-          contentType: "PYQs",
-          hasSubmenu: false,
+          hasSubmenu: true,
+          submenuItems: createDPharmLanguageItems("PYQs", "pyqs"),
         },
       ],
     },
@@ -1666,17 +1618,15 @@ const Navbar = () => {
           key={`${pathKey}-${subItem.name}`}
           to={subItem.path}
           state={{
-            scrollTo:
-              subItem.sectionId,
-            semester:
-              subItem.semester,
+            course: subItem.course,
+            category: subItem.category || subItem.contentType,
+            scrollTo: subItem.sectionId,
+            semester: subItem.semester,
             year: subItem.year,
-            language:
-              subItem.language,
-            subject:
-              subItem.subject,
-            contentType:
-              subItem.contentType,
+            language: subItem.language,
+            subject: subItem.subject,
+            type: subItem.contentType,
+            contentType: subItem.contentType,
           }}
           className="
             block
@@ -1817,17 +1767,15 @@ const Navbar = () => {
           )}-${subItem.name}`}
           to={subItem.path}
           state={{
-            scrollTo:
-              subItem.sectionId,
-            semester:
-              subItem.semester,
+            course: subItem.course,
+            category: subItem.category || subItem.contentType,
+            scrollTo: subItem.sectionId,
+            semester: subItem.semester,
             year: subItem.year,
-            language:
-              subItem.language,
-            subject:
-              subItem.subject,
-            contentType:
-              subItem.contentType,
+            language: subItem.language,
+            subject: subItem.subject,
+            type: subItem.contentType,
+            contentType: subItem.contentType,
           }}
           onClick={(event) => {
             if (subItem.course === "B.Pharm") {
