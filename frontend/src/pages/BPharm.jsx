@@ -159,6 +159,7 @@ const BPharm = () => {
   const [accessLoading, setAccessLoading] = useState(false);
   const [semesterPricing, setSemesterPricing] = useState([]);
   const [pricingLoading, setPricingLoading] = useState(false);
+  const [purchaseConfirmation, setPurchaseConfirmation] = useState(null);
 
   const [directFiles, setDirectFiles] = useState([]);
   const [isDirectLoading, setIsDirectLoading] = useState(false);
@@ -865,7 +866,7 @@ const BPharm = () => {
 
   // Purchase exactly the selected B.Pharm category + semester.
   // Admin pricing must use the same stable contentKey format below.
-  const handlePremiumPurchase = async (semesterOverride = null) => {
+  const startPremiumPurchase = async (semesterOverride = null, expectedFinalPrice = null) => {
     const purchaseSemester = semesterOverride ?? selectedSemester;
     if (!selectedCategory || !purchaseSemester) {
       toast.error("Pehle category aur semester select karo.");
@@ -945,6 +946,18 @@ const BPharm = () => {
         throw new Error(order?.message || "Payment order create nahi hua.");
       }
 
+      const serverAmount = Number(order.amount);
+      if (
+        !Number.isFinite(serverAmount) ||
+        serverAmount <= 0 ||
+        (Number.isFinite(Number(expectedFinalPrice)) &&
+          Math.abs(serverAmount - Number(expectedFinalPrice)) > 0.01)
+      ) {
+        throw new Error(
+          `Admin price (₹${Number(expectedFinalPrice).toFixed(2)}) and server payment amount (₹${Number.isFinite(serverAmount) ? serverAmount.toFixed(2) : "invalid"}) do not match. Payment stopped for safety.`
+        );
+      }
+
       if (checkoutWindow && !checkoutWindow.closed) checkoutWindow.close();
 
       const options = {
@@ -1004,6 +1017,50 @@ const BPharm = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Show the admin-configured price summary before opening Razorpay.
+  const handlePremiumPurchase = (semesterOverride = null) => {
+    const purchaseSemester = Number(semesterOverride ?? selectedSemester);
+    const pricing = getSemesterPricing(purchaseSemester);
+
+    if (!pricing || pricing.isActive === false) {
+      toast.error("Is semester ki admin pricing nahi mili. Payment start nahi ki gayi.");
+      return;
+    }
+
+    if (pricing.accessType === "free") {
+      toast.success("Yeh semester free hai.");
+      setUnlockedSemesters((current) =>
+        current.includes(purchaseSemester) ? current : [...current, purchaseSemester]
+      );
+      return;
+    }
+
+    const basePrice = Number(pricing.price);
+    const discount = Number(pricing.discount ?? 0);
+    const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+
+    if (
+      !Number.isFinite(basePrice) ||
+      basePrice <= 0 ||
+      !Number.isFinite(discount) ||
+      discount < 0 ||
+      discount > 100 ||
+      !Number.isFinite(finalPrice) ||
+      finalPrice <= 0
+    ) {
+      toast.error("Admin pricing invalid hai. Payment start nahi ki gayi.");
+      return;
+    }
+
+    setPurchaseConfirmation({
+      semester: purchaseSemester,
+      basePrice,
+      discount,
+      finalPrice,
+      title: `B.Pharm ${selectedCategory} - Semester ${purchaseSemester}`,
+    });
   };
 
   // ========== RENDER CATEGORY ==========
@@ -1132,12 +1189,12 @@ const BPharm = () => {
             const cardId = `semester-${sem}`;
             const delayClass = `semester-card-${index + 1}`;
             const pricing = getSemesterPricing(sem);
-            const isFree = pricing?.accessType === "free";
+            const basePrice = Number(pricing?.price ?? 0);
+            const discount = Number(pricing?.discount ?? 0);
+            const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
+            const isFree = pricing?.accessType === "free" || (pricing && Number.isFinite(finalPrice) && finalPrice <= 0);
             const isUnlocked = isFree || unlockedSemesters.includes(Number(sem));
             const isLocked = !isUnlocked;
-            const basePrice = Number(pricing?.price || 0);
-            const discount = Number(pricing?.discount || 0);
-            const finalPrice = Math.round(basePrice * (1 - discount / 100) * 100) / 100;
             const hasValidPaidPrice = pricing && pricing.accessType === "paid" && basePrice > 0;
             return (
               <div
@@ -1167,7 +1224,7 @@ const BPharm = () => {
                 ></div>
 
                 <div
-                  className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass} bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow} ${isLocked ? "blur-[2px] opacity-60 grayscale-[0.35]" : ""}`}
+                  className={`relative rounded-2xl p-5 sm:p-6 text-center transition-all duration-500 overflow-hidden premium-card ${delayClass} bg-gradient-to-br ${colors.bg} border-2 ${colors.border} shadow-xl ${colors.shadow} ${isLocked ? "opacity-90 grayscale-[0.15]" : ""}`}
                   style={{ boxShadow: `0 8px 32px ${colors.glow}, inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)` }}
                 >
                   <div
@@ -1745,6 +1802,73 @@ const BPharm = () => {
           error: { duration: 4000, style: { background: "#ef4444", color: "#fff" } },
         }}
       />
+
+      {purchaseConfirmation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-purple-600">Payment Summary</p>
+                <h3 className="mt-1 text-xl font-extrabold text-gray-900">Confirm Purchase</h3>
+                <p className="mt-1 text-sm text-gray-500">{purchaseConfirmation.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPurchaseConfirmation(null)}
+                className="rounded-full px-3 py-1 text-xl text-gray-500 hover:bg-gray-100"
+                aria-label="Close payment summary"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-3 rounded-xl bg-gray-50 p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Original Price</span>
+                <span className={purchaseConfirmation.discount > 0 ? "font-semibold text-gray-500 line-through" : "font-semibold text-gray-800"}>
+                  ₹{purchaseConfirmation.basePrice.toFixed(2)}
+                </span>
+              </div>
+              {purchaseConfirmation.discount > 0 && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-green-700">Discount ({purchaseConfirmation.discount}%)</span>
+                  <span className="font-semibold text-green-700">
+                    -₹{(purchaseConfirmation.basePrice - purchaseConfirmation.finalPrice).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+                <span className="font-bold text-gray-800">Final Payable</span>
+                <span className="text-2xl font-extrabold text-purple-700">
+                  ₹{purchaseConfirmation.finalPrice.toFixed(2)}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Access duration: 6 months after successful payment verification.</p>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPurchaseConfirmation(null)}
+                className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const purchase = purchaseConfirmation;
+                  setPurchaseConfirmation(null);
+                  startPremiumPurchase(purchase.semester, purchase.finalPrice);
+                }}
+                className="flex-1 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3 font-bold text-white shadow-lg hover:from-purple-700 hover:to-indigo-700"
+              >
+                Continue to Pay
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
