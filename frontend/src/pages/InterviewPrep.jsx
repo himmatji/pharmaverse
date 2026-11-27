@@ -251,6 +251,8 @@ const InterviewPrep = () => {
 
   /* =========================
      FETCH INTERVIEW MATERIAL PRICE
+     Reads the dedicated interviewMaterial object first,
+     then falls back to contentPrices for older API responses.
   ========================= */
 
   useEffect(() => {
@@ -258,55 +260,73 @@ const InterviewPrep = () => {
 
     const fetchInterviewPrice = async () => {
       setPriceLoading(true);
+
       try {
         const res = await axios.get(`${API_BASE}/api/admin/public-price`, {
           timeout: 12000,
         });
 
-        const records = Array.isArray(res?.data?.contentPrices)
-          ? res.data.contentPrices
-          : Array.isArray(res?.data?.data?.contentPrices)
-          ? res.data.data.contentPrices
-          : [];
+        const data = res?.data?.data || res?.data || {};
+        let match = data?.interviewMaterial || null;
 
-        const normalize = (value) =>
-          String(value || "").trim().toLowerCase().replace(/[_\s]+/g, "-");
+        // Backward-compatible fallback for older API response structure.
+        if (!match) {
+          const records = Array.isArray(data?.contentPrices)
+            ? data.contentPrices
+            : [];
 
-        const expectedKeys = [
-          "interview-material|all-interview-material",
-          "interview-material-all-interview-material",
-          "interview-material",
-          "all-interview-material",
-        ].map(normalize);
+          const normalize = (value) =>
+            String(value || "").trim().toLowerCase().replace(/[_\\s]+/g, "-");
 
-        const match = records.find((item) => {
-          if (item?.isActive === false || item?.active === false) return false;
+          const expectedKeys = [
+            "interview-material|all-interview-material",
+            "interview-material-all-interview-material",
+            "interview-material",
+            "all-interview-material",
+          ].map(normalize);
 
-          const key = normalize(
-            item?.contentKey || item?.key || item?.productId || item?.slug
-          );
-
-          return expectedKeys.includes(key) ||
-            (key.includes("interview") && key.includes("all"));
-        });
+          match = records.find((item) => {
+            if (item?.isActive === false || item?.active === false) return false;
+            const key = normalize(
+              item?.contentKey || item?.key || item?.productId || item?.slug
+            );
+            return (
+              expectedKeys.includes(key) ||
+              (key.includes("interview") && key.includes("all"))
+            );
+          }) || null;
+        }
 
         if (!mounted) return;
 
-        if (match) {
-          const price = Number(match.price ?? match.amount ?? match.basePrice ?? 0);
-          const discount = Number(match.discount ?? match.discountPercent ?? 0);
-          const explicitFinal = Number(
+        if (match && match.isActive !== false && match.active !== false) {
+          const rawPrice = Number(
+            match.price ?? match.amount ?? match.basePrice ?? 0
+          );
+          const rawDiscount = Number(
+            match.discount ?? match.discountPercent ?? 0
+          );
+
+          const price = Number.isFinite(rawPrice) ? Math.max(0, rawPrice) : 0;
+          const discount = Number.isFinite(rawDiscount)
+            ? Math.min(100, Math.max(0, rawDiscount))
+            : 0;
+
+          const calculatedFinal =
+            Math.round(price * (1 - discount / 100) * 100) / 100;
+          const suppliedFinal = Number(
             match.finalPrice ?? match.discountedPrice ?? match.salePrice
           );
-          const finalPrice = Number.isFinite(explicitFinal) && explicitFinal >= 0
-            ? explicitFinal
-            : Math.max(0, price - (price * Math.max(0, discount) / 100));
+          const finalPrice =
+            Number.isFinite(suppliedFinal) && suppliedFinal >= 0
+              ? suppliedFinal
+              : calculatedFinal;
 
           setInterviewPrice({
             price,
-            discount: Math.max(0, discount),
+            discount,
             finalPrice,
-            accessType: match.accessType || "",
+            accessType: String(match.accessType || "paid").toLowerCase(),
           });
         } else {
           setInterviewPrice(null);
